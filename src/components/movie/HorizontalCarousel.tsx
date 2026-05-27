@@ -50,7 +50,7 @@ export function HorizontalCarousel({
       onMouseLeave={() => setIsHoveringRow(false)}
     >
       {/* Section header */}
-      <div className="flex items-center justify-between mb-4 px-1">
+      <div className="flex items-center justify-between mb-4 px-4 md:px-8">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
         {showSeeAll && (
           <button className="text-sm text-orange-500 hover:text-orange-400 font-medium transition-colors">
@@ -72,9 +72,9 @@ export function HorizontalCarousel({
               transition={{ duration: 0.15 }}
             >
               {/* Fade gradient */}
-              <div className="absolute inset-0 w-20 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
+              <div className="absolute inset-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
               <button
-                className="relative ml-1 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className="relative ml-4 md:ml-8 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
                 onClick={() => scroll('left')}
                 aria-label="Scroll left"
               >
@@ -96,7 +96,7 @@ export function HorizontalCarousel({
             >
               <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none" />
               <button
-                className="relative mr-1 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className="relative mr-4 md:mr-8 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
                 onClick={() => scroll('right')}
                 aria-label="Scroll right"
               >
@@ -109,7 +109,7 @@ export function HorizontalCarousel({
         {/* Card row */}
         <div
           ref={rowRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar pb-2"
+          className="flex gap-4 overflow-x-auto hide-scrollbar pb-2 pl-4 md:pl-8 pr-4 md:pr-8"
           onScroll={updateArrows}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
