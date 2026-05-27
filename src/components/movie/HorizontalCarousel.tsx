@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -26,7 +26,7 @@ export function HorizontalCarousel({
 }: HorizontalCarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null)
   const [showLeft, setShowLeft] = useState(false)
-  const [showRight, setShowRight] = useState(true)
+  const [showRight, setShowRight] = useState(false)
   const [isHoveringRow, setIsHoveringRow] = useState(false)
 
   const updateArrows = useCallback(() => {
@@ -35,6 +35,15 @@ export function HorizontalCarousel({
     setShowLeft(el.scrollLeft > 8)
     setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
   }, [])
+
+  useEffect(() => {
+    updateArrows()
+    const el = rowRef.current
+    if (!el) return
+    const ro = new ResizeObserver(updateArrows)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [updateArrows])
 
   const scroll = (dir: 'left' | 'right') => {
     const el = rowRef.current
