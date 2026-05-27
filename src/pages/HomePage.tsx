@@ -37,7 +37,7 @@ function QuickSearch() {
   }
 
   return (
-    <section className="px-4 md:px-8">
+    <section className="px-6 md:px-12">
       {/* CTA card */}
       <div
         className="relative overflow-hidden rounded-2xl px-8 py-8 flex flex-col md:flex-row md:items-center gap-6"

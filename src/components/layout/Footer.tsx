@@ -10,7 +10,7 @@ const links = [
 export default function Footer() {
   return (
     <footer className="border-t border-white/5 bg-[#0a0a0a]">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 flex items-center justify-between">
+      <div className="px-6 md:px-12 py-8 flex items-center justify-between">
         <NavLink to="/" className="text-base font-bold tracking-tight text-gradient">
           9film
         </NavLink>

@@ -70,11 +70,11 @@ export function HeroBanner({ movies }: HeroBannerProps) {
 
 
       {/* Content */}
-      <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-8 md:px-14 lg:px-20">
+      <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMovie.id}
-            className="w-full max-w-[58%]"
+            className="w-full md:max-w-[58%]"
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
@@ -203,7 +203,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
 
         {/* Prev / next arrows — bottom right */}
         {movies.length > 1 && (
-          <div className="absolute bottom-10 translate-y-1/2 right-8 md:right-14 lg:right-20 z-30 flex items-center gap-3">
+          <div className="absolute bottom-10 translate-y-1/2 right-6 md:right-12 z-30 flex items-center gap-3">
             <button
               type="button"
               onClick={goToPrev}

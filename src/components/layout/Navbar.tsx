@@ -32,7 +32,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
         scrolled ? 'glass shadow-2xl' : 'bg-gradient-to-b from-black/80 to-transparent'
       )}
     >
-      <div className="flex items-center justify-between px-4 md:px-8 h-16">
+      <div className="flex items-center justify-between px-6 md:px-12 h-16">
         {/* Logo */}
         <div className="flex items-center gap-4">
           <button
