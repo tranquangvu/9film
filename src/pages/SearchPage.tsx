@@ -293,11 +293,11 @@ export default function SearchPage() {
                     </section>
                   )}
 
-                  {/* TV Shows section */}
+                  {/* TV Series section */}
                   {results.series.length > 0 && (
                     <section>
                       <div className="flex items-center gap-2 mb-3">
-                        <h2 className="text-base font-bold text-white">TV Shows</h2>
+                        <h2 className="text-base font-bold text-white">TV Series</h2>
                         <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
                           {results.series.length}
                         </span>

@@ -54,7 +54,7 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
             style={{ textShadow: '0 1px 6px rgba(0,0,0,1), 0 2px 12px rgba(0,0,0,0.9)' }}>
             {movie.title}
           </p>
-          <p className="text-zinc-300 text-[11px] mt-0.5"
+          <p className="text-zinc-400 text-xs mt-0.5"
             style={{ textShadow: '0 1px 4px rgba(0,0,0,1)' }}>
             {progress}% watched · {formatDuration(remaining)} left
           </p>

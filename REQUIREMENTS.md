@@ -144,7 +144,7 @@ Build a Netflix-style homepage containing:
 - Top Rated
 - Recommended For You
 - Because You Watched
-- Trending TV Shows
+- Trending TV Series
 
 ## Features
 - Horizontal scrolling sliders

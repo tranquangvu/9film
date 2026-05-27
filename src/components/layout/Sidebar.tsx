@@ -13,7 +13,7 @@ const navLinks = [
   { label: 'Home', to: '/', emoji: '🏠' },
   { label: 'Browse', to: '/browse', emoji: '🔍' },
   { label: 'Movies', to: '/movies', emoji: '🎬' },
-  { label: 'TV Shows', to: '/tv-shows', emoji: '📺' },
+  { label: 'TV Series', to: '/tv-series', emoji: '📺' },
   { label: 'My List', to: '/my-list', emoji: '📋' },
 ]
 

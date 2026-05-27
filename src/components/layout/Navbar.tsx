@@ -12,7 +12,7 @@ const navLinks = [
   { label: 'Home', to: '/' },
   { label: 'Browse', to: '/browse' },
   { label: 'Movies', to: '/movies' },
-  { label: 'TV Shows', to: '/tv-shows' },
+  { label: 'TV Series', to: '/tv-series' },
   { label: 'My List', to: '/my-list' },
 ]
 

@@ -214,10 +214,10 @@ export default function HomePage() {
           />
         </AnimatedSection>
 
-        {/* Popular TV Shows */}
+        {/* Popular TV Series */}
         <AnimatedSection delay={0.05}>
           <HorizontalCarousel
-            title="Popular TV Shows"
+            title="Popular TV Series"
             movies={trendingShows}
           />
         </AnimatedSection>

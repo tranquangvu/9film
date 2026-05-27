@@ -328,7 +328,7 @@ function LanguageSection() {
 }
 
 const planFeatures = [
-  'Unlimited movies & TV shows',
+  'Unlimited movies & TV series',
   '4K Ultra HD streaming',
   'Up to 4 screens at once',
   'Offline downloads',

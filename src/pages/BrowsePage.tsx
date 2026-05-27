@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { cn } from '@/lib/utils'
 import type { SortOption } from '@/types'
 
-const CATEGORY_TABS = ['All', 'Movies', 'TV Shows', 'Anime', 'Documentaries'] as const
+const CATEGORY_TABS = ['All', 'Movies', 'TV Series', 'Anime', 'Documentaries'] as const
 type CategoryTab = (typeof CATEGORY_TABS)[number]
 
 const YEAR_OPTIONS = [
@@ -141,7 +141,7 @@ export default function BrowsePage() {
 
     // Category tab filter
     if (activeTab === 'Movies') result = result.filter((m) => m.type === 'movie')
-    else if (activeTab === 'TV Shows') result = result.filter((m) => m.type === 'series')
+    else if (activeTab === 'TV Series') result = result.filter((m) => m.type === 'series')
     else if (activeTab === 'Anime')
       result = result.filter((m) => m.genres.some((g) => g.toLowerCase() === 'anime'))
     else if (activeTab === 'Documentaries')
