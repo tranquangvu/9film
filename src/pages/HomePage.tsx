@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Search, Film, Tv, Hash } from 'lucide-react'
+import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react'
 import { HeroBanner } from '@/components/movie/HeroBanner'
 import { HorizontalCarousel } from '@/components/movie/HorizontalCarousel'
 import {
@@ -37,56 +37,60 @@ function QuickSearch() {
   }
 
   return (
-    <section className="relative overflow-hidden rounded-none">
-      {/* Gradient background */}
+    <section className="px-4 md:px-8">
+      {/* CTA card */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="relative overflow-hidden rounded-2xl px-8 py-8 flex flex-col md:flex-row md:items-center gap-6"
         style={{
-          background: 'radial-gradient(ellipse 80% 100% at 50% 50%, rgba(249,115,22,0.13) 0%, rgba(234,88,12,0.06) 45%, transparent 75%)',
+          background: 'linear-gradient(135deg, rgba(249,115,22,0.12) 0%, rgba(17,17,17,0.95) 60%)',
+          border: '1px solid rgba(249,115,22,0.15)',
         }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(10,10,10,0.7) 0%, transparent 20%, transparent 80%, rgba(10,10,10,0.7) 100%)',
-        }}
-      />
+      >
+        {/* Accent glow blob */}
+        <div
+          className="absolute -left-10 -top-10 w-48 h-48 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%)' }}
+        />
 
-      <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 py-16 md:py-20">
-        <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
-          Find Something to Watch
-        </h2>
-        <p className="text-zinc-400 text-sm mb-8 max-w-sm">
-          Search by movie title, TV show name, genre, or ID number.
-        </p>
+        {/* Large background search icon — decorative */}
+        <Search
+          className="absolute top-1/2 -translate-y-1/2 left-0 w-32 h-32 text-orange-500/8 pointer-events-none select-none"
+          aria-hidden
+        />
 
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="relative w-full max-w-xl">
-          <div className="relative flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 w-4 h-4 text-zinc-500 pointer-events-none top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="e.g. Oppenheimer, Sci-Fi, #4..."
-                className={cn(
-                  'w-full pl-11 pr-4 py-4 rounded-2xl text-sm text-white placeholder-zinc-500',
-                  'bg-white/6 border border-white/10 focus:border-orange-500/50',
-                  'outline-none transition-all duration-200',
-                  'shadow-lg shadow-black/30',
-                )}
-              />
-            </div>
-            <motion.button
-              type="submit"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-shrink-0 px-7 py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors shadow-lg shadow-orange-500/20"
-            >
-              Search
-            </motion.button>
+        {/* Left */}
+        <div className="relative flex-1 min-w-0">
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Find your next great watch
+          </h2>
+          <p className="text-zinc-500 text-sm mt-1">Explore thousands of films, series, and hidden gems</p>
+        </div>
+
+        {/* Right: input + button */}
+        <form onSubmit={handleSubmit} className="relative flex items-center gap-3 w-full md:w-96 flex-shrink-0">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="e.g. Inception, Sci-Fi, #4..."
+              className={cn(
+                'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-zinc-500',
+                'bg-white/6 border border-white/10 focus:border-orange-500/50',
+                'outline-none transition-all duration-200',
+              )}
+            />
           </div>
+          <motion.button
+            type="submit"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center transition-colors shadow-lg shadow-orange-500/30"
+            aria-label="Search"
+          >
+            <MoveRight className="w-4 h-4" />
+          </motion.button>
 
           {/* Dropdown results */}
           <AnimatePresence>
