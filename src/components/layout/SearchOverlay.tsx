@@ -176,7 +176,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp size={14} className="text-orange-500" />
-                  <span className="text-sm font-semibold text-zinc-300">Trending Searches</span>
+                  <span className="text-sm font-semibold text-zinc-300">Recommended Searches</span>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-8">
                   {trendingSearches.map(term => (

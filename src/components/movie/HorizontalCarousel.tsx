@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Movie } from '@/types'
 import { MovieCard } from './MovieCard'
@@ -62,8 +62,9 @@ export function HorizontalCarousel({
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
         {showSeeAll && (
-          <button className="text-sm text-orange-500 hover:text-orange-400 font-medium transition-colors">
+          <button className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 font-medium transition-colors group">
             View all
+            <MoveRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         )}
       </div>

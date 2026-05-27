@@ -262,7 +262,7 @@ Create a rich search experience.
 ## Features
 - Real-time search
 - Search suggestions
-- Trending searches
+- Recommended searches
 - Search by:
   - movie
   - actor

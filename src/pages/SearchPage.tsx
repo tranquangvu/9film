@@ -193,7 +193,7 @@ export default function SearchPage() {
         {/* Content */}
         <AnimatePresence mode="wait">
           {!isSearching ? (
-            /* Trending searches */
+            /* Recommended searches */
             <motion.div
               key="trending"
               initial={{ opacity: 0, y: 12 }}
@@ -205,7 +205,7 @@ export default function SearchPage() {
               <div className="flex items-center gap-2 mb-5">
                 <TrendingUp className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest">
-                  Trending Searches
+                  Recommended Searches
                 </h2>
               </div>
 
