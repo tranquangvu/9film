@@ -5,12 +5,13 @@ import { cn } from '@/lib/utils'
 import type { Movie } from '@/types'
 import { MovieCard } from './MovieCard'
 import { ContinueWatchingCard } from './ContinueWatchingCard'
+import { Top10Card } from './Top10Card'
 
 interface HorizontalCarouselProps {
   title: string
   movies: Movie[]
   className?: string
-  cardType?: 'poster' | 'backdrop'
+  cardType?: 'poster' | 'backdrop' | 'top10'
   showSeeAll?: boolean
 }
 
@@ -112,13 +113,11 @@ export function HorizontalCarousel({
           onScroll={updateArrows}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {movies.map((movie) =>
-            cardType === 'backdrop' ? (
-              <ContinueWatchingCard key={movie.id} movie={movie} />
-            ) : (
-              <MovieCard key={movie.id} movie={movie} showProgress />
-            ),
-          )}
+          {movies.map((movie, index) => {
+            if (cardType === 'backdrop') return <ContinueWatchingCard key={movie.id} movie={movie} />
+            if (cardType === 'top10') return <Top10Card key={movie.id} movie={movie} rank={index + 1} />
+            return <MovieCard key={movie.id} movie={movie} showProgress />
+          })}
         </div>
       </div>
     </section>

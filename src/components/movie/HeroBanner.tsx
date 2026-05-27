@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Info, Star, Clock, Calendar } from 'lucide-react'
+import { Play, Info, Star, Clock, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
 import { GenreBadge } from '@/components/movie/GenreBadge'
 import type { Movie } from '@/types'
@@ -19,6 +19,10 @@ export function HeroBanner({ movies }: HeroBannerProps) {
     setActiveIndex(prev => (prev + 1) % movies.length)
   }, [movies.length])
 
+  const goToPrev = useCallback(() => {
+    setActiveIndex(prev => (prev - 1 + movies.length) % movies.length)
+  }, [movies.length])
+
   useEffect(() => {
     if (isPaused || movies.length <= 1) return
     const timer = setInterval(goToNext, 6000)
@@ -29,7 +33,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
 
   return (
     <section
-      className="relative min-h-screen w-full overflow-hidden"
+      className="group relative min-h-screen w-full overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -63,6 +67,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             'linear-gradient(to bottom, rgba(10,10,10,0.5) 0%, transparent 20%)',
         }}
       />
+
 
       {/* Content */}
       <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-8 md:px-14 lg:px-20">
@@ -177,22 +182,44 @@ export function HeroBanner({ movies }: HeroBannerProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Slide indicator dots */}
+        {/* Indicator dots — centered */}
         {movies.length > 1 && (
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 z-30">
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
             {movies.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setActiveIndex(index)}
                 aria-label={`Go to slide ${index + 1}`}
                 className={cn(
-                  'rounded-full transition-all duration-300 focus:outline-none',
+                  'rounded-full transition-all duration-300 focus:outline-none cursor-pointer',
                   index === activeIndex
                     ? 'w-6 h-2 bg-orange-500 shadow-md shadow-orange-500/50'
                     : 'w-2 h-2 bg-white/30 hover:bg-white/60',
                 )}
               />
             ))}
+          </div>
+        )}
+
+        {/* Prev / next arrows — bottom right */}
+        {movies.length > 1 && (
+          <div className="absolute bottom-10 translate-y-1/2 right-8 md:right-14 lg:right-20 z-30 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goToPrev}
+              aria-label="Previous slide"
+              className="text-white/60 hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={goToNext}
+              aria-label="Next slide"
+              className="text-white/60 hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         )}
       </div>
