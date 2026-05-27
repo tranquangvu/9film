@@ -109,9 +109,14 @@ export function HorizontalCarousel({
         {/* Card row */}
         <div
           ref={rowRef}
-          className="flex gap-4 overflow-x-auto hide-scrollbar pb-2 pl-4 md:pl-8 pr-4 md:pr-8"
+          className="flex gap-4 hide-scrollbar py-4 pl-4 md:pl-8 pr-4 md:pr-8"
           onScroll={updateArrows}
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          style={{
+            overflowX: 'auto',
+            overflowY: 'clip',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
           {movies.map((movie, index) => {
             if (cardType === 'backdrop') return <ContinueWatchingCard key={movie.id} movie={movie} />
