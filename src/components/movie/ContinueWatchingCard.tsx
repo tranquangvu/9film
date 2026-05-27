@@ -45,8 +45,20 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
           </div>
         )}
 
-        {/* Permanent bottom gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        {/* Permanent bottom gradient — strong enough to work on bright images */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+        {/* Title + progress text over image */}
+        <div className="absolute bottom-3 left-3 right-3 z-10">
+          <p className="text-white text-sm font-semibold truncate leading-snug"
+            style={{ textShadow: '0 1px 6px rgba(0,0,0,1), 0 2px 12px rgba(0,0,0,0.9)' }}>
+            {movie.title}
+          </p>
+          <p className="text-zinc-300 text-[11px] mt-0.5"
+            style={{ textShadow: '0 1px 4px rgba(0,0,0,1)' }}>
+            {progress}% watched · {formatDuration(remaining)} left
+          </p>
+        </div>
 
         {/* Hover play overlay */}
         <AnimatePresence>
@@ -78,23 +90,6 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
         </div>
       </div>
 
-      {/* Card footer */}
-      <div className="mt-2.5 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{movie.title}</p>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            {progress}% watched · {formatDuration(remaining)} left
-          </p>
-        </div>
-        <motion.button
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-white text-xs font-semibold transition-colors"
-          whileTap={{ scale: 0.96 }}
-          onClick={(e) => { e.stopPropagation(); handleClick() }}
-        >
-          <Play className="w-3 h-3 fill-white text-white" />
-          Continue
-        </motion.button>
-      </div>
     </motion.div>
   )
 }

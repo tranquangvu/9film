@@ -61,7 +61,7 @@ function QuickSearch() {
         {/* Left */}
         <div className="relative flex-1 min-w-0">
           <h2 className="text-xl font-bold text-white tracking-tight">
-            Find your next great watch
+            Find your next watch
           </h2>
           <p className="text-zinc-500 text-sm mt-1">Explore thousands of films, series, and hidden gems</p>
         </div>
@@ -74,7 +74,7 @@ function QuickSearch() {
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="e.g. Inception, Sci-Fi, #4..."
+              placeholder="e.g. tt1375666, Inception"
               className={cn(
                 'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-zinc-500',
                 'bg-white/6 border border-white/10 focus:border-orange-500/50',
