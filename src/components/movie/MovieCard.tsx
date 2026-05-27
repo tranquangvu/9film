@@ -94,16 +94,17 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
               {/* Bottom info */}
               <div className="relative px-2.5 pb-3 space-y-1.5">
                 <p className="text-white font-semibold text-sm leading-tight line-clamp-2">{movie.title}</p>
+                
                 <div className="flex items-center gap-1.5 text-zinc-400 text-xs">
                   <span>{formatYear(movie.year)}</span>
-                  <span className="text-zinc-600">·</span>
+                  <span className="w-1 h-1 bg-zinc-400 rounded-full inline-block" />
                   <span>{formatDuration(movie.duration)}</span>
                 </div>
 
                 {/* Genre badges row */}
                 <div className="flex flex-wrap gap-1 pt-0.5">
                   {movie.genres.slice(0, 2).map((g) => (
-                    <GenreBadge key={g} genre={g} />
+                    <GenreBadge key={g} genre={g} className="text-[10px] px-1.5 py-0" />
                   ))}
                 </div>
 
@@ -129,6 +130,23 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
           )}
         </AnimatePresence>
 
+        {/* Default title overlay — visible when not hovered */}
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-12"
+          style={{
+            background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 100%)',
+          }}
+          animate={{ opacity: isHovered ? 0 : 1 }}
+          transition={{ duration: 0.18 }}
+        >
+          <p
+            className="text-white text-sm font-bold line-clamp-2 leading-snug"
+            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7)' }}
+          >
+            {movie.title}
+          </p>
+        </motion.div>
+
         {/* Progress bar */}
         {showProgress && movie.progress !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
@@ -139,15 +157,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
           </div>
         )}
       </div>
-
-      {/* Title below card (base state, hidden on hover) */}
-      <motion.p
-        className="mt-2 text-sm text-zinc-300 font-medium line-clamp-1 px-0.5"
-        animate={{ opacity: isHovered ? 0 : 1 }}
-        transition={{ duration: 0.15 }}
-      >
-        {movie.title}
-      </motion.p>
     </motion.div>
   )
 }

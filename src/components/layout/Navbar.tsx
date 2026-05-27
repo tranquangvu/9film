@@ -57,7 +57,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
               end={link.to === '/'}
               className={({ isActive }) =>
                 cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200',
+                  'px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200',
                   isActive
                     ? 'text-orange-500 bg-orange-500/10'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
