@@ -37,9 +37,8 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <NavLink to="/" className="flex items-center gap-1.5 mb-3">
-              <span className="text-xl">🎬</span>
-              <span className="text-xl font-bold tracking-tight text-gradient">NiceFilm</span>
+            <NavLink to="/" className="mb-3 text-xl font-bold tracking-tight text-gradient">
+              9film
             </NavLink>
             <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
               Premium streaming for cinema lovers. Discover the world's greatest films, series, and stories.
