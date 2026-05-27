@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Info, Star, Clock, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Play, Info, Star, Clock, Calendar } from 'lucide-react'
 import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
 import { GenreBadge } from '@/components/movie/GenreBadge'
 import type { Movie } from '@/types'
@@ -12,6 +12,12 @@ interface HeroBannerProps {
 export function HeroBanner({ movies }: HeroBannerProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const mouseStartX = useRef<number | null>(null)
+  const isDragging = useRef(false)
+  const wheelCooldown = useRef(false)
 
   const activeMovie = movies[activeIndex]
 
@@ -29,13 +35,94 @@ export function HeroBanner({ movies }: HeroBannerProps) {
     return () => clearInterval(timer)
   }, [goToNext, isPaused, movies.length])
 
+  // Non-passive touch listeners so we can preventDefault on horizontal swipe
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX
+      touchStartY.current = e.touches[0].clientY
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return
+      const dx = Math.abs(e.touches[0].clientX - touchStartX.current)
+      const dy = Math.abs(e.touches[0].clientY - touchStartY.current)
+      // If clearly horizontal, block page scroll
+      if (dx > dy && dx > 10) e.preventDefault()
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartX.current === null) return
+      const delta = touchStartX.current - e.changedTouches[0].clientX
+      if (Math.abs(delta) > 50) delta > 0 ? goToNext() : goToPrev()
+      touchStartX.current = null
+      touchStartY.current = null
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      if (Math.abs(e.deltaX) < 30) return
+      e.preventDefault() // blocks browser back/forward navigation
+      if (wheelCooldown.current) return
+      wheelCooldown.current = true
+      e.deltaX > 0 ? goToNext() : goToPrev()
+      setTimeout(() => { wheelCooldown.current = false }, 800)
+    }
+
+    const onMouseEnter = () => { document.documentElement.style.overscrollBehaviorX = 'none' }
+    const onMouseLeave = () => { document.documentElement.style.overscrollBehaviorX = '' }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('mouseenter', onMouseEnter)
+    el.addEventListener('mouseleave', onMouseLeave)
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('mouseenter', onMouseEnter)
+      el.removeEventListener('mouseleave', onMouseLeave)
+      document.documentElement.style.overscrollBehaviorX = ''
+    }
+  }, [goToNext, goToPrev])
+
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseStartX.current = e.clientX
+    isDragging.current = false
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mouseStartX.current === null) return
+    if (Math.abs(e.clientX - mouseStartX.current) > 5) isDragging.current = true
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (mouseStartX.current === null) return
+    const delta = mouseStartX.current - e.clientX
+    if (Math.abs(delta) > 60) delta > 0 ? goToNext() : goToPrev()
+    mouseStartX.current = null
+  }
+
   if (!activeMovie) return null
 
   return (
     <section
+      ref={sectionRef}
       className="group relative min-h-screen w-full overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={(e) => { setIsPaused(false); handleMouseUp(e) }}
+      style={{ userSelect: 'none', overscrollBehaviorX: 'none' }}
     >
       {/* Backdrop images */}
       <AnimatePresence mode="wait">
@@ -201,27 +288,6 @@ export function HeroBanner({ movies }: HeroBannerProps) {
           </div>
         )}
 
-        {/* Prev / next arrows — bottom right */}
-        {movies.length > 1 && (
-          <div className="absolute bottom-10 translate-y-1/2 right-6 md:right-12 z-30 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={goToPrev}
-              aria-label="Previous slide"
-              className="text-white/60 hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={goToNext}
-              aria-label="Next slide"
-              className="text-white/60 hover:text-white transition-colors duration-200 cursor-pointer"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
       </div>
     </section>
   )
