@@ -1,13 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { movies, genres } from '@/data/movies'
 import { MovieCard } from '@/components/movie/MovieCard'
 import { EmptyState } from '@/components/common/EmptyState'
-import { Pagination } from '@/components/common/Pagination'
 import { cn } from '@/lib/utils'
-
-const PAGE_SIZE = 10
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,7 +18,6 @@ const itemVariants = {
 
 export default function TvSeriesPage() {
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set())
-  const [page, setPage] = useState(1)
 
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
@@ -47,17 +43,6 @@ export default function TvSeriesPage() {
 
     return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0))
   }, [selectedGenres])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  useEffect(() => {
-    setPage(1)
-  }, [selectedGenres])
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages)
-  }, [page, totalPages])
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -127,28 +112,19 @@ export default function TvSeriesPage() {
               />
             </motion.div>
           ) : (
-            <>
-              <motion.div
-                key={`grid-${[...selectedGenres].join('-')}-${page}`}
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8"
-              >
-                {paginated.map((series) => (
-                  <motion.div key={series.id} variants={itemVariants}>
-                    <MovieCard movie={series} size="lg" className="w-full" />
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPrevious={() => setPage((p) => Math.max(1, p - 1))}
-                onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
-              />
-            </>
+            <motion.div
+              key={`grid-${[...selectedGenres].join('-')}`}
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8"
+            >
+              {filtered.map((series) => (
+                <motion.div key={series.id} variants={itemVariants}>
+                  <MovieCard movie={series} size="lg" className="w-full" />
+                </motion.div>
+              ))}
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
