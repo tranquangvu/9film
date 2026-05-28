@@ -16,6 +16,8 @@ import { WatchPage } from '@/pages/WatchPage'
 import MyListPage from '@/pages/MyListPage'
 import SearchPage from '@/pages/SearchPage'
 import ProfilePage from '@/pages/ProfilePage'
+import MoviesPage from '@/pages/MoviesPage'
+import TvSeriesPage from '@/pages/TvSeriesPage'
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -39,6 +41,8 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<HomePage />} />
           <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/movies" element={<MoviesPage />} />
+          <Route path="/tv-series" element={<TvSeriesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/movie/:id" element={<MovieDetailPage />} />
           <Route path="/my-list" element={<MyListPage />} />
