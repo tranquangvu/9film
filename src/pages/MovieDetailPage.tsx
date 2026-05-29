@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import {
   Play,
   Heart,
@@ -8,61 +8,19 @@ import {
   Share2,
   ArrowLeft,
   Star,
-  Calendar,
-  Film,
   Clock,
   MapPin,
   Languages,
-  DollarSign,
-  User,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { movies } from '@/data/movies'
+import type { Movie } from '@/types'
 import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
 import { MovieCard } from '@/components/movie/MovieCard'
 import { EpisodeCard } from '@/components/movie/EpisodeCard'
 import { GenreBadge } from '@/components/movie/GenreBadge'
-import { RatingBadge } from '@/components/movie/RatingBadge'
 
-const MOCK_BUDGETS: Record<number, string> = {
-  1: '$100M', 2: '$200M', 3: '$145M', 4: '$160M', 5: '$190M',
-  6: '$185M', 7: '$165M', 8: '$356M', 9: '$185M', 10: 'N/A',
-  11: 'N/A', 12: 'N/A', 13: '$35M', 14: '$200M', 15: '$168M', 16: '$50M',
-}
-
-const mockReviews = [
-  {
-    id: 1,
-    user: 'Alex M.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AlexM',
-    rating: 9,
-    text: 'An absolute masterpiece. The direction, the performances, the score — everything fires on all cylinders. One of the best films in years.',
-    date: 'Jan 5, 2024',
-  },
-  {
-    id: 2,
-    user: 'Sarah K.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SarahK',
-    rating: 8,
-    text: 'Visually stunning and emotionally resonant. The pacing might test some patience but the payoff is absolutely worth it.',
-    date: 'Dec 20, 2023',
-  },
-  {
-    id: 3,
-    user: 'James T.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JamesT',
-    rating: 10,
-    text: 'I was completely blown away. This is cinema at its finest — bold, uncompromising, and utterly unforgettable.',
-    date: 'Dec 15, 2023',
-  },
-  {
-    id: 4,
-    user: 'Priya S.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=PriyaS',
-    rating: 7,
-    text: 'Great film overall. Some scenes drag a bit but the lead performances alone make it worth every minute.',
-    date: 'Nov 30, 2023',
-  },
-]
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -77,14 +35,6 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 }
 
-const castCardVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    transition: { delay: i * 0.08, duration: 0.5, ease: 'easeOut' },
-  }),
-}
 
 export default function MovieDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -139,8 +89,6 @@ export default function MovieDetailPage() {
     setTimeout(() => setShareTooltip(false), 2000)
   }
 
-  const budget = MOCK_BUDGETS[movie.id] ?? 'N/A'
-
   return (
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
@@ -165,15 +113,15 @@ export default function MovieDetailPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
           onClick={() => navigate(-1)}
-          className="absolute top-6 left-6 z-20 flex items-center gap-2 glass px-4 py-2 rounded-full text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+          aria-label="Go back"
+          className="absolute top-16 left-4 md:top-24 md:left-8 lg:left-12 z-20 w-10 h-10 flex items-center justify-center rounded-full glass border border-white/15 text-zinc-300 hover:text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
         </motion.button>
 
         {/* Hero content */}
         <motion.div
-          className="absolute bottom-0 left-0 right-0 z-10 px-8 pb-16 md:px-16 lg:px-20 max-w-4xl"
+          className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-16 md:px-8 lg:px-12 max-w-4xl"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -268,16 +216,6 @@ export default function MovieDetailPage() {
               Play Now
             </motion.button>
 
-            {/* Watch Trailer */}
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2.5 px-7 py-3.5 rounded-full glass border border-white/20 text-white font-semibold text-base hover:bg-white/10 transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Watch Trailer
-            </motion.button>
-
             {/* Favorite */}
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -341,248 +279,170 @@ export default function MovieDetailPage() {
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 bg-background px-6 md:px-12 lg:px-20 py-14"
+        className="relative z-10 bg-background px-4 md:px-8 lg:px-12 py-8"
       >
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12">
+        <div className="space-y-12">
 
-          {/* ── MAIN CONTENT ── */}
-          <div className="space-y-14">
+          {/* ── About ── */}
+          <section>
+            <h2 className="text-xl font-bold text-white mb-4">About</h2>
+            <p className="text-zinc-300 leading-relaxed text-base max-w-3xl">{movie.description}</p>
+          </section>
 
-            {/* Description */}
+          {/* ── Cast ── */}
+          {movie.cast && movie.cast.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-white mb-4">About</h2>
-              <p className="text-zinc-300 leading-relaxed text-base">{movie.description}</p>
+              <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
+              <p className="text-zinc-400 text-sm leading-relaxed">
+                {movie.cast.map((member) => member.name).join(', ')}
+              </p>
             </section>
+          )}
 
-            {/* Cast Section */}
-            {movie.cast && movie.cast.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-6">Cast</h2>
-                <div className="flex gap-4 overflow-x-auto pb-3 hide-scrollbar">
-                  {movie.cast.map((member, i) => (
-                    <motion.div
-                      key={member.id}
-                      custom={i}
-                      variants={castCardVariants}
-                      initial="hidden"
-                      whileInView="visible"
-                      viewport={{ once: true, margin: '-50px' }}
-                      className="shrink-0 w-28 text-center group"
-                    >
-                      <div className="w-20 h-20 mx-auto rounded-full overflow-hidden mb-2.5 ring-2 ring-white/10 group-hover:ring-orange-500/50 transition-all duration-300">
-                        <img
-                          src={member.photo}
-                          alt={member.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const t = e.currentTarget
-                            t.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(member.name)}`
-                          }}
-                        />
-                      </div>
-                      <p className="text-sm font-semibold text-white leading-tight line-clamp-2 mb-0.5">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-zinc-500 line-clamp-1">{member.character}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Episodes Section — series only */}
-            {movie.type === 'series' && movie.episodes && movie.episodes.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-white mb-5">Episodes</h2>
-
-                {/* Season tabs */}
-                {availableSeasons.length > 1 && (
-                  <div className="flex gap-2 mb-5 flex-wrap">
-                    {availableSeasons.map((season) => (
-                      <button
-                        key={season}
-                        onClick={() => setActiveSeason(season)}
-                        className={cn(
-                          'px-4 py-1.5 rounded-full text-sm font-semibold border transition-all',
-                          activeSeason === season
-                            ? 'bg-orange-500 border-orange-500 text-white'
-                            : 'border-white/15 text-zinc-400 hover:text-white hover:border-white/30',
-                        )}
-                      >
-                        Season {season}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Episode list */}
-                <div className="space-y-2">
-                  {episodesBySeason.map((ep) => (
-                    <EpisodeCard
-                      key={ep.id}
-                      episode={ep}
-                      isActive={activeEpisode === ep.id}
-                      onPlay={() => {
-                        setActiveEpisode(ep.id)
-                        navigate(`/watch/${movie.id}?episode=${ep.id}`)
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Reviews */}
+          {/* ── Episodes — series only ── */}
+          {movie.type === 'series' && movie.episodes && movie.episodes.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Reviews</h2>
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
-                  <span className="text-white font-bold">{formatRating(movie.rating)}</span>
-                  <span className="text-zinc-500 text-sm">/ 10</span>
-                </div>
-              </div>
+              <h2 className="text-xl font-bold text-white mb-5">Episodes</h2>
 
-              <div className="space-y-4">
-                {mockReviews.map((review, i) => (
-                  <motion.div
-                    key={review.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-40px' }}
-                    transition={{ delay: i * 0.1, duration: 0.5 }}
-                    className="p-5 rounded-2xl bg-surface border border-white/5 hover:border-white/10 transition-colors"
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Avatar */}
-                      <img
-                        src={review.avatar}
-                        alt={review.user}
-                        className="w-10 h-10 rounded-full shrink-0 bg-zinc-800"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <div className="flex items-center gap-3">
-                            <span className="font-semibold text-white text-sm">{review.user}</span>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: 5 }).map((_, j) => (
-                                <Star
-                                  key={j}
-                                  className={cn(
-                                    'w-3 h-3',
-                                    j < Math.round(review.rating / 2)
-                                      ? 'fill-orange-500 text-orange-500'
-                                      : 'text-zinc-700',
-                                  )}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-xs text-orange-400 font-semibold">{review.rating}/10</span>
-                          </div>
-                          <span className="text-xs text-zinc-600 shrink-0">{review.date}</span>
-                        </div>
-                        <p className="text-zinc-400 text-sm leading-relaxed">{review.text}</p>
-                      </div>
-                    </div>
-                  </motion.div>
+              {availableSeasons.length > 1 && (
+                <div className="flex gap-2 mb-5 flex-wrap">
+                  {availableSeasons.map((season) => (
+                    <button
+                      key={season}
+                      onClick={() => setActiveSeason(season)}
+                      className={cn(
+                        'px-4 py-1.5 rounded-full text-sm font-semibold border transition-all',
+                        activeSeason === season
+                          ? 'bg-orange-500 border-orange-500 text-white'
+                          : 'border-white/15 text-zinc-400 hover:text-white hover:border-white/30',
+                      )}
+                    >
+                      Season {season}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {episodesBySeason.map((ep) => (
+                  <EpisodeCard
+                    key={ep.id}
+                    episode={ep}
+                    isActive={activeEpisode === ep.id}
+                    onPlay={() => {
+                      setActiveEpisode(ep.id)
+                      navigate(`/watch/${movie.id}?episode=${ep.id}`)
+                    }}
+                  />
                 ))}
               </div>
             </section>
-          </div>
+          )}
 
-          {/* ── SIDEBAR ── */}
-          <aside className="space-y-8">
+          {/* ── More Like This ── */}
+          {similarMovies.length > 0 && (
+            <MoreLikeThisCarousel movies={similarMovies} />
+          )}
 
-            {/* Movie metadata card */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7, duration: 0.6 }}
-              className="rounded-2xl bg-surface border border-white/5 overflow-hidden"
-            >
-              {/* Poster header */}
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={movie.backdrop}
-                  alt={movie.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-linear-to-t from-surface via-surface/60 to-transparent" />
-                <div className="absolute bottom-3 left-4 right-4">
-                  <div className="flex items-center gap-2">
-                    <RatingBadge rating={movie.rating} />
-                    {movie.isNew && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
-                        New
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Metadata list */}
-              <div className="p-5 space-y-3.5">
-                <MetaRow icon={<User className="w-4 h-4" />} label="Director" value={movie.director} />
-                <MetaRow icon={<Calendar className="w-4 h-4" />} label="Released" value={formatYear(movie.year)} />
-                <MetaRow icon={<Languages className="w-4 h-4" />} label="Language" value={movie.language} />
-                <MetaRow icon={<MapPin className="w-4 h-4" />} label="Country" value={movie.country} />
-                <MetaRow icon={<Clock className="w-4 h-4" />} label="Duration" value={formatDuration(movie.duration)} />
-                <MetaRow icon={<DollarSign className="w-4 h-4" />} label="Budget" value={budget} />
-                {movie.type === 'series' && movie.totalSeasons && (
-                  <MetaRow icon={<Film className="w-4 h-4" />} label="Seasons" value={`${movie.totalSeasons} Seasons`} />
-                )}
-              </div>
-
-              {/* Genre badges */}
-              <div className="px-5 pb-5 flex flex-wrap gap-1.5">
-                {movie.genres.map((g) => (
-                  <GenreBadge key={g} genre={g} />
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Similar Movies */}
-            {similarMovies.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.85, duration: 0.6 }}
-              >
-                <h3 className="text-lg font-bold text-white mb-4">More Like This</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {similarMovies.map((m, i) => (
-                    <motion.div
-                      key={m.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.07, duration: 0.4 }}
-                    >
-                      <MovieCard movie={m} size="sm" />
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </aside>
         </div>
       </motion.div>
     </div>
   )
 }
 
-interface MetaRowProps {
-  icon: React.ReactNode
-  label: string
-  value: string
-}
+function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [showLeft, setShowLeft] = useState(false)
+  const [showRight, setShowRight] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
 
-function MetaRow({ icon, label, value }: MetaRowProps) {
+  const updateArrows = useCallback(() => {
+    const el = rowRef.current
+    if (!el) return
+    setShowLeft(el.scrollLeft > 8)
+    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
+  }, [])
+
+  useEffect(() => {
+    updateArrows()
+    const el = rowRef.current
+    if (!el) return
+    const ro = new ResizeObserver(updateArrows)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [updateArrows])
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = rowRef.current
+    if (!el) return
+    el.scrollBy({ left: dir === 'left' ? -600 : 600, behavior: 'smooth' })
+    setTimeout(updateArrows, 350)
+  }
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-zinc-600 shrink-0">{icon}</span>
-      <span className="text-zinc-500 text-sm shrink-0 w-20">{label}</span>
-      <span className="text-white text-sm font-medium truncate">{value}</span>
-    </div>
+    <section
+      className="relative -mx-4 md:-mx-8 lg:-mx-12"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <h2 className="text-xl font-bold text-white mb-5 px-4 md:px-8 lg:px-12">More Like This</h2>
+
+      <div className="relative">
+        <AnimatePresence>
+          {showLeft && isHovering && (
+            <motion.div
+              className="absolute left-0 top-0 bottom-0 z-20 flex items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="absolute inset-0 w-24 bg-linear-to-r from-background to-transparent pointer-events-none" />
+              <button
+                className="relative ml-4 md:ml-8 lg:ml-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                onClick={() => scroll('left')}
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showRight && isHovering && (
+            <motion.div
+              className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="absolute inset-0 bg-linear-to-l from-background to-transparent pointer-events-none" />
+              <button
+                className="relative mr-4 md:mr-8 lg:mr-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                onClick={() => scroll('right')}
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div
+          ref={rowRef}
+          className="flex gap-4 py-2 px-4 md:px-8 lg:px-12"
+          onScroll={updateArrows}
+          style={{ overflowX: 'auto', overflowY: 'clip', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {items.map((m) => (
+            <div key={m.id} className="flex-none w-36 sm:w-40 md:w-44">
+              <MovieCard movie={m} size="sm" className="w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
