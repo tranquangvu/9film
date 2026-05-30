@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { movies, genres } from '@/data/movies'
-import { MovieCard } from '@/components/movie/MovieCard'
-import { EmptyState } from '@/components/common/EmptyState'
+import { MovieCard } from '@/components/system/movie/movie-card'
+import { EmptyState } from '@/components/system/common/empty-state'
 import { cn } from '@/utils'
 
 type ContentType = 'movie' | 'series'
@@ -27,14 +27,10 @@ const itemVariants = {
 export default function BrowsePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [contentType, setContentType] = useState<ContentType | null>(null)
-  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    const genreParam = searchParams.get('genre')
-    if (genreParam && genres.some((g) => g.id === genreParam)) {
-      setSelectedGenres(new Set([genreParam]))
-    }
-  }, [searchParams])
+  const genreParam = searchParams.get('genre')
+  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(
+    genreParam && genres.some((g) => g.id === genreParam) ? new Set([genreParam]) : new Set()
+  )
 
   const toggleContentType = (type: ContentType) => {
     setContentType((prev) => (prev === type ? null : type))
@@ -44,7 +40,7 @@ export default function BrowsePage() {
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
     setSearchParams({})

@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { movies, genres } from '@/data/movies'
-import { MovieCard } from '@/components/movie/MovieCard'
-import { EmptyState } from '@/components/common/EmptyState'
+import { MovieCard } from '@/components/system/movie/movie-card'
+import { EmptyState } from '@/components/system/common/empty-state'
 import { cn } from '@/utils'
 
 const containerVariants = {
@@ -22,7 +22,7 @@ export default function TvSeriesPage() {
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
     })
   }

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, TrendingUp, Star, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { cn } from '@/utils'
 import { movies } from '@/data/movies'
 import { formatYear } from '@/utils'
 

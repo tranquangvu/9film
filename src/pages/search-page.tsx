@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react'
 import { movies } from '@/data/movies'
-import { EmptyState } from '@/components/common/EmptyState'
+import { EmptyState } from '@/components/system/common/empty-state'
 import { cn, formatYear, formatDuration, formatRating } from '@/utils'
 import type { Movie } from '@/types'
 

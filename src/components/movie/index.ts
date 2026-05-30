@@ -1,8 +1,0 @@
-export { MovieCard } from './MovieCard'
-export { ContinueWatchingCard } from './ContinueWatchingCard'
-export { HorizontalCarousel } from './HorizontalCarousel'
-export { GenreBadge } from './GenreBadge'
-export { RatingBadge } from './RatingBadge'
-export { EpisodeCard } from './EpisodeCard'
-export { LoadingSkeleton } from './LoadingSkeleton'
-export { Top10Card } from './Top10Card'

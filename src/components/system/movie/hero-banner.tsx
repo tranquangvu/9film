@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react'
 import { cn, formatDuration, formatRating, formatYear } from '@/utils'
-import { GenreBadge } from '@/components/movie/GenreBadge'
+import { GenreBadge } from '@/components/system/movie/genre-badge'
 import type { Movie } from '@/types'
 
 interface HeroBannerProps {
@@ -56,7 +56,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
     const onTouchEnd = (e: TouchEvent) => {
       if (touchStartX.current === null) return
       const delta = touchStartX.current - e.changedTouches[0].clientX
-      if (Math.abs(delta) > 50) delta > 0 ? goToNext() : goToPrev()
+      if (Math.abs(delta) > 50) { if (delta > 0) goToNext(); else goToPrev() }
       touchStartX.current = null
       touchStartY.current = null
     }
@@ -67,7 +67,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       e.preventDefault() // blocks browser back/forward navigation
       if (wheelCooldown.current) return
       wheelCooldown.current = true
-      e.deltaX > 0 ? goToNext() : goToPrev()
+      if (e.deltaX > 0) goToNext(); else goToPrev()
       setTimeout(() => { wheelCooldown.current = false }, 800)
     }
 
@@ -106,7 +106,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
   const handleMouseUp = (e: React.MouseEvent) => {
     if (mouseStartX.current === null) return
     const delta = mouseStartX.current - e.clientX
-    if (Math.abs(delta) > 60) delta > 0 ? goToNext() : goToPrev()
+    if (Math.abs(delta) > 60) { if (delta > 0) goToNext(); else goToPrev() }
     mouseStartX.current = null
   }
 

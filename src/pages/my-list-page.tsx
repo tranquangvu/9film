@@ -5,9 +5,9 @@ import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react'
 import { cn } from '@/utils'
 import type { Movie } from '@/types'
 import { myList, continueWatching, movies } from '@/data/movies'
-import { MovieCard } from '@/components/movie/MovieCard'
-import { HorizontalCarousel } from '@/components/movie/HorizontalCarousel'
-import { EmptyState } from '@/components/common/EmptyState'
+import { MovieCard } from '@/components/system/movie/movie-card'
+import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel'
+import { EmptyState } from '@/components/system/common/empty-state'
 
 type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
 

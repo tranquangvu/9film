@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { Play, Heart, Info } from 'lucide-react'
 import { cn, formatDuration, formatYear } from '@/utils'
 import type { Movie } from '@/types'
-import { RatingBadge } from './RatingBadge'
-import { GenreBadge } from './GenreBadge'
+import { RatingBadge } from '@/components/system/movie/rating-badge'
+import { GenreBadge } from '@/components/system/movie/genre-badge'
 
 interface MovieCardProps {
   movie: Movie

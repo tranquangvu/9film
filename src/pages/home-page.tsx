@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react'
-import { HeroBanner } from '@/components/movie/HeroBanner'
-import { HorizontalCarousel } from '@/components/movie/HorizontalCarousel'
+import { HeroBanner } from '@/components/system/movie/hero-banner'
+import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel'
 import {
   movies,
   continueWatching,

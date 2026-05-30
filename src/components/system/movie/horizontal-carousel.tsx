@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react'
 import { cn } from '@/utils'
 import type { Movie } from '@/types'
-import { MovieCard } from './MovieCard'
-import { ContinueWatchingCard } from './ContinueWatchingCard'
-import { Top10Card } from './Top10Card'
+import { MovieCard } from '@/components/system/movie/movie-card'
+import { ContinueWatchingCard } from '@/components/system/movie/continue-watching-card'
+import { Top10Card } from '@/components/system/movie/top10-card'
 
 interface HorizontalCarouselProps {
   title: string

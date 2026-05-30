@@ -18,8 +18,8 @@ import {
 import { movies } from '@/data/movies'
 import type { Movie } from '@/types'
 import { cn, formatDuration, formatRating, formatYear } from '@/utils'
-import { MovieCard } from '@/components/movie/MovieCard'
-import { GenreBadge } from '@/components/movie/GenreBadge'
+import { MovieCard } from '@/components/system/movie/movie-card'
+import { GenreBadge } from '@/components/system/movie/genre-badge'
 
 
 const containerVariants = {

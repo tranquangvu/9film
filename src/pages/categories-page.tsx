@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Play, TrendingUp } from 'lucide-react'
 import { genres, movies } from '@/data/movies'
-import { cn, formatYear } from '@/utils'
+import { formatYear } from '@/utils'
 
 const containerVariants = {
   hidden: { opacity: 0 },
