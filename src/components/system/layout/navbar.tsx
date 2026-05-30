@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import { cn } from '@/utils';
+import { Button } from '@/components/ui/button';
 
 interface NavbarProps {
   onSearchOpen: () => void
@@ -35,13 +36,14 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
       <div className="flex items-center justify-between px-6 md:px-12 h-16">
         {/* Logo */}
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="ghost"
             onClick={onSidebarToggle}
-            className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
             aria-label="Open menu"
+            className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 border-0 bg-transparent shadow-none"
           >
             <Menu size={20} />
-          </button>
+          </Button>
 
           <NavLink to="/" className="text-lg font-bold tracking-tight text-gradient">
             9film
@@ -70,13 +72,14 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
         </nav>
 
         {/* Actions */}
-        <button
+        <Button
+          variant="ghost"
           onClick={onSearchOpen}
-          className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
           aria-label="Search"
+          className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 border-0 bg-transparent shadow-none"
         >
           <Search size={18} />
-        </button>
+        </Button>
       </div>
     </header>
   );

@@ -6,6 +6,8 @@ import { movies, genres } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { EmptyState } from '@/components/system/common/empty-state';
 import { cn } from '@/utils';
+import { Tag } from '@/components/ui/tag';
+import { buttonVariants } from '@/components/ui/button';
 
 type ContentType = 'movie' | 'series'
 
@@ -99,19 +101,14 @@ export default function BrowsePage() {
           {TYPE_OPTIONS.map((type) => {
             const active = contentType === type.id;
             return (
-              <button
+              <Tag
                 key={type.id}
+                active={active}
                 onClick={() => toggleContentType(type.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border',
-                  active
-                    ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
-                    : 'text-zinc-400 border-white/10 hover:border-white/20 hover:text-white bg-white/5',
-                )}
               >
                 <span className="text-base leading-none">{type.icon}</span>
                 {type.label}
-              </button>
+              </Tag>
             );
           })}
 
@@ -123,7 +120,7 @@ export default function BrowsePage() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={clearContentType}
                 aria-label="Clear type filter"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 hover:text-orange-300 transition-all border border-orange-500/30"
+                className={cn(buttonVariants({ variant: 'destructive', size: 'icon-sm' }), 'w-7 h-7 bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30 hover:text-orange-300')}
               >
                 <X className="w-3.5 h-3.5" />
               </motion.button>
@@ -136,20 +133,16 @@ export default function BrowsePage() {
           {genres.map((g) => {
             const active = selectedGenres.has(g.id);
             return (
-              <button
+              <Tag
                 key={g.id}
+                active={false}
                 onClick={() => toggleGenre(g.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border',
-                  active
-                    ? 'border-transparent'
-                    : 'text-zinc-400 border-white/10 hover:border-white/20 hover:text-white bg-white/5',
-                )}
+                className={active ? 'border-transparent' : undefined}
                 style={active ? { background: `${g.color}22`, borderColor: `${g.color}66`, color: g.color } : undefined}
               >
                 <span className="text-base leading-none">{g.icon}</span>
                 {g.name}
-              </button>
+              </Tag>
             );
           })}
 
@@ -161,7 +154,7 @@ export default function BrowsePage() {
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={clearGenres}
                 aria-label="Clear genre filters"
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 hover:text-orange-300 transition-all border border-orange-500/30"
+                className={cn(buttonVariants({ variant: 'destructive', size: 'icon-sm' }), 'w-7 h-7 bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30 hover:text-orange-300')}
               >
                 <X className="w-3.5 h-3.5" />
               </motion.button>

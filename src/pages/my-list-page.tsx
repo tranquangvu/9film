@@ -6,8 +6,9 @@ import { cn } from '@/utils';
 import type { Movie } from '@/types';
 import { myList, continueWatching, movies } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
-import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel';
+import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import { EmptyState } from '@/components/system/common/empty-state';
+import { Tag } from '@/components/ui/tag';
 
 type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
 
@@ -187,19 +188,14 @@ export default function MyListPage() {
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-8 lg:px-12 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {tabs.map((tab) => (
-            <button
+            <Tag
               key={tab.id}
+              active={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border',
-                activeTab === tab.id
-                  ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
-                  : 'text-zinc-400 border-white/10 hover:border-white/20 hover:text-white bg-white/5',
-              )}
             >
               {tab.icon}
               {tab.label}
-            </button>
+            </Tag>
           ))}
         </div>
       </div>

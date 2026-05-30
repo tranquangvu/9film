@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn, formatDuration, formatRating, formatYear } from '@/utils';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import type { Movie } from '@/types';
 
 interface HeroBannerProps {
@@ -170,20 +172,20 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             {/* Status badges */}
             <div className="flex items-center gap-2 mb-4">
               {activeMovie.isTrending && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 border border-orange-500/40 text-orange-400">
+                <Badge variant="orange" className="px-3 py-1 gap-1 normal-case tracking-normal">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 pulse-orange inline-block" />
                   Trending
-                </span>
+                </Badge>
               )}
               {activeMovie.isNew && !activeMovie.isTrending && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                <Badge variant="emerald" className="px-3 py-1 normal-case tracking-normal">
                   New
-                </span>
+                </Badge>
               )}
               {activeMovie.isFeatured && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 border border-amber-500/40 text-amber-400">
+                <Badge variant="default" className="px-3 py-1 normal-case tracking-normal bg-amber-500/20 border-amber-500/40 text-amber-400">
                   Featured
-                </span>
+                </Badge>
               )}
             </div>
 
@@ -241,12 +243,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className={cn(
-                  'flex items-center gap-2 px-6 py-3 rounded-xl',
-                  'bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm',
-                  'transition-colors duration-200 orange-glow',
-                  'shadow-lg shadow-orange-500/30',
-                )}
+                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm orange-glow')}
               >
                 <Play className="w-4 h-4 fill-white" />
                 Play Now
@@ -255,12 +252,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className={cn(
-                  'flex items-center gap-2 px-6 py-3 rounded-xl',
-                  'glass text-white font-semibold text-sm',
-                  'hover:bg-white/15 transition-colors duration-200',
-                  'border border-white/15',
-                )}
+                className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm text-white hover:bg-white/15')}
               >
                 <Info className="w-4 h-4" />
                 More Info

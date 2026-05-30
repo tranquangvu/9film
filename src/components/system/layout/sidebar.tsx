@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { X, Crown } from 'lucide-react';
 import { cn } from '@/utils';
+import { buttonVariants } from '@/components/ui/button';
 import { genres, currentUser } from '@/data/movies';
 
 interface SidebarProps {
@@ -50,7 +51,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </NavLink>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"
+                className={cn(buttonVariants({ variant: 'ghost' }), 'p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 border-0 bg-transparent shadow-none')}
               >
                 <X size={18} />
               </button>

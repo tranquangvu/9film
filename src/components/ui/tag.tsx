@@ -3,12 +3,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils';
 
 const tagVariants = cva(
-  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border cursor-pointer',
+  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-200 select-none',
   {
     variants: {
       active: {
-        true: 'bg-orange-500/20 border-orange-500/60 text-orange-400',
-        false: 'text-zinc-400 border-white/10 hover:border-white/20 hover:text-white bg-white/5',
+        true: 'border-orange-500/60 bg-orange-500/20 text-orange-400',
+        false: 'cursor-pointer border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-white',
       },
     },
     defaultVariants: {

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
+import { ArrowLeft, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { movies } from '@/data/movies';
-import { cn } from '@/utils';
+import { Tag } from '@/components/ui/tag';
+import { Select } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import type { Episode } from '@/types';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -52,13 +54,10 @@ export function WatchPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
         <p className="text-white/50 text-xl">Movie not found</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition-colors"
-        >
+        <Button variant="primary" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
           Go Back
-        </button>
+        </Button>
       </div>
     );
   }
@@ -116,27 +115,22 @@ export function WatchPage() {
           {isSeries && (
             <div className="flex-1 min-w-0 flex items-start gap-3 flex-wrap">
               {availableSeasons.length > 0 && (
-                <PillSelect
+                <Select
                   icon={<Film size={14} />}
                   value={String(activeSeason)}
-                  onChange={(v) => setActiveSeason(Number(v))}
+                  onChange={(e) => setActiveSeason(Number(e.target.value))}
                   options={availableSeasons.map((s) => ({ id: String(s), label: `S${s}` }))}
                 />
               )}
               <div className="flex flex-wrap gap-1.5">
                 {episodesBySeason.map((ep) => (
-                  <button
+                  <Tag
                     key={ep.id}
+                    active={activeEpisode?.id === ep.id}
                     onClick={() => setActiveEpisode(ep)}
-                    className={cn(
-                      'flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border bg-white/5',
-                      activeEpisode?.id === ep.id
-                        ? 'border-orange-500/60 text-orange-400'
-                        : 'text-zinc-400 border-white/10 hover:border-white/20 hover:text-white',
-                    )}
                   >
                     E{ep.number}
-                  </button>
+                  </Tag>
                 ))}
               </div>
             </div>
@@ -144,17 +138,17 @@ export function WatchPage() {
 
           {/* Right: Source + Subtitle ─────────────────────────────────────── */}
           <div className="flex items-center gap-2 shrink-0">
-            <PillSelect
+            <Select
               icon={<MonitorPlay size={14} />}
               value={selectedSourceId}
-              onChange={setSelectedSourceId}
+              onChange={(e) => setSelectedSourceId(e.target.value)}
               options={STREAM_SOURCES}
               compact
             />
-            <PillSelect
+            <Select
               icon={<ClosedCaption size={14} />}
               value={selectedSubtitleId}
-              onChange={setSelectedSubtitleId}
+              onChange={(e) => setSelectedSubtitleId(e.target.value)}
               options={SUBTITLE_TRACKS}
               compact
             />
@@ -166,46 +160,3 @@ export function WatchPage() {
   );
 }
 
-// ─── Pill select ──────────────────────────────────────────────────────────────
-interface PillSelectProps {
-  icon?: React.ReactNode
-  value: string
-  onChange: (val: string) => void
-  options: { id: string; label: string }[]
-  active?: boolean
-  compact?: boolean
-}
-
-function PillSelect({ icon, value, onChange, options, active, compact }: PillSelectProps) {
-  return (
-    <div className="relative">
-      {icon && (
-        <div className={cn('absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center', active ? 'text-orange-400' : 'text-white/50')}>
-          {icon}
-        </div>
-      )}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          'appearance-none pr-8 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all focus:outline-none',
-          active
-            ? 'bg-orange-500/20 border border-orange-500/60 text-orange-400 hover:bg-orange-500/25'
-            : 'bg-white/8 border border-white/12 text-white hover:bg-white/12 hover:border-white/20 focus:border-orange-500/60',
-          icon ? 'pl-8' : 'pl-3.5',
-          compact ? 'w-28' : '',
-        )}
-      >
-        {options.map((o) => (
-          <option key={o.id} value={o.id} className="bg-zinc-900 text-white">
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        size={13}
-        className={cn('absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none', active ? 'text-orange-400/70' : 'text-white/40')}
-      />
-    </div>
-  );
-}

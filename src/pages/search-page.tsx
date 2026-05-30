@@ -5,7 +5,12 @@ import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
 import { movies } from '@/data/movies';
 import { EmptyState } from '@/components/system/common/empty-state';
 import { cn, formatYear, formatDuration, formatRating } from '@/utils';
+import { Tag } from '@/components/ui/tag';
+import { buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
+
+const MotionTag = motion(Tag);
 
 const TRENDING_TAGS = [
   'Christopher Nolan',
@@ -167,13 +172,13 @@ export default function SearchPage() {
           className="relative"
         >
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder="Search movies, shows, directors, actors…"
-            className="w-full pl-12 pr-12 py-4 bg-surface border border-white/10 rounded-2xl text-white text-lg placeholder:text-zinc-600 focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30 transition-all"
+            className="pl-12 pr-12 py-4 bg-surface border border-white/10 rounded-2xl text-lg placeholder:text-zinc-600 focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/30"
           />
           <AnimatePresence>
             {query && (
@@ -182,7 +187,7 @@ export default function SearchPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.7 }}
                 onClick={() => handleQueryChange('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7')}
               >
                 <X className="w-4 h-4 text-zinc-400" />
               </motion.button>
@@ -211,18 +216,19 @@ export default function SearchPage() {
 
               <div className="flex flex-wrap gap-2.5">
                 {TRENDING_TAGS.map((tag, i) => (
-                  <motion.button
+                  <MotionTag
                     key={tag}
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.04, duration: 0.25 }}
                     whileHover={{ scale: 1.06 }}
                     whileTap={{ scale: 0.95 }}
+                    active={false}
                     onClick={() => handleQueryChange(tag)}
-                    className="px-4 py-2 rounded-full bg-surface-2 border border-white/10 text-zinc-300 hover:text-white hover:border-orange-500/50 hover:bg-orange-500/10 text-sm font-medium transition-all"
+                    className="bg-surface-2 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10 px-4 py-2"
                   >
                     {tag}
-                  </motion.button>
+                  </MotionTag>
                 ))}
               </div>
 

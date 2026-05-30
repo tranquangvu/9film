@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, TrendingUp, Star, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { movies } from '@/data/movies';
-import { formatYear } from '@/utils';
+import { cn, formatYear } from '@/utils';
+import { buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tag } from '@/components/ui/tag';
 
 interface SearchOverlayProps {
   isOpen: boolean
@@ -90,25 +93,25 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.1)' }}
             >
               <Search size={20} className="text-zinc-500 flex-shrink-0" />
-              <input
+              <Input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search movies, shows, directors, actors..."
-                className="flex-1 bg-transparent text-white placeholder-zinc-600 text-lg outline-none"
+                className="flex-1 placeholder:text-zinc-600 text-lg"
               />
               {query && (
                 <button
                   onClick={() => setQuery('')}
-                  className="text-zinc-500 hover:text-white transition-colors p-1"
+                  className={cn(buttonVariants({ variant: 'ghost' }), 'p-1 text-zinc-500 hover:text-white border-0 bg-transparent hover:bg-transparent shadow-none')}
                 >
                   <X size={16} />
                 </button>
               )}
               <button
                 onClick={handleClose}
-                className="ml-1 p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                className={cn(buttonVariants({ variant: 'ghost' }), 'ml-1 p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 border-0 bg-transparent shadow-none')}
               >
                 <span className="text-xs font-mono border border-white/20 rounded px-1.5 py-0.5">ESC</span>
               </button>
@@ -179,14 +182,15 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 </div>
                 <div className="flex flex-wrap gap-2 mb-8">
                   {trendingSearches.map(term => (
-                    <button
+                    <Tag
                       key={term}
+                      active={false}
                       onClick={() => handleTrendingClick(term)}
-                      className="px-3.5 py-1.5 rounded-full text-sm text-zinc-300 hover:text-white hover:border-orange-500/50 transition-all duration-200"
+                      className="px-3.5 py-1.5 text-zinc-300 hover:border-orange-500/50 font-normal"
                       style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
                     >
                       {term}
-                    </button>
+                    </Tag>
                   ))}
                 </div>
 

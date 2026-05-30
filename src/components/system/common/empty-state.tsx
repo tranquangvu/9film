@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/utils';
+import { buttonVariants } from '@/components/ui/button';
 
 interface EmptyStateProps {
   icon?: string
@@ -39,7 +40,7 @@ export function EmptyState({
 
       {actionLabel && onAction && (
         <motion.button
-          className="mt-6 px-6 py-2.5 bg-orange-500 hover:bg-orange-400 text-white font-semibold rounded-xl text-sm transition-colors"
+          className={cn(buttonVariants({ variant: 'primary' }), 'mt-6 rounded-xl text-sm px-6 py-2.5 hover:bg-orange-400 shadow-none')}
           onClick={onAction}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}

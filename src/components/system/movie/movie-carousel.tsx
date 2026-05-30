@@ -2,9 +2,10 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
 import { cn } from '@/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
 import type { Movie } from '@/types';
 import { MovieCard } from '@/components/system/movie/movie-card';
-import { ContinueWatchingCard } from '@/components/system/movie/continue-watching-card';
+import { ContinueWatchingCard } from '@/components/system/movie/continue-card';
 import { Top10Card } from '@/components/system/movie/top10-card';
 
 interface HorizontalCarouselProps {
@@ -62,10 +63,10 @@ export function HorizontalCarousel({
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
         {showSeeAll && (
-          <button className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 font-medium transition-colors group">
+          <Button variant="ghost" size="sm" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group shadow-none">
             View all
             <MoveRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -84,7 +85,7 @@ export function HorizontalCarousel({
               {/* Fade gradient */}
               <div className="absolute inset-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
               <button
-                className="relative ml-6 md:ml-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative ml-6 md:ml-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
                 onClick={() => scroll('left')}
                 aria-label="Scroll left"
               >
@@ -106,7 +107,7 @@ export function HorizontalCarousel({
             >
               <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none" />
               <button
-                className="relative mr-6 md:mr-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative mr-6 md:mr-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
                 onClick={() => scroll('right')}
                 aria-label="Scroll right"
               >

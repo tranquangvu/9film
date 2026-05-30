@@ -18,6 +18,8 @@ import {
 import { movies } from '@/data/movies';
 import type { Movie } from '@/types';
 import { cn, formatDuration, formatRating, formatYear } from '@/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
 
@@ -58,13 +60,13 @@ export default function MovieDetailPage() {
         <div className="text-6xl">🎬</div>
         <h1 className="text-3xl font-bold text-white">Movie not found</h1>
         <p className="text-zinc-400">We couldn't find that title in our library.</p>
-        <button
+        <Button
+          variant="primary"
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 px-6 py-3 rounded-full bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Go Back
-        </button>
+        </Button>
       </div>
     );
   }
@@ -108,7 +110,7 @@ export default function MovieDetailPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           onClick={() => navigate(-1)}
           aria-label="Go back"
-          className="absolute top-16 left-4 md:top-24 md:left-8 lg:left-12 z-20 w-10 h-10 flex items-center justify-center rounded-full glass border border-white/15 text-zinc-300 hover:text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+          className={cn(buttonVariants({ variant: 'icon', size: 'icon' }), 'absolute top-16 left-4 md:top-24 md:left-8 lg:left-12 z-20')}
         >
           <ArrowLeft className="w-4 h-4" />
         </motion.button>
@@ -123,18 +125,18 @@ export default function MovieDetailPage() {
           {/* Badges row */}
           <motion.div variants={itemVariants} className="flex items-center gap-3 mb-4">
             {movie.isTrending && (
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase tracking-widest">
+              <Badge variant="orange" className="px-3 py-1 font-bold tracking-widest">
                 Trending
-              </span>
+              </Badge>
             )}
             {movie.isNew && (
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest">
+              <Badge variant="emerald" className="px-3 py-1 font-bold tracking-widest">
                 New
-              </span>
+              </Badge>
             )}
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-zinc-300 border border-white/15 uppercase tracking-widest">
+            <Badge variant="default" className="px-3 py-1 font-bold tracking-widest">
               {movie.type === 'series' ? 'Series' : 'Movie'}
-            </span>
+            </Badge>
           </motion.div>
 
           {/* Title */}
@@ -209,7 +211,7 @@ export default function MovieDetailPage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate(`/watch/${movie.id}`)}
-              className="flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-base shadow-lg shadow-orange-500/30 transition-colors"
+              className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'gap-2.5 font-bold')}
             >
               <Play className="w-5 h-5 fill-white" />
               Play Now
@@ -359,7 +361,7 @@ function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
             >
               <div className="absolute inset-0 w-24 bg-linear-to-r from-background to-transparent pointer-events-none" />
               <button
-                className="relative ml-4 md:ml-8 lg:ml-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'ml-4 md:ml-8 lg:ml-12 hover:bg-white/20')}
                 onClick={() => scroll('left')}
                 aria-label="Scroll left"
               >
@@ -380,7 +382,7 @@ function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
             >
               <div className="absolute inset-0 bg-linear-to-l from-background to-transparent pointer-events-none" />
               <button
-                className="relative mr-4 md:mr-8 lg:mr-12 w-9 h-9 rounded-full glass border border-white/15 flex items-center justify-center text-white hover:bg-white/20 transition-colors shadow-lg"
+                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'mr-4 md:mr-8 lg:mr-12 hover:bg-white/20')}
                 onClick={() => scroll('right')}
                 aria-label="Scroll right"
               >

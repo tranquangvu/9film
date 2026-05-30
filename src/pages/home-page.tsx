@@ -3,7 +3,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
-import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel';
+import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import {
   movies,
   continueWatching,
@@ -13,6 +13,8 @@ import {
   topRated,
 } from '@/data/movies';
 import { cn, formatYear } from '@/utils';
+import { buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -70,23 +72,19 @@ function QuickSearch() {
         <form onSubmit={handleSubmit} className="relative flex items-center gap-3 w-full md:w-96 flex-shrink-0">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none top-1/2 -translate-y-1/2" />
-            <input
+            <Input
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="e.g. tt1375666, Inception"
-              className={cn(
-                'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-zinc-500',
-                'bg-white/6 border border-white/10 focus:border-orange-500/50',
-                'outline-none transition-all duration-200',
-              )}
+              className="pl-10 pr-4 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
             />
           </div>
           <motion.button
             type="submit"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center transition-colors shadow-lg shadow-orange-500/30"
+            className={cn(buttonVariants({ variant: 'primary' }), 'flex-shrink-0 w-10 h-10 rounded-xl')}
             aria-label="Search"
           >
             <MoveRight className="w-4 h-4" />

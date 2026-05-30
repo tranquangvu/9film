@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { currentUser } from '@/data/movies';
 
 // ---------------------------------------------------------------------------
@@ -160,7 +161,7 @@ function ProfileSection() {
               }}
             />
           </div>
-          <button className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-orange-500 border-2 border-surface flex items-center justify-center hover:bg-orange-400 transition-colors">
+          <button className={cn(buttonVariants({ variant: 'primary' }), 'absolute -bottom-2 -right-2 w-7 h-7 rounded-full p-0 border-2 border-surface')}>
             <Pencil className="w-3 h-3 text-white" />
           </button>
         </div>
@@ -183,10 +184,10 @@ function ProfileSection() {
         </div>
 
         {/* Edit button */}
-        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-zinc-700 hover:border-zinc-500 text-sm text-zinc-300 hover:text-white transition-colors">
+        <Button variant="outline" className="rounded-lg text-sm">
           <Pencil className="w-3.5 h-3.5" />
           Edit Profile
-        </button>
+        </Button>
       </div>
 
       {/* Stats row */}
@@ -385,14 +386,14 @@ function SubscriptionSection() {
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-white text-sm font-semibold transition-colors shadow-lg shadow-orange-500/20">
+        <Button variant="primary" className="rounded-lg text-sm">
           <Crown className="w-4 h-4" />
           Manage Plan
-        </button>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-white text-sm font-medium transition-colors">
+        </Button>
+        <Button variant="outline" className="rounded-lg text-sm">
           <RefreshCw className="w-3.5 h-3.5" />
           Billing History
-        </button>
+        </Button>
       </div>
     </SectionCard>
   );
@@ -460,13 +461,14 @@ function DevicesSection() {
               </div>
 
               {!device.isCurrent && (
-                <button
+                <Button
+                  variant="destructive"
                   onClick={() => removeDevice(device.id)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-red-600 hover:bg-red-600/10 text-zinc-400 hover:text-red-400 text-xs font-medium transition-colors"
+                  className="shrink-0 rounded-lg text-xs px-3 py-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Remove
-                </button>
+                </Button>
               )}
             </motion.div>
           ))}

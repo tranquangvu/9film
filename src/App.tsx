@@ -6,7 +6,7 @@ import { Clapperboard, MoveLeft } from 'lucide-react';
 import Navbar from '@/components/system/layout/navbar';
 import Sidebar from '@/components/system/layout/sidebar';
 import Footer from '@/components/system/layout/footer';
-import SearchOverlay from '@/components/system/layout/search-overlay';
+import SearchOverlay from '@/components/system/layout/searching';
 
 import HomePage from '@/pages/home-page';
 import BrowsePage from '@/pages/browse-page';
