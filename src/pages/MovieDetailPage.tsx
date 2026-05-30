@@ -13,12 +13,12 @@ import {
   Languages,
   ChevronLeft,
   ChevronRight,
+  Layers,
 } from 'lucide-react'
 import { movies } from '@/data/movies'
 import type { Movie } from '@/types'
 import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
 import { MovieCard } from '@/components/movie/MovieCard'
-import { EpisodeCard } from '@/components/movie/EpisodeCard'
 import { GenreBadge } from '@/components/movie/GenreBadge'
 
 
@@ -46,8 +46,6 @@ export default function MovieDetailPage() {
 
   const [isFavorited, setIsFavorited] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const [activeSeason, setActiveSeason] = useState(1)
-  const [activeEpisode, setActiveEpisode] = useState<number | null>(null)
   const [shareTooltip, setShareTooltip] = useState(false)
 
   const { scrollY } = useScroll()
@@ -73,10 +71,6 @@ export default function MovieDetailPage() {
 
   const availableSeasons = movie.episodes
     ? [...new Set(movie.episodes.map((e) => e.season))].sort()
-    : []
-
-  const episodesBySeason = movie.episodes
-    ? movie.episodes.filter((e) => e.season === activeSeason)
     : []
 
   const similarMovies = movies
@@ -188,10 +182,15 @@ export default function MovieDetailPage() {
               <span className="font-bold text-white">{formatRating(movie.rating)}</span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
-            {movie.type === 'series' && movie.totalSeasons && (
+            {movie.type === 'series' && (
               <>
                 <span className="text-zinc-600">·</span>
-                <span className="text-zinc-300">{movie.totalSeasons} Seasons</span>
+                <span className="flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                  {availableSeasons.length} {availableSeasons.length === 1 ? 'Season' : 'Seasons'}
+                  {' · '}
+                  {movie.episodes?.length ?? 0} Episodes
+                </span>
               </>
             )}
           </motion.div>
@@ -299,45 +298,6 @@ export default function MovieDetailPage() {
             </section>
           )}
 
-          {/* ── Episodes — series only ── */}
-          {movie.type === 'series' && movie.episodes && movie.episodes.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold text-white mb-5">Episodes</h2>
-
-              {availableSeasons.length > 1 && (
-                <div className="flex gap-2 mb-5 flex-wrap">
-                  {availableSeasons.map((season) => (
-                    <button
-                      key={season}
-                      onClick={() => setActiveSeason(season)}
-                      className={cn(
-                        'px-4 py-1.5 rounded-full text-sm font-semibold border transition-all',
-                        activeSeason === season
-                          ? 'bg-orange-500 border-orange-500 text-white'
-                          : 'border-white/15 text-zinc-400 hover:text-white hover:border-white/30',
-                      )}
-                    >
-                      Season {season}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {episodesBySeason.map((ep) => (
-                  <EpisodeCard
-                    key={ep.id}
-                    episode={ep}
-                    isActive={activeEpisode === ep.id}
-                    onPlay={() => {
-                      setActiveEpisode(ep.id)
-                      navigate(`/watch/${movie.id}?episode=${ep.id}`)
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
 
           {/* ── More Like This ── */}
           {similarMovies.length > 0 && (
