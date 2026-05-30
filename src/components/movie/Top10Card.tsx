@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Play, Heart } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 import type { Movie } from '@/types'
 
 interface Top10CardProps {

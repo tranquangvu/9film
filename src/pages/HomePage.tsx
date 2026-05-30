@@ -12,7 +12,7 @@ import {
   trendingShows,
   topRated,
 } from '@/data/movies'
-import { cn, formatYear } from '@/lib/utils'
+import { cn, formatYear } from '@/utils'
 import type { Movie } from '@/types'
 
 // ---------------------------------------------------------------------------

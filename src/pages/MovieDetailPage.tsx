@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { movies } from '@/data/movies'
 import type { Movie } from '@/types'
-import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
+import { cn, formatDuration, formatRating, formatYear } from '@/utils'
 import { MovieCard } from '@/components/movie/MovieCard'
 import { GenreBadge } from '@/components/movie/GenreBadge'
 

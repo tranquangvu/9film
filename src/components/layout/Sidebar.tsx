@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { NavLink } from 'react-router-dom'
 import { X, Crown } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 import { genres, currentUser } from '@/data/movies'
 
 interface SidebarProps {

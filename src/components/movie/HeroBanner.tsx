@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react'
-import { cn, formatDuration, formatRating, formatYear } from '@/lib/utils'
+import { cn, formatDuration, formatRating, formatYear } from '@/utils'
 import { GenreBadge } from '@/components/movie/GenreBadge'
 import type { Movie } from '@/types'
 

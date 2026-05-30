@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 import type { Movie } from '@/types'
 import { MovieCard } from './MovieCard'
 import { ContinueWatchingCard } from './ContinueWatchingCard'

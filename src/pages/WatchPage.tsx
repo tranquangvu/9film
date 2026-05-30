@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, MonitorPlay, ClosedCaption, Film } from 'lucide-react'
 import { VideoPlayer } from '@/components/player'
 import { movies } from '@/data/movies'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 import type { Episode } from '@/types'
 
 // ─── Mock data ────────────────────────────────────────────────────────────────

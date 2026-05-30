@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react'
 import { movies } from '@/data/movies'
 import { EmptyState } from '@/components/common/EmptyState'
-import { cn, formatYear, formatDuration, formatRating } from '@/lib/utils'
+import { cn, formatYear, formatDuration, formatRating } from '@/utils'
 import type { Movie } from '@/types'
 
 const TRENDING_TAGS = [

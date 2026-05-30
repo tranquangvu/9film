@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { movies, genres } from '@/data/movies'
 import { MovieCard } from '@/components/movie/MovieCard'
 import { EmptyState } from '@/components/common/EmptyState'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils'
 
 const containerVariants = {
   hidden: { opacity: 0 },

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Play } from 'lucide-react'
-import { cn, formatDuration } from '@/lib/utils'
+import { cn, formatDuration } from '@/utils'
 import type { Episode } from '@/types'
 
 interface EpisodeCardProps {
