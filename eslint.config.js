@@ -19,8 +19,7 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      semi: ['error', 'never'],
-      '@typescript-eslint/semi': 'off',
+      semi: ['error', 'always'],
     },
   },
   {

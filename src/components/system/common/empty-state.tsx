@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
-import { cn } from '@/utils'
+import { motion } from 'framer-motion';
+import { cn } from '@/utils';
 
 interface EmptyStateProps {
   icon?: string
@@ -48,5 +48,5 @@ export function EmptyState({
         </motion.button>
       )}
     </motion.div>
-  )
+  );
 }

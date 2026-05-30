@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import {
   Play,
   Heart,
@@ -14,12 +14,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-} from 'lucide-react'
-import { movies } from '@/data/movies'
-import type { Movie } from '@/types'
-import { cn, formatDuration, formatRating, formatYear } from '@/utils'
-import { MovieCard } from '@/components/system/movie/movie-card'
-import { GenreBadge } from '@/components/system/movie/genre-badge'
+} from 'lucide-react';
+import { movies } from '@/data/movies';
+import type { Movie } from '@/types';
+import { cn, formatDuration, formatRating, formatYear } from '@/utils';
+import { MovieCard } from '@/components/system/movie/movie-card';
+import { GenreBadge } from '@/components/system/movie/genre-badge';
 
 
 const containerVariants = {
@@ -28,29 +28,29 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.1, delayChildren: 0.3 },
   },
-} as const
+} as const;
 
 const itemVariants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' as const } },
-} as const
+} as const;
 
 
 export default function MovieDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const heroRef = useRef<HTMLDivElement>(null)
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const heroRef = useRef<HTMLDivElement>(null);
 
-  const movie = movies.find((m) => m.id === Number(id))
+  const movie = movies.find((m) => m.id === Number(id));
 
 
-  const [isFavorited, setIsFavorited] = useState(false)
-  const [isBookmarked, setIsBookmarked] = useState(false)
-  const [shareTooltip, setShareTooltip] = useState(false)
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [shareTooltip, setShareTooltip] = useState(false);
 
-  const { scrollY } = useScroll()
-  const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3])
-  const heroScale = useTransform(scrollY, [0, 600], [1, 1.05])
+  const { scrollY } = useScroll();
+  const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3]);
+  const heroScale = useTransform(scrollY, [0, 600], [1, 1.05]);
 
   if (!movie) {
     return (
@@ -66,22 +66,22 @@ export default function MovieDetailPage() {
           Go Back
         </button>
       </div>
-    )
+    );
   }
 
   const availableSeasons = movie.episodes
     ? [...new Set(movie.episodes.map((e) => e.season))].sort()
-    : []
+    : [];
 
   const similarMovies = movies
     .filter((m) => m.id !== movie.id && m.genres.some((g) => movie.genres.includes(g)))
-    .slice(0, 6)
+    .slice(0, 6);
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href).catch(() => {})
-    setShareTooltip(true)
-    setTimeout(() => setShareTooltip(false), 2000)
-  }
+    navigator.clipboard.writeText(window.location.href).catch(() => {});
+    setShareTooltip(true);
+    setTimeout(() => setShareTooltip(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-background text-white">
@@ -307,37 +307,37 @@ export default function MovieDetailPage() {
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
 
 function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const [showLeft, setShowLeft] = useState(false)
-  const [showRight, setShowRight] = useState(false)
-  const [isHovering, setIsHovering] = useState(false)
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   const updateArrows = useCallback(() => {
-    const el = rowRef.current
-    if (!el) return
-    setShowLeft(el.scrollLeft > 8)
-    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
-  }, [])
+    const el = rowRef.current;
+    if (!el) return;
+    setShowLeft(el.scrollLeft > 8);
+    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  }, []);
 
   useEffect(() => {
-    updateArrows()
-    const el = rowRef.current
-    if (!el) return
-    const ro = new ResizeObserver(updateArrows)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [updateArrows])
+    updateArrows();
+    const el = rowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateArrows]);
 
   const scroll = (dir: 'left' | 'right') => {
-    const el = rowRef.current
-    if (!el) return
-    el.scrollBy({ left: dir === 'left' ? -600 : 600, behavior: 'smooth' })
-    setTimeout(updateArrows, 350)
-  }
+    const el = rowRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -600 : 600, behavior: 'smooth' });
+    setTimeout(updateArrows, 350);
+  };
 
   return (
     <section
@@ -404,5 +404,5 @@ function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
         </div>
       </div>
     </section>
-  )
+  );
 }

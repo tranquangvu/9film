@@ -1,6 +1,6 @@
-import { type ButtonHTMLAttributes } from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/utils'
+import { type ButtonHTMLAttributes } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/utils';
 
 const tagVariants = cva(
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border cursor-pointer',
@@ -15,14 +15,14 @@ const tagVariants = cva(
       active: false,
     },
   },
-)
+);
 
 export interface TagProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof tagVariants> {}
 
 function Tag({ className, active, ...props }: TagProps) {
-  return <button className={cn(tagVariants({ active }), className)} {...props} />
+  return <button className={cn(tagVariants({ active }), className)} {...props} />;
 }
 
-export { Tag, tagVariants }
+export { Tag, tagVariants };

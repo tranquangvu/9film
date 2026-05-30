@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Play,
@@ -18,9 +18,9 @@ import {
   Shield,
   Calendar,
   RefreshCw,
-} from 'lucide-react'
-import { cn } from '@/utils'
-import { currentUser } from '@/data/movies'
+} from 'lucide-react';
+import { cn } from '@/utils';
+import { currentUser } from '@/data/movies';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   { id: 'language', label: 'Language', icon: <Globe className="w-4 h-4" /> },
   { id: 'subscription', label: 'Subscription', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'devices', label: 'Devices', icon: <Monitor className="w-4 h-4" /> },
-]
+];
 
 // ---------------------------------------------------------------------------
 // Toggle Switch
@@ -82,7 +82,7 @@ function Toggle({ enabled, onChange, label, description }: ToggleProps) {
         />
       </button>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ function Select({ value, options, onChange, label }: SelectProps) {
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
       </div>
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -125,13 +125,13 @@ function SectionCard({ children, className }: { children: React.ReactNode; class
     <div className={cn('bg-surface border border-zinc-800 rounded-2xl p-6', className)}>
       {children}
     </div>
-  )
+  );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="text-base font-bold text-white mb-5 pb-4 border-b border-zinc-800">{children}</h2>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,8 +139,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 function ProfileSection() {
-  const joinYear = new Date(currentUser.joinDate).getFullYear()
-  const joinMonth = new Date(currentUser.joinDate).toLocaleString('default', { month: 'long' })
+  const joinYear = new Date(currentUser.joinDate).getFullYear();
+  const joinMonth = new Date(currentUser.joinDate).toLocaleString('default', { month: 'long' });
 
   return (
     <SectionCard>
@@ -154,9 +154,9 @@ function ProfileSection() {
               alt={currentUser.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                const t = e.currentTarget
-                t.style.display = 'none'
-                t.parentElement!.classList.add('flex', 'items-center', 'justify-center')
+                const t = e.currentTarget;
+                t.style.display = 'none';
+                t.parentElement!.classList.add('flex', 'items-center', 'justify-center');
               }}
             />
           </div>
@@ -203,15 +203,15 @@ function ProfileSection() {
         ))}
       </div>
     </SectionCard>
-  )
+  );
 }
 
 function PlaybackSection() {
-  const [autoPlay, setAutoPlay] = useState(true)
-  const [quality, setQuality] = useState('Auto')
-  const [subtitleLang, setSubtitleLang] = useState('English')
-  const [speed, setSpeed] = useState('1x (Normal)')
-  const [downloadQuality, setDownloadQuality] = useState('1080p')
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [quality, setQuality] = useState('Auto');
+  const [subtitleLang, setSubtitleLang] = useState('English');
+  const [speed, setSpeed] = useState('1x (Normal)');
+  const [downloadQuality, setDownloadQuality] = useState('1080p');
 
   return (
     <SectionCard>
@@ -252,7 +252,7 @@ function PlaybackSection() {
         </div>
       </div>
     </SectionCard>
-  )
+  );
 }
 
 function NotificationsSection() {
@@ -262,10 +262,10 @@ function NotificationsSection() {
     recommendations: false,
     emailNotifs: true,
     pushNotifs: false,
-  })
+  });
 
   const toggle = (key: keyof typeof settings) =>
-    setSettings((s) => ({ ...s, [key]: !s[key] }))
+    setSettings((s) => ({ ...s, [key]: !s[key] }));
 
   const items = [
     { key: 'newReleases' as const, label: 'New Releases', description: 'Get notified when new content is added' },
@@ -273,7 +273,7 @@ function NotificationsSection() {
     { key: 'recommendations' as const, label: 'Recommendations', description: 'Personalized content suggestions' },
     { key: 'emailNotifs' as const, label: 'Email Notifications', description: 'Receive updates via email' },
     { key: 'pushNotifs' as const, label: 'Push Notifications', description: 'Browser and device push alerts' },
-  ]
+  ];
 
   return (
     <SectionCard>
@@ -292,13 +292,13 @@ function NotificationsSection() {
         ))}
       </div>
     </SectionCard>
-  )
+  );
 }
 
 function LanguageSection() {
-  const [interfaceLang, setInterfaceLang] = useState('English')
-  const [contentLang, setContentLang] = useState('All Languages')
-  const [subtitlePref, setSubtitlePref] = useState('English')
+  const [interfaceLang, setInterfaceLang] = useState('English');
+  const [contentLang, setContentLang] = useState('All Languages');
+  const [subtitlePref, setSubtitlePref] = useState('English');
 
   return (
     <SectionCard>
@@ -324,7 +324,7 @@ function LanguageSection() {
         />
       </div>
     </SectionCard>
-  )
+  );
 }
 
 const planFeatures = [
@@ -334,7 +334,7 @@ const planFeatures = [
   'Offline downloads',
   'Ad-free experience',
   'Early access to new releases',
-]
+];
 
 function SubscriptionSection() {
   return (
@@ -395,7 +395,7 @@ function SubscriptionSection() {
         </button>
       </div>
     </SectionCard>
-  )
+  );
 }
 
 interface Device {
@@ -410,18 +410,18 @@ const mockDevices: Device[] = [
   { id: 'd1', name: 'MacBook Pro 16"', type: 'laptop', lastActive: 'Active now', isCurrent: true },
   { id: 'd2', name: 'iPhone 14 Pro', type: 'mobile', lastActive: '2 hours ago' },
   { id: 'd3', name: 'Samsung Smart TV', type: 'tv', lastActive: 'Yesterday' },
-]
+];
 
 const deviceIcons: Record<Device['type'], React.ReactNode> = {
   laptop: <Laptop className="w-5 h-5" />,
   mobile: <Smartphone className="w-5 h-5" />,
   tv: <Tv className="w-5 h-5" />,
-}
+};
 
 function DevicesSection() {
-  const [devices, setDevices] = useState<Device[]>(mockDevices)
+  const [devices, setDevices] = useState<Device[]>(mockDevices);
 
-  const removeDevice = (id: string) => setDevices((prev) => prev.filter((d) => d.id !== id))
+  const removeDevice = (id: string) => setDevices((prev) => prev.filter((d) => d.id !== id));
 
   return (
     <SectionCard>
@@ -478,7 +478,7 @@ function DevicesSection() {
         Only you can see your device list. Remove devices you no longer use.
       </p>
     </SectionCard>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -492,14 +492,14 @@ const sectionComponents: Record<SectionId, React.ReactNode> = {
   language: <LanguageSection />,
   subscription: <SubscriptionSection />,
   devices: <DevicesSection />,
-}
+};
 
 // ---------------------------------------------------------------------------
 // ProfilePage
 // ---------------------------------------------------------------------------
 
 export default function ProfilePage() {
-  const [activeSection, setActiveSection] = useState<SectionId>('profile')
+  const [activeSection, setActiveSection] = useState<SectionId>('profile');
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-16">
@@ -570,5 +570,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
-import { Play, Heart, Info } from 'lucide-react'
-import { cn, formatDuration, formatYear } from '@/utils'
-import type { Movie } from '@/types'
-import { RatingBadge } from '@/components/system/movie/rating-badge'
-import { GenreBadge } from '@/components/system/movie/genre-badge'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Play, Heart, Info } from 'lucide-react';
+import { cn, formatDuration, formatYear } from '@/utils';
+import type { Movie } from '@/types';
+import { RatingBadge } from '@/components/system/movie/rating-badge';
+import { GenreBadge } from '@/components/system/movie/genre-badge';
 
 interface MovieCardProps {
   movie: Movie
@@ -18,14 +18,14 @@ const sizeClasses = {
   sm: 'w-32',
   md: 'w-44',
   lg: 'w-56',
-}
+};
 
 export function MovieCard({ movie, className, showProgress = false, size = 'md' }: MovieCardProps) {
-  const navigate = useNavigate()
-  const [imgError, setImgError] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
+  const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const handleClick = () => navigate(`/movie/${movie.id}`)
+  const handleClick = () => navigate(`/movie/${movie.id}`);
 
   return (
     <motion.div
@@ -85,7 +85,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
                   className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/40"
                   whileHover={{ scale: 1.12 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={(e) => { e.stopPropagation(); handleClick() }}
+                  onClick={(e) => { e.stopPropagation(); handleClick(); }}
                 >
                   <Play className="w-5 h-5 fill-white text-white ml-0.5" />
                 </motion.button>
@@ -119,7 +119,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
                   </button>
                   <button
                     className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
-                    onClick={(e) => { e.stopPropagation(); handleClick() }}
+                    onClick={(e) => { e.stopPropagation(); handleClick(); }}
                     title="More info"
                   >
                     <Info className="w-3.5 h-3.5 text-white" />
@@ -158,5 +158,5 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
         )}
       </div>
     </motion.div>
-  )
+  );
 }

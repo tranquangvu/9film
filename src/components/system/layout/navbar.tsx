@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
-import { Search, Menu } from 'lucide-react'
-import { cn } from '@/utils'
+import { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
+import { Search, Menu } from 'lucide-react';
+import { cn } from '@/utils';
 
 interface NavbarProps {
   onSearchOpen: () => void
@@ -14,16 +14,16 @@ const navLinks = [
   { label: 'Movies', to: '/movies' },
   { label: 'TV Series', to: '/tv-series' },
   { label: 'My List', to: '/my-list' },
-]
+];
 
 export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
-  const [scrolled, setScrolled] = useState(false)
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', handler, { passive: true })
-    return () => window.removeEventListener('scroll', handler)
-  }, [])
+    const handler = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   return (
     <header
@@ -79,5 +79,5 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
         </button>
       </div>
     </header>
-  )
+  );
 }

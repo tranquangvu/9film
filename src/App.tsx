@@ -1,29 +1,29 @@
-import { useState } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Clapperboard, MoveLeft } from 'lucide-react'
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Clapperboard, MoveLeft } from 'lucide-react';
 
-import Navbar from '@/components/system/layout/navbar'
-import Sidebar from '@/components/system/layout/sidebar'
-import Footer from '@/components/system/layout/footer'
-import SearchOverlay from '@/components/system/layout/search-overlay'
+import Navbar from '@/components/system/layout/navbar';
+import Sidebar from '@/components/system/layout/sidebar';
+import Footer from '@/components/system/layout/footer';
+import SearchOverlay from '@/components/system/layout/search-overlay';
 
-import HomePage from '@/pages/home-page'
-import BrowsePage from '@/pages/browse-page'
-import CategoriesPage from '@/pages/categories-page'
-import MovieDetailPage from '@/pages/movie-detail-page'
-import { WatchPage } from '@/pages/watch-page'
-import MyListPage from '@/pages/my-list-page'
-import SearchPage from '@/pages/search-page'
-import ProfilePage from '@/pages/profile-page'
-import MoviesPage from '@/pages/movies-page'
-import TvSeriesPage from '@/pages/tv-series-page'
+import HomePage from '@/pages/home-page';
+import BrowsePage from '@/pages/browse-page';
+import CategoriesPage from '@/pages/categories-page';
+import MovieDetailPage from '@/pages/movie-detail-page';
+import { WatchPage } from '@/pages/watch-page';
+import MyListPage from '@/pages/my-list-page';
+import SearchPage from '@/pages/search-page';
+import ProfilePage from '@/pages/profile-page';
+import MoviesPage from '@/pages/movies-page';
+import TvSeriesPage from '@/pages/tv-series-page';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -8 },
-}
+};
 
 function NotFoundPage() {
   return (
@@ -39,13 +39,13 @@ function NotFoundPage() {
         Back to home
       </a>
     </div>
-  )
+  );
 }
 
 function MainLayout() {
-  const location = useLocation()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const location = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -88,11 +88,11 @@ function MainLayout() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
 
 function WatchLayout() {
-  const location = useLocation()
+  const location = useLocation();
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -109,14 +109,14 @@ function WatchLayout() {
         </Routes>
       </motion.div>
     </AnimatePresence>
-  )
+  );
 }
 
 function AppLayout() {
-  const location = useLocation()
-  const isWatchPage = location.pathname.startsWith('/watch')
+  const location = useLocation();
+  const isWatchPage = location.pathname.startsWith('/watch');
 
-  return isWatchPage ? <WatchLayout /> : <MainLayout />
+  return isWatchPage ? <WatchLayout /> : <MainLayout />;
 }
 
 export default function App() {
@@ -124,5 +124,5 @@ export default function App() {
     <BrowserRouter>
       <AppLayout />
     </BrowserRouter>
-  )
+  );
 }

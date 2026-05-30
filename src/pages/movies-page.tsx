@@ -1,48 +1,48 @@
-import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
-import { movies, genres } from '@/data/movies'
-import { MovieCard } from '@/components/system/movie/movie-card'
-import { EmptyState } from '@/components/system/common/empty-state'
-import { cn } from '@/utils'
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
+import { movies, genres } from '@/data/movies';
+import { MovieCard } from '@/components/system/movie/movie-card';
+import { EmptyState } from '@/components/system/common/empty-state';
+import { cn } from '@/utils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
-}
+};
 
 export default function MoviesPage() {
-  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set())
+  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
 
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id) } else { next.add(id) }
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
 
-  const clearAll = () => setSelectedGenres(new Set())
+  const clearAll = () => setSelectedGenres(new Set());
 
   const filtered = useMemo(() => {
-    let result = movies.filter((m) => m.type === 'movie')
+    let result = movies.filter((m) => m.type === 'movie');
 
     if (selectedGenres.size > 0) {
       const selectedNames = [...selectedGenres].map(
         (id) => genres.find((g) => g.id === id)?.name.toLowerCase() ?? id,
-      )
+      );
       result = result.filter((m) =>
         m.genres.some((g) => selectedNames.includes(g.toLowerCase())),
-      )
+      );
     }
 
-    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0))
-  }, [selectedGenres])
+    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
+  }, [selectedGenres]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -62,7 +62,7 @@ export default function MoviesPage() {
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-8 lg:px-12 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {genres.map((g) => {
-            const active = selectedGenres.has(g.id)
+            const active = selectedGenres.has(g.id);
             return (
               <button
                 key={g.id}
@@ -78,7 +78,7 @@ export default function MoviesPage() {
                 <span className="text-base leading-none">{g.icon}</span>
                 {g.name}
               </button>
-            )
+            );
           })}
 
           <AnimatePresence>
@@ -129,5 +129,5 @@ export default function MoviesPage() {
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

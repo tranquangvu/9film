@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, TrendingUp, Star, Clock } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { movies } from '@/data/movies'
-import { formatYear } from '@/utils'
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, X, TrendingUp, Star, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { movies } from '@/data/movies';
+import { formatYear } from '@/utils';
 
 interface SearchOverlayProps {
   isOpen: boolean
@@ -19,12 +19,12 @@ const trendingSearches = [
   'Academy Award',
   'Tom Holland',
   'Animated',
-]
+];
 
 export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
-  const [query, setQuery] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-  const navigate = useNavigate()
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   const results = query.trim().length > 0
     ? movies.filter(m =>
@@ -33,36 +33,36 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         m.genres.some(g => g.toLowerCase().includes(query.toLowerCase())) ||
         m.cast.some(c => c.name.toLowerCase().includes(query.toLowerCase()))
       )
-    : []
+    : [];
 
   const handleClose = useCallback(() => {
-    setQuery('')
-    onClose()
-  }, [onClose])
+    setQuery('');
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    if (!isOpen) return
-    const timer = setTimeout(() => inputRef.current?.focus(), 100)
-    return () => clearTimeout(timer)
-  }, [isOpen])
+    if (!isOpen) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [handleClose])
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [handleClose]);
 
   const handleMovieClick = (id: number) => {
-    navigate(`/movie/${id}`)
-    handleClose()
-  }
+    navigate(`/movie/${id}`);
+    handleClose();
+  };
 
   const handleTrendingClick = (term: string) => {
-    setQuery(term)
-    inputRef.current?.focus()
-  }
+    setQuery(term);
+    inputRef.current?.focus();
+  };
 
   return (
     <AnimatePresence>
@@ -228,5 +228,5 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }

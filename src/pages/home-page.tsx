@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
-import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react'
-import { HeroBanner } from '@/components/system/movie/hero-banner'
-import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel'
+import { useRef, useState } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
+import { HeroBanner } from '@/components/system/movie/hero-banner';
+import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel';
 import {
   movies,
   continueWatching,
@@ -11,30 +11,30 @@ import {
   popularMovies,
   trendingShows,
   topRated,
-} from '@/data/movies'
-import { cn, formatYear } from '@/utils'
-import type { Movie } from '@/types'
+} from '@/data/movies';
+import { cn, formatYear } from '@/utils';
+import type { Movie } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Inline search section
 // ---------------------------------------------------------------------------
 function QuickSearch() {
-  const [query, setQuery] = useState('')
-  const navigate = useNavigate()
+  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
 
   const results: Movie[] = query.trim()
     ? movies.filter(m => {
-        const q = query.trim().toLowerCase()
+        const q = query.trim().toLowerCase();
         return m.id === Number(q)
           || m.title.toLowerCase().includes(q)
-          || m.genres.some(g => g.toLowerCase().includes(q))
+          || m.genres.some(g => g.toLowerCase().includes(q));
       }).slice(0, 6)
-    : []
+    : [];
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`)
-  }
+    e.preventDefault();
+    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+  };
 
   return (
     <section className="px-6 md:px-12">
@@ -152,7 +152,7 @@ function QuickSearch() {
 
       </div>
     </section>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ interface AnimatedSectionProps {
 }
 
 function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px 0px' })
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px 0px' });
 
   return (
     <motion.div
@@ -174,7 +174,7 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
     >
       {children}
     </motion.div>
-  )
+  );
 }
 
 export default function HomePage() {
@@ -228,5 +228,5 @@ export default function HomePage() {
         </AnimatedSection>
       </div>
     </div>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router-dom';
 
 const links = [
   { label: 'About', to: '/about' },
   { label: 'Privacy', to: '/privacy' },
   { label: 'Terms', to: '/terms' },
   { label: 'Disclaimer', to: '/disclaimer' },
-]
+];
 
 export default function Footer() {
   return (
@@ -28,5 +28,5 @@ export default function Footer() {
         </nav>
       </div>
     </footer>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { cn } from '@/utils'
+import { cn } from '@/utils';
 
 interface LoadingSkeletonProps {
   count?: number
@@ -26,5 +26,5 @@ export function LoadingSkeleton({ count = 6, type = 'poster' }: LoadingSkeletonP
         </div>
       ))}
     </div>
-  )
+  );
 }

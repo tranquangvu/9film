@@ -1,82 +1,82 @@
-import { useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
-import { movies, genres } from '@/data/movies'
-import { MovieCard } from '@/components/system/movie/movie-card'
-import { EmptyState } from '@/components/system/common/empty-state'
-import { cn } from '@/utils'
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
+import { movies, genres } from '@/data/movies';
+import { MovieCard } from '@/components/system/movie/movie-card';
+import { EmptyState } from '@/components/system/common/empty-state';
+import { cn } from '@/utils';
 
 type ContentType = 'movie' | 'series'
 
 const TYPE_OPTIONS: { id: ContentType; label: string; icon: string }[] = [
   { id: 'movie', label: 'Movies', icon: '🎬' },
   { id: 'series', label: 'TV Series', icon: '📺' },
-]
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
-}
+};
 
 export default function BrowsePage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [contentType, setContentType] = useState<ContentType | null>(null)
-  const genreParam = searchParams.get('genre')
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [contentType, setContentType] = useState<ContentType | null>(null);
+  const genreParam = searchParams.get('genre');
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(
     genreParam && genres.some((g) => g.id === genreParam) ? new Set([genreParam]) : new Set()
-  )
+  );
 
   const toggleContentType = (type: ContentType) => {
-    setContentType((prev) => (prev === type ? null : type))
-    setSearchParams({})
-  }
+    setContentType((prev) => (prev === type ? null : type));
+    setSearchParams({});
+  };
 
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) { next.delete(id) } else { next.add(id) }
-      return next
-    })
-    setSearchParams({})
-  }
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+    setSearchParams({});
+  };
 
-  const clearContentType = () => setContentType(null)
+  const clearContentType = () => setContentType(null);
 
   const clearGenres = () => {
-    setSelectedGenres(new Set())
-    setSearchParams({})
-  }
+    setSelectedGenres(new Set());
+    setSearchParams({});
+  };
 
   const clearAll = () => {
-    setContentType(null)
-    setSelectedGenres(new Set())
-    setSearchParams({})
-  }
+    setContentType(null);
+    setSelectedGenres(new Set());
+    setSearchParams({});
+  };
 
   const filtered = useMemo(() => {
-    let result = [...movies]
+    let result = [...movies];
 
     if (contentType) {
-      result = result.filter((m) => m.type === contentType)
+      result = result.filter((m) => m.type === contentType);
     }
 
     if (selectedGenres.size > 0) {
       const selectedNames = [...selectedGenres].map(
         (id) => genres.find((g) => g.id === id)?.name.toLowerCase() ?? id,
-      )
+      );
       result = result.filter((m) =>
         m.genres.some((g) => selectedNames.includes(g.toLowerCase())),
-      )
+      );
     }
 
-    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0))
-  }, [contentType, selectedGenres])
+    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
+  }, [contentType, selectedGenres]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -97,7 +97,7 @@ export default function BrowsePage() {
         {/* Row 1 — content type */}
         <div className="flex items-center gap-2 flex-wrap">
           {TYPE_OPTIONS.map((type) => {
-            const active = contentType === type.id
+            const active = contentType === type.id;
             return (
               <button
                 key={type.id}
@@ -112,7 +112,7 @@ export default function BrowsePage() {
                 <span className="text-base leading-none">{type.icon}</span>
                 {type.label}
               </button>
-            )
+            );
           })}
 
           <AnimatePresence>
@@ -134,7 +134,7 @@ export default function BrowsePage() {
         {/* Row 2 — genres */}
         <div className="flex items-center gap-2 flex-wrap">
           {genres.map((g) => {
-            const active = selectedGenres.has(g.id)
+            const active = selectedGenres.has(g.id);
             return (
               <button
                 key={g.id}
@@ -150,7 +150,7 @@ export default function BrowsePage() {
                 <span className="text-base leading-none">{g.icon}</span>
                 {g.name}
               </button>
-            )
+            );
           })}
 
           <AnimatePresence>
@@ -201,5 +201,5 @@ export default function BrowsePage() {
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

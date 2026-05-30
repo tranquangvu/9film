@@ -1,8 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { NavLink } from 'react-router-dom'
-import { X, Crown } from 'lucide-react'
-import { cn } from '@/utils'
-import { genres, currentUser } from '@/data/movies'
+import { motion, AnimatePresence } from 'framer-motion';
+import { NavLink } from 'react-router-dom';
+import { X, Crown } from 'lucide-react';
+import { cn } from '@/utils';
+import { genres, currentUser } from '@/data/movies';
 
 interface SidebarProps {
   isOpen: boolean
@@ -15,7 +15,7 @@ const navLinks = [
   { label: 'Movies', to: '/movies', emoji: '🎬' },
   { label: 'TV Series', to: '/tv-series', emoji: '📺' },
   { label: 'My List', to: '/my-list', emoji: '📋' },
-]
+];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
@@ -129,5 +129,5 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </>
       )}
     </AnimatePresence>
-  )
+  );
 }

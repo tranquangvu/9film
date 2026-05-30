@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
-import { Play } from 'lucide-react'
-import { cn, formatDuration } from '@/utils'
-import type { Movie } from '@/types'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Play } from 'lucide-react';
+import { cn, formatDuration } from '@/utils';
+import type { Movie } from '@/types';
 
 interface ContinueWatchingCardProps {
   movie: Movie
@@ -11,14 +11,14 @@ interface ContinueWatchingCardProps {
 }
 
 export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardProps) {
-  const navigate = useNavigate()
-  const [imgError, setImgError] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
+  const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  const progress = movie.progress ?? 0
-  const remaining = Math.round((movie.duration * (100 - progress)) / 100)
+  const progress = movie.progress ?? 0;
+  const remaining = Math.round((movie.duration * (100 - progress)) / 100);
 
-  const handleClick = () => navigate(`/movie/${movie.id}`)
+  const handleClick = () => navigate(`/movie/${movie.id}`);
 
   return (
     <motion.div
@@ -91,5 +91,5 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
       </div>
 
     </motion.div>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Play } from 'lucide-react'
-import { cn, formatDuration } from '@/utils'
-import type { Episode } from '@/types'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Play } from 'lucide-react';
+import { cn, formatDuration } from '@/utils';
+import type { Episode } from '@/types';
 
 interface EpisodeCardProps {
   episode: Episode
@@ -11,8 +11,8 @@ interface EpisodeCardProps {
 }
 
 export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardProps) {
-  const [imgError, setImgError] = useState(false)
-  const [thumbHovered, setThumbHovered] = useState(false)
+  const [imgError, setImgError] = useState(false);
+  const [thumbHovered, setThumbHovered] = useState(false);
 
   return (
     <motion.div
@@ -92,5 +92,5 @@ export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardPr
         <p className="text-xs text-zinc-600 mt-0.5">{formatDuration(episode.duration)}</p>
       </div>
     </motion.div>
-  )
+  );
 }

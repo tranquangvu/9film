@@ -1,4 +1,4 @@
-import { cn } from '@/utils'
+import { cn } from '@/utils';
 
 interface GenreBadgeProps {
   genre: string
@@ -17,5 +17,5 @@ export function GenreBadge({ genre, className }: GenreBadgeProps) {
     >
       {genre}
     </span>
-  )
+  );
 }

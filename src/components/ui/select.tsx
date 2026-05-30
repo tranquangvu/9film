@@ -1,6 +1,6 @@
-import { type ReactNode, type SelectHTMLAttributes } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { cn } from '@/utils'
+import { type ReactNode, type SelectHTMLAttributes } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/utils';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   icon?: ReactNode
@@ -36,7 +36,7 @@ function Select({ icon, compact, options, className, ...props }: SelectProps) {
         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
       />
     </div>
-  )
+  );
 }
 
-export { Select }
+export { Select };

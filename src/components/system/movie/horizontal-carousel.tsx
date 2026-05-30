@@ -1,11 +1,11 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react'
-import { cn } from '@/utils'
-import type { Movie } from '@/types'
-import { MovieCard } from '@/components/system/movie/movie-card'
-import { ContinueWatchingCard } from '@/components/system/movie/continue-watching-card'
-import { Top10Card } from '@/components/system/movie/top10-card'
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
+import { cn } from '@/utils';
+import type { Movie } from '@/types';
+import { MovieCard } from '@/components/system/movie/movie-card';
+import { ContinueWatchingCard } from '@/components/system/movie/continue-watching-card';
+import { Top10Card } from '@/components/system/movie/top10-card';
 
 interface HorizontalCarouselProps {
   title: string
@@ -15,7 +15,7 @@ interface HorizontalCarouselProps {
   showSeeAll?: boolean
 }
 
-const SCROLL_AMOUNT = 600
+const SCROLL_AMOUNT = 600;
 
 export function HorizontalCarousel({
   title,
@@ -24,33 +24,33 @@ export function HorizontalCarousel({
   cardType = 'poster',
   showSeeAll = true,
 }: HorizontalCarouselProps) {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const [showLeft, setShowLeft] = useState(false)
-  const [showRight, setShowRight] = useState(false)
-  const [isHoveringRow, setIsHoveringRow] = useState(false)
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+  const [isHoveringRow, setIsHoveringRow] = useState(false);
 
   const updateArrows = useCallback(() => {
-    const el = rowRef.current
-    if (!el) return
-    setShowLeft(el.scrollLeft > 8)
-    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8)
-  }, [])
+    const el = rowRef.current;
+    if (!el) return;
+    setShowLeft(el.scrollLeft > 8);
+    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  }, []);
 
   useEffect(() => {
-    updateArrows()
-    const el = rowRef.current
-    if (!el) return
-    const ro = new ResizeObserver(updateArrows)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [updateArrows])
+    updateArrows();
+    const el = rowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateArrows]);
 
   const scroll = (dir: 'left' | 'right') => {
-    const el = rowRef.current
-    if (!el) return
-    el.scrollBy({ left: dir === 'left' ? -SCROLL_AMOUNT : SCROLL_AMOUNT, behavior: 'smooth' })
-    setTimeout(updateArrows, 350)
-  }
+    const el = rowRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -SCROLL_AMOUNT : SCROLL_AMOUNT, behavior: 'smooth' });
+    setTimeout(updateArrows, 350);
+  };
 
   return (
     <section
@@ -129,12 +129,12 @@ export function HorizontalCarousel({
           }}
         >
           {movies.map((movie, index) => {
-            if (cardType === 'backdrop') return <ContinueWatchingCard key={movie.id} movie={movie} />
-            if (cardType === 'top10') return <Top10Card key={movie.id} movie={movie} rank={index + 1} />
-            return <MovieCard key={movie.id} movie={movie} showProgress />
+            if (cardType === 'backdrop') return <ContinueWatchingCard key={movie.id} movie={movie} />;
+            if (cardType === 'top10') return <Top10Card key={movie.id} movie={movie} rank={index + 1} />;
+            return <MovieCard key={movie.id} movie={movie} showProgress />;
           })}
         </div>
       </div>
     </section>
-  )
+  );
 }

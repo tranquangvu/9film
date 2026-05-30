@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, Star, Clock, TrendingUp } from 'lucide-react'
-import { movies } from '@/data/movies'
-import { EmptyState } from '@/components/system/common/empty-state'
-import { cn, formatYear, formatDuration, formatRating } from '@/utils'
-import type { Movie } from '@/types'
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
+import { movies } from '@/data/movies';
+import { EmptyState } from '@/components/system/common/empty-state';
+import { cn, formatYear, formatDuration, formatRating } from '@/utils';
+import type { Movie } from '@/types';
 
 const TRENDING_TAGS = [
   'Christopher Nolan',
@@ -17,12 +17,12 @@ const TRENDING_TAGS = [
   'Anime',
   'Horror',
   'Action Thriller',
-]
+];
 
 function highlightMatch(text: string, query: string): React.ReactNode {
-  if (!query.trim()) return text
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
+  if (!query.trim()) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
   return parts.map((part, i) =>
     part.toLowerCase() === query.toLowerCase() ? (
       <mark key={i} className="bg-orange-500/30 text-orange-300 rounded-sm px-0.5 not-italic font-semibold">
@@ -31,7 +31,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     ) : (
       part
     ),
-  )
+  );
 }
 
 interface SearchResultRowProps {
@@ -40,8 +40,8 @@ interface SearchResultRowProps {
 }
 
 function SearchResultRow({ movie, query }: SearchResultRowProps) {
-  const navigate = useNavigate()
-  const [imgError, setImgError] = useState(false)
+  const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
 
   return (
     <motion.div
@@ -118,27 +118,27 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
         </span>
       </div>
     </motion.div>
-  )
+  );
 }
 
 export default function SearchPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [query, setQuery] = useState(searchParams.get('q') ?? '')
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    inputRef.current?.focus();
+  }, []);
 
   const handleQueryChange = (value: string) => {
-    setQuery(value)
-    if (value.trim()) setSearchParams({ q: value })
-    else setSearchParams({})
-  }
+    setQuery(value);
+    if (value.trim()) setSearchParams({ q: value });
+    else setSearchParams({});
+  };
 
   const results = useMemo(() => {
-    if (!query.trim()) return { films: [], series: [] }
-    const q = query.toLowerCase()
+    if (!query.trim()) return { films: [], series: [] };
+    const q = query.toLowerCase();
     const matched = movies.filter(
       (m) =>
         m.title.toLowerCase().includes(q) ||
@@ -146,15 +146,15 @@ export default function SearchPage() {
         m.cast.some((c) => c.name.toLowerCase().includes(q)) ||
         m.director.toLowerCase().includes(q) ||
         m.description.toLowerCase().includes(q),
-    )
+    );
     return {
       films: matched.filter((m) => m.type === 'movie'),
       series: matched.filter((m) => m.type === 'series'),
-    }
-  }, [query])
+    };
+  }, [query]);
 
-  const totalCount = results.films.length + results.series.length
-  const isSearching = query.trim().length > 0
+  const totalCount = results.films.length + results.series.length;
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -318,5 +318,5 @@ export default function SearchPage() {
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

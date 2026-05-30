@@ -1,6 +1,6 @@
-import type { Movie, CastMember, Genre, Notification, UserProfile } from '@/types'
+import type { Movie, CastMember, Genre, Notification, UserProfile } from '@/types';
 
-export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
+export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 const cast: CastMember[] = [
   { id: 1, name: 'Cillian Murphy', character: 'J. Robert Oppenheimer', photo: 'https://image.tmdb.org/t/p/w185/dm6V24NjjvjMiCtbMkc8Y2WPm2a.jpg' },
@@ -33,7 +33,7 @@ const cast: CastMember[] = [
   { id: 28, name: 'Bryan Cranston', character: 'Walter White', photo: '' },
   { id: 29, name: 'Aaron Paul', character: 'Jesse Pinkman', photo: '' },
   { id: 30, name: 'Anna Gunn', character: 'Skyler White', photo: '' },
-]
+];
 
 export const movies: Movie[] = [
   {
@@ -332,7 +332,7 @@ export const movies: Movie[] = [
     type: 'movie',
     isNew: true,
   },
-]
+];
 
 export const genres: Genre[] = [
   { id: 'action', name: 'Action', icon: '💥', color: '#ef4444', count: 142 },
@@ -347,14 +347,14 @@ export const genres: Genre[] = [
   { id: 'romance', name: 'Romance', icon: '💕', color: '#f43f5e', count: 77 },
   { id: 'crime', name: 'Crime', icon: '🔍', color: '#0891b2', count: 112 },
   { id: 'adventure', name: 'Adventure', icon: '🗺️', color: '#84cc16', count: 93 },
-]
+];
 
 export const notifications: Notification[] = [
   { id: 1, title: 'New Episode Available', message: 'Stranger Things S4 E9 is now streaming', time: '2 min ago', read: false, thumbnail: 'https://image.tmdb.org/t/p/w92/rcA17r7bDC1MggEtHGzAmsJPpLF.jpg', type: 'new_release' },
   { id: 2, title: 'Continue Watching', message: 'Pick up where you left off in The Batman', time: '1h ago', read: false, thumbnail: 'https://image.tmdb.org/t/p/w92/5P8SmMzSNYikXpxil6BYzJ16611.jpg', type: 'reminder' },
   { id: 3, title: 'Recommended For You', message: 'Based on your watch history: Dune Part Two', time: '3h ago', read: true, thumbnail: 'https://image.tmdb.org/t/p/w92/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg', type: 'recommendation' },
   { id: 4, title: 'New Release', message: 'Furiosa: A Mad Max Saga is now available', time: '1d ago', read: true, thumbnail: 'https://image.tmdb.org/t/p/w92/fqv99X0JE2wknVJQAI8BDJfxhRQ.jpg', type: 'new_release' },
-]
+];
 
 export const currentUser: UserProfile = {
   id: 1,
@@ -363,13 +363,13 @@ export const currentUser: UserProfile = {
   email: 'alex.chen@example.com',
   plan: 'premium',
   joinDate: '2022-03-15',
-}
+};
 
-export const myList: Movie[] = [movies[0], movies[3], movies[6], movies[8], movies[9], movies[10]]
-export const continueWatching: Movie[] = movies.filter(m => m.progress !== undefined)
-export const trendingMovies: Movie[] = movies.filter(m => m.isTrending)
-export const newReleases: Movie[] = movies.filter(m => m.isNew)
-export const topRated: Movie[] = [...movies].sort((a, b) => b.rating - a.rating).slice(0, 8)
-export const popularMovies: Movie[] = movies.filter(m => m.type === 'movie')
-export const trendingShows: Movie[] = movies.filter(m => m.type === 'series')
-export const featured: Movie = movies[0]
+export const myList: Movie[] = [movies[0], movies[3], movies[6], movies[8], movies[9], movies[10]];
+export const continueWatching: Movie[] = movies.filter(m => m.progress !== undefined);
+export const trendingMovies: Movie[] = movies.filter(m => m.isTrending);
+export const newReleases: Movie[] = movies.filter(m => m.isNew);
+export const topRated: Movie[] = [...movies].sort((a, b) => b.rating - a.rating).slice(0, 8);
+export const popularMovies: Movie[] = movies.filter(m => m.type === 'movie');
+export const trendingShows: Movie[] = movies.filter(m => m.type === 'series');
+export const featured: Movie = movies[0];

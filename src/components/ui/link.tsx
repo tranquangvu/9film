@@ -1,6 +1,6 @@
-import { type AnchorHTMLAttributes } from 'react'
-import { NavLink, type NavLinkProps } from 'react-router-dom'
-import { cn } from '@/utils'
+import { type AnchorHTMLAttributes } from 'react';
+import { NavLink, type NavLinkProps } from 'react-router-dom';
+import { cn } from '@/utils';
 
 // ── External / plain anchor ────────────────────────────────────────────────────
 function Link({ className, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
@@ -9,7 +9,7 @@ function Link({ className, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) 
       className={cn('transition-colors hover:text-white text-zinc-400', className)}
       {...props}
     />
-  )
+  );
 }
 
 // ── React Router nav link with active state ────────────────────────────────────
@@ -25,7 +25,7 @@ function AppNavLink({ className, ...props }: NavLinkProps) {
       }
       {...props}
     />
-  )
+  );
 }
 
-export { Link, AppNavLink }
+export { Link, AppNavLink };

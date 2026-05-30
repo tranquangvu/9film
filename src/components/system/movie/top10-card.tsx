@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
-import { Play, Heart } from 'lucide-react'
-import { cn } from '@/utils'
-import type { Movie } from '@/types'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Play, Heart } from 'lucide-react';
+import { cn } from '@/utils';
+import type { Movie } from '@/types';
 
 interface Top10CardProps {
   movie: Movie
@@ -12,11 +12,11 @@ interface Top10CardProps {
 }
 
 export function Top10Card({ movie, rank, className }: Top10CardProps) {
-  const navigate = useNavigate()
-  const [isHovered, setIsHovered] = useState(false)
-  const [imgError, setImgError] = useState(false)
+  const navigate = useNavigate();
+  const [isHovered, setIsHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  const rankStr = rank.toString()
+  const rankStr = rank.toString();
 
   return (
     <motion.div
@@ -75,7 +75,7 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
               <div className="relative z-10 p-2 flex items-center justify-between">
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/watch/${movie.id}`) }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/watch/${movie.id}`); }}
                   className="w-8 h-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-lg shadow-orange-500/30"
                 >
                   <Play className="w-3.5 h-3.5 fill-white text-white" />
@@ -92,5 +92,5 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
         </AnimatePresence>
       </div>
     </motion.div>
-  )
+  );
 }

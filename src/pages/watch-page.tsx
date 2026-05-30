@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, MonitorPlay, ClosedCaption, Film } from 'lucide-react'
-import { VideoPlayer } from '@/components/system/player/video-player'
-import { movies } from '@/data/movies'
-import { cn } from '@/utils'
-import type { Episode } from '@/types'
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronDown, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
+import { VideoPlayer } from '@/components/system/player/video-player';
+import { movies } from '@/data/movies';
+import { cn } from '@/utils';
+import type { Episode } from '@/types';
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 const DEMO_SRC =
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
 const STREAM_SOURCES = [
   { id: 'auto', label: 'Auto', src: DEMO_SRC },
@@ -16,7 +16,7 @@ const STREAM_SOURCES = [
   { id: '720p', label: '720p', src: DEMO_SRC },
   { id: '480p', label: '480p', src: DEMO_SRC },
   { id: '360p', label: '360p', src: DEMO_SRC },
-]
+];
 
 const SUBTITLE_TRACKS = [
   { id: 'off', label: 'Off' },
@@ -25,27 +25,27 @@ const SUBTITLE_TRACKS = [
   { id: 'fr', label: 'French' },
   { id: 'de', label: 'German' },
   { id: 'ja', label: 'Japanese' },
-]
+];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-  const movie = movies.find((m) => String(m.id) === id)
+  const movie = movies.find((m) => String(m.id) === id);
 
-  const isSeries = movie?.type === 'series'
-  const availableSeasons = [...new Set((movie?.episodes ?? []).map((e) => e.season))]
+  const isSeries = movie?.type === 'series';
+  const availableSeasons = [...new Set((movie?.episodes ?? []).map((e) => e.season))];
 
-  const [activeSeason, setActiveSeason] = useState(availableSeasons[0] ?? 1)
+  const [activeSeason, setActiveSeason] = useState(availableSeasons[0] ?? 1);
   const [activeEpisode, setActiveEpisode] = useState<Episode | null>(
     movie?.episodes?.[0] ?? null,
-  )
-  const [selectedSourceId, setSelectedSourceId] = useState('auto')
-  const [selectedSubtitleId, setSelectedSubtitleId] = useState('off')
+  );
+  const [selectedSourceId, setSelectedSourceId] = useState('auto');
+  const [selectedSubtitleId, setSelectedSubtitleId] = useState('off');
 
-  const selectedSource = STREAM_SOURCES.find((s) => s.id === selectedSourceId)!
-  const episodesBySeason = (movie?.episodes ?? []).filter((e) => e.season === activeSeason)
+  const selectedSource = STREAM_SOURCES.find((s) => s.id === selectedSourceId)!;
+  const episodesBySeason = (movie?.episodes ?? []).filter((e) => e.season === activeSeason);
 
   // ── Not found ──────────────────────────────────────────────────────────────
   if (!movie) {
@@ -60,7 +60,7 @@ export function WatchPage() {
           Go Back
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -163,7 +163,7 @@ export function WatchPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Pill select ──────────────────────────────────────────────────────────────
@@ -207,5 +207,5 @@ function PillSelect({ icon, value, onChange, options, active, compact }: PillSel
         className={cn('absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none', active ? 'text-orange-400/70' : 'text-white/40')}
       />
     </div>
-  )
+  );
 }

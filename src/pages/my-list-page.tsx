@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react'
-import { cn } from '@/utils'
-import type { Movie } from '@/types'
-import { myList, continueWatching, movies } from '@/data/movies'
-import { MovieCard } from '@/components/system/movie/movie-card'
-import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel'
-import { EmptyState } from '@/components/system/common/empty-state'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
+import { cn } from '@/utils';
+import type { Movie } from '@/types';
+import { myList, continueWatching, movies } from '@/data/movies';
+import { MovieCard } from '@/components/system/movie/movie-card';
+import { HorizontalCarousel } from '@/components/system/movie/horizontal-carousel';
+import { EmptyState } from '@/components/system/common/empty-state';
 
 type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
 
@@ -22,7 +22,7 @@ const tabs: Tab[] = [
   { id: 'saved', label: 'Saved Titles', icon: <BookmarkCheck className="w-3.5 h-3.5" /> },
   { id: 'watchlater', label: 'Watch Later', icon: <Clock className="w-3.5 h-3.5" /> },
   { id: 'continue', label: 'Continue Watching', icon: <Play className="w-3.5 h-3.5" /> },
-]
+];
 
 interface Collection {
   id: string
@@ -54,17 +54,17 @@ const mockCollections: Collection[] = [
     posters: [movies[0].poster, movies[3].poster, movies[4].poster],
     color: 'from-blue-900/60 to-cyan-900/40',
   },
-]
+];
 
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
-}
+};
 
 interface RemovableCardProps {
   movie: Movie
@@ -72,7 +72,7 @@ interface RemovableCardProps {
 }
 
 function RemovableCard({ movie, onRemove }: RemovableCardProps) {
-  const [hovered, setHovered] = useState(false)
+  const [hovered, setHovered] = useState(false);
 
   return (
     <motion.div
@@ -93,8 +93,8 @@ function RemovableCard({ movie, onRemove }: RemovableCardProps) {
             transition={{ duration: 0.15 }}
             className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/70 border border-zinc-600 hover:bg-red-600 hover:border-red-500 flex items-center justify-center transition-colors"
             onClick={(e) => {
-              e.stopPropagation()
-              onRemove(movie.id)
+              e.stopPropagation();
+              onRemove(movie.id);
             }}
             aria-label="Remove from list"
           >
@@ -103,7 +103,7 @@ function RemovableCard({ movie, onRemove }: RemovableCardProps) {
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 function CollectionCard({ collection }: { collection: Collection }) {
@@ -125,7 +125,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
               i === 1 && 'left-[30%] w-[45%] z-20 rotate-0',
               i === 2 && 'right-2 w-[45%] z-10 rotate-6 translate-y-2',
             )}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />
         ))}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent z-30" />
@@ -136,7 +136,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
         <p className="text-xs text-zinc-500 mt-0.5">{collection.count} titles</p>
       </div>
     </motion.div>
-  )
+  );
 }
 
 const emptyMessages: Record<TabId, { title: string; message: string }> = {
@@ -144,28 +144,28 @@ const emptyMessages: Record<TabId, { title: string; message: string }> = {
   saved: { title: 'Nothing saved yet', message: 'Browse movies and shows, then save your favorites here.' },
   watchlater: { title: 'Nothing to watch later', message: 'Add titles to your Watch Later queue.' },
   continue: { title: 'Nothing in progress', message: 'Start watching something to see it here.' },
-}
+};
 
 export default function MyListPage() {
-  const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<TabId>('all')
-  const [listItems, setListItems] = useState<Movie[]>(myList)
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabId>('all');
+  const [listItems, setListItems] = useState<Movie[]>(myList);
 
   const handleRemove = (id: number) => {
-    setListItems((prev) => prev.filter((m) => m.id !== id))
-  }
+    setListItems((prev) => prev.filter((m) => m.id !== id));
+  };
 
   const visibleMovies = listItems.filter((m) => {
-    if (activeTab === 'watchlater') return !m.progress
-    return true
-  })
+    if (activeTab === 'watchlater') return !m.progress;
+    return true;
+  });
 
-  const showContinueWatching = activeTab === 'all' || activeTab === 'continue'
-  const showGrid = activeTab !== 'continue'
-  const showCollections = activeTab === 'all'
+  const showContinueWatching = activeTab === 'all' || activeTab === 'continue';
+  const showGrid = activeTab !== 'continue';
+  const showCollections = activeTab === 'all';
 
   const sectionTitle =
-    activeTab === 'watchlater' ? 'Watch Later' : 'Saved Titles'
+    activeTab === 'watchlater' ? 'Watch Later' : 'Saved Titles';
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -276,5 +276,5 @@ export default function MyListPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

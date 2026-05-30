@@ -1,8 +1,8 @@
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Play, TrendingUp } from 'lucide-react'
-import { genres, movies } from '@/data/movies'
-import { formatYear } from '@/utils'
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Play, TrendingUp } from 'lucide-react';
+import { genres, movies } from '@/data/movies';
+import { formatYear } from '@/utils';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -10,22 +10,22 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.06 },
   },
-}
+};
 
 const cardVariants = {
   hidden: { opacity: 0, y: 24, scale: 0.95 },
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: 'easeOut' } },
-}
+};
 
-const FEATURED_INDICES = [0, 4, 9]
+const FEATURED_INDICES = [0, 4, 9];
 const FEATURED_COLLECTIONS = [
   { title: 'Trending Now', subtitle: "The hottest titles everyone's watching", tag: '🔥 Hot' },
   { title: 'Award Winners', subtitle: 'Oscar nominees and festival favorites', tag: '🏆 Acclaimed' },
   { title: 'Hidden Gems', subtitle: 'Critically loved, under the radar picks', tag: '💎 Curated' },
-]
+];
 
 export default function CategoriesPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -120,7 +120,7 @@ export default function CategoriesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {FEATURED_COLLECTIONS.map((collection, idx) => {
-            const movie = movies[FEATURED_INDICES[idx]]
+            const movie = movies[FEATURED_INDICES[idx]];
             return (
               <motion.div
                 key={collection.title}
@@ -160,8 +160,8 @@ export default function CategoriesPage() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={(e) => {
-                          e.stopPropagation()
-                          navigate('/browse')
+                          e.stopPropagation();
+                          navigate('/browse');
                         }}
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
@@ -174,10 +174,10 @@ export default function CategoriesPage() {
                   </div>
                 </div>
               </motion.div>
-            )
+            );
           })}
         </div>
       </div>
     </div>
-  )
+  );
 }

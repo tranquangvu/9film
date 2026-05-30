@@ -1,8 +1,8 @@
-import '@videojs/react/video/skin.css'
-import { createPlayer } from '@videojs/react'
-import { videoFeatures, VideoSkin, Video } from '@videojs/react/video'
+import '@videojs/react/video/skin.css';
+import { createPlayer } from '@videojs/react';
+import { videoFeatures, VideoSkin, Video } from '@videojs/react/video';
 
-const Player = createPlayer({ features: videoFeatures })
+const Player = createPlayer({ features: videoFeatures });
 
 export interface VideoPlayerProps {
   src: string
@@ -18,5 +18,5 @@ export function VideoPlayer({ src, poster }: VideoPlayerProps) {
         </VideoSkin>
       </Player.Provider>
     </div>
-  )
+  );
 }
