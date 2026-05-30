@@ -25,36 +25,6 @@ const pageVariants = {
   exit: { opacity: 0, y: -8 },
 }
 
-function AnimatedRoutes() {
-  const location = useLocation()
-
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
-      >
-        <Routes location={location}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/browse" element={<BrowsePage />} />
-          <Route path="/movies" element={<MoviesPage />} />
-          <Route path="/tv-series" element={<TvSeriesPage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/movie/:id" element={<MovieDetailPage />} />
-          <Route path="/my-list" element={<MyListPage />} />
-          <Route path="/search" element={<SearchPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </motion.div>
-    </AnimatePresence>
-  )
-}
-
 function NotFoundPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white">
@@ -72,7 +42,8 @@ function NotFoundPage() {
   )
 }
 
-function AppLayout() {
+function MainLayout() {
+  const location = useLocation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
@@ -91,7 +62,29 @@ function AppLayout() {
         onClose={() => setIsSearchOpen(false)}
       />
       <main>
-        <AnimatedRoutes />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={{ duration: 0.25, ease: 'easeInOut' }}
+        >
+          <Routes location={location}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/movies" element={<MoviesPage />} />
+            <Route path="/tv-series" element={<TvSeriesPage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/movie/:id" element={<MovieDetailPage />} />
+            <Route path="/my-list" element={<MyListPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </motion.div>
+      </AnimatePresence>
       </main>
       <Footer />
     </div>
@@ -99,28 +92,37 @@ function AppLayout() {
 }
 
 function WatchLayout() {
+  const location = useLocation()
   return (
-    <Routes>
-      <Route path="/watch/:id" element={<WatchPage />} />
-    </Routes>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+      >
+        <Routes location={location}>
+          <Route path="/watch/:id" element={<WatchPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
   )
+}
+
+function AppLayout() {
+  const location = useLocation()
+  const isWatchPage = location.pathname.startsWith('/watch')
+
+  return isWatchPage ? <WatchLayout /> : <MainLayout />
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <RouteSelector />
+      <AppLayout />
     </BrowserRouter>
   )
-}
-
-function RouteSelector() {
-  const location = useLocation()
-  const isWatchPage = location.pathname.startsWith('/watch')
-
-  if (isWatchPage) {
-    return <WatchLayout />
-  }
-
-  return <AppLayout />
 }
