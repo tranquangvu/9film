@@ -1,59 +1,44 @@
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
 import { VideoPlayer } from '@/components/system/player/video-player';
-import { movies } from '@/data/movies';
 import { Tag } from '@/components/ui/tag';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import type { Episode } from '@/types';
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const DEMO_SRC =
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-
-const STREAM_SOURCES = [
-  { id: 'auto', label: 'Auto', src: DEMO_SRC },
-  { id: '1080p', label: '1080p HD', src: DEMO_SRC },
-  { id: '720p', label: '720p', src: DEMO_SRC },
-  { id: '480p', label: '480p', src: DEMO_SRC },
-  { id: '360p', label: '360p', src: DEMO_SRC },
-];
-
-const SUBTITLE_TRACKS = [
-  { id: 'off', label: 'Off' },
-  { id: 'en', label: 'English' },
-  { id: 'es', label: 'Spanish' },
-  { id: 'fr', label: 'French' },
-  { id: 'de', label: 'German' },
-  { id: 'ja', label: 'Japanese' },
-];
+import { usePlayerSession } from '@/hooks/use-player-session';
+import { getSortedSeasons, getEpisodesForSeason } from '@/utils/episodes';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const movie = movies.find((m) => String(m.id) === id);
+  const {
+    eps,
+    season,
+    episode,
+    streamUrl,
+    setStreamUrl,
+    poster,
+    title,
+    allUrls,
+    loading,
+    error,
+    subList,
+    selectedSubId,
+    selectedSub,
+    handleEpisodeChange,
+    handleSubtitleTrackChange,
+  } = usePlayerSession(id);
 
-  const isSeries = movie?.type === 'series';
-  const availableSeasons = [...new Set((movie?.episodes ?? []).map((e) => e.season))];
+  const isSeries = eps !== null;
+  const availableSeasons = eps ? getSortedSeasons(eps) : [];
+  const episodesBySeason = eps ? getEpisodesForSeason(eps, season) : [];
 
-  const [activeSeason, setActiveSeason] = useState(availableSeasons[0] ?? 1);
-  const [activeEpisode, setActiveEpisode] = useState<Episode | null>(
-    movie?.episodes?.[0] ?? null,
-  );
-  const [selectedSourceId, setSelectedSourceId] = useState('auto');
-  const [selectedSubtitleId, setSelectedSubtitleId] = useState('off');
-
-  const selectedSource = STREAM_SOURCES.find((s) => s.id === selectedSourceId)!;
-  const episodesBySeason = (movie?.episodes ?? []).filter((e) => e.season === activeSeason);
-
-  // ── Not found ──────────────────────────────────────────────────────────────
-  if (!movie) {
+  // ── Error / not-found state ────────────────────────────────────────────────
+  if (error && !streamUrl) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-        <p className="text-white/50 text-xl">Movie not found</p>
+        <p className="text-white/50 text-xl">{error}</p>
         <Button variant="primary" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} />
           Go Back
@@ -65,12 +50,14 @@ export function WatchPage() {
   return (
     <div className="min-h-screen bg-background text-white">
       {/* ── Video + overlaid header ─────────────────────────────────────────── */}
-      <div className="relative w-full h-screen bg-black" style={{ '--media-border-radius': '0' } as React.CSSProperties}>
-        <VideoPlayer src={selectedSource.src} poster={movie.backdrop} />
+      <div
+        className="relative w-full h-screen bg-black"
+        style={{ '--media-border-radius': '0' } as React.CSSProperties}
+      >
+        <VideoPlayer src={streamUrl} poster={poster} subtitle={selectedSub} />
 
         {/* Header overlay — sits on top of the video */}
         <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 bg-linear-to-b from-black/70 to-transparent pointer-events-none">
-          {/* Single flex row: back button + title + season/ep — all vertically centred */}
           <div className="flex items-center gap-3 pointer-events-auto min-w-0">
             {/* Back button */}
             <button
@@ -81,30 +68,33 @@ export function WatchPage() {
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            {/* Movie title — shrinks but never wraps */}
+            {/* Movie / show title */}
             <span className="text-white font-bold text-sm md:text-base leading-none whitespace-nowrap truncate shrink min-w-0">
-              {movie.title}
+              {loading && !title ? 'Loading…' : (title ?? id)}
             </span>
 
-            {/* Season · Episode · Episode title */}
-            {isSeries && activeEpisode && (
+            {/* Season · Episode */}
+            {isSeries && (
               <>
                 <span className="text-white/30 shrink-0 leading-none">·</span>
                 <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
-                  S{activeEpisode.season}
+                  S{season}
                 </span>
                 <span className="text-white/30 shrink-0 leading-none">·</span>
                 <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
-                  E{activeEpisode.number}
-                </span>
-                <span className="text-white/30 shrink-0 leading-none hidden sm:block">·</span>
-                <span className="text-white/50 text-sm leading-none whitespace-nowrap truncate shrink min-w-0 hidden sm:block">
-                  {activeEpisode.title}
+                  E{episode}
                 </span>
               </>
             )}
           </div>
         </header>
+
+        {/* Loading indicator */}
+        {loading && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 text-white/50 text-sm">
+            Loading stream…
+          </div>
+        )}
       </div>
 
       {/* ── Below-video panel ──────────────────────────────────────────────── */}
@@ -117,19 +107,19 @@ export function WatchPage() {
               {availableSeasons.length > 0 && (
                 <Select
                   icon={<Film size={14} />}
-                  value={String(activeSeason)}
-                  onChange={(e) => setActiveSeason(Number(e.target.value))}
+                  value={String(season)}
+                  onChange={(e) => handleEpisodeChange(Number(e.target.value), 1)}
                   options={availableSeasons.map((s) => ({ id: String(s), label: `S${s}` }))}
                 />
               )}
               <div className="flex flex-wrap gap-1.5">
                 {episodesBySeason.map((ep) => (
                   <Tag
-                    key={ep.id}
-                    active={activeEpisode?.id === ep.id}
-                    onClick={() => setActiveEpisode(ep)}
+                    key={ep}
+                    active={episode === ep}
+                    onClick={() => handleEpisodeChange(season, ep)}
                   >
-                    E{ep.number}
+                    E{ep}
                   </Tag>
                 ))}
               </div>
@@ -138,20 +128,29 @@ export function WatchPage() {
 
           {/* Right: Source + Subtitle ─────────────────────────────────────── */}
           <div className="flex items-center gap-2 shrink-0">
-            <Select
-              icon={<MonitorPlay size={14} />}
-              value={selectedSourceId}
-              onChange={(e) => setSelectedSourceId(e.target.value)}
-              options={STREAM_SOURCES}
-              compact
-            />
-            <Select
-              icon={<ClosedCaption size={14} />}
-              value={selectedSubtitleId}
-              onChange={(e) => setSelectedSubtitleId(e.target.value)}
-              options={SUBTITLE_TRACKS}
-              compact
-            />
+            {allUrls.length > 0 && (
+              <Select
+                icon={<MonitorPlay size={14} />}
+                value={streamUrl ?? ''}
+                onChange={(e) => setStreamUrl(e.target.value)}
+                options={allUrls.map((url, i) => ({
+                  id: url,
+                  label: `Source ${i + 1}${url.includes('master.m3u8') ? ' (adaptive)' : ''}`,
+                }))}
+                compact
+              />
+            )}
+            {subList.length > 0 && (
+              <Select
+                icon={<ClosedCaption size={14} />}
+                value={selectedSubId !== null ? String(selectedSubId) : ''}
+                onChange={(e) =>
+                  handleSubtitleTrackChange(e.target.value ? Number(e.target.value) : null)
+                }
+                options={subList.map((s) => ({ id: String(s.fileId), label: s.label }))}
+                compact
+              />
+            )}
           </div>
 
         </div>
@@ -159,4 +158,3 @@ export function WatchPage() {
     </div>
   );
 }
-
