@@ -3,14 +3,13 @@ package handler
 import (
 	"net/http"
 
-	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func ForwardHLS(cfg *config.Config) gin.HandlerFunc {
+func ForwardHLS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetURL := c.Query("url")
 		if targetURL == "" {
@@ -18,7 +17,7 @@ func ForwardHLS(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		result, err := service.ProxyHLS(targetURL, cfg.EmbedReferer)
+		result, err := service.ProxyHLS(targetURL)
 		if err != nil {
 			logger.Get().Error("HLS proxy failed", zap.String("url", targetURL), zap.Error(err))
 			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})

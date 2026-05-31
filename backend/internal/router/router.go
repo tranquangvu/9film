@@ -28,7 +28,7 @@ func New(cfg *config.Config) *gin.Engine {
 	api := r.Group("/api")
 	{
 		api.GET("/title/:imdb", handler.GetTitle)
-		api.GET("/stream", handler.GetStream(cfg))
+		api.GET("/stream", handler.GetStream())
 
 		subs := api.Group("/subtitle")
 		{
@@ -37,7 +37,7 @@ func New(cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	r.GET("/proxy/hls", handler.ForwardHLS(cfg))
+	r.GET("/proxy/hls", handler.ForwardHLS())
 
 	return r
 }

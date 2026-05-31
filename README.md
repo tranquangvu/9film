@@ -72,7 +72,7 @@ npm run dev       # http://localhost:5173
 
 ## Usage
 
-Navigate to `/watch/:imdbId` to stream any title. For example:
+Navigate to `/watch/:imdb` to stream any title. For example:
 
 - `http://localhost:5173/watch/tt0903747` — Breaking Bad
 - `http://localhost:5173/watch/tt0468569` — The Dark Knight

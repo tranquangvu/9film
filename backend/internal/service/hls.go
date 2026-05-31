@@ -72,7 +72,9 @@ func rewriteURIAttributes(line, sourceURL string) string {
 	return line
 }
 
-func ProxyHLS(targetURL, embedReferer string) (*HLSResult, error) {
+const embedReferer = "https://brightpathsignals.com/"
+
+func ProxyHLS(targetURL string) (*HLSResult, error) {
 	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, err

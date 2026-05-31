@@ -16,7 +16,6 @@ type OpenSubtitlesConfig struct {
 type Config struct {
 	Port          int
 	Host          string
-	EmbedReferer  string
 	OpenSubtitles *OpenSubtitlesConfig
 }
 
@@ -33,11 +32,6 @@ func Load() *Config {
 		host = "0.0.0.0"
 	}
 
-	embedReferer := os.Getenv("EMBED_REFERER")
-	if embedReferer == "" {
-		embedReferer = "https://brightpathsignals.com/"
-	}
-
 	var openSubs *OpenSubtitlesConfig
 	if apiKey := trim(os.Getenv("OPENSUBTITLES_API_KEY")); apiKey != "" {
 		openSubs = &OpenSubtitlesConfig{
@@ -50,7 +44,6 @@ func Load() *Config {
 	return &Config{
 		Port:          port,
 		Host:          host,
-		EmbedReferer:  embedReferer,
 		OpenSubtitles: openSubs,
 	}
 }

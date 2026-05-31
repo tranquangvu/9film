@@ -15,7 +15,7 @@ type StreamResult struct {
 	ContentType string
 }
 
-func ProxyStreamRequest(rawQuery string, embedReferer string) (*StreamResult, error) {
+func ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 	target, err := url.Parse(streamAPIURL)
 	if err != nil {
 		return nil, err
