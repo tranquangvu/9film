@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { movies } from '@/data/movies';
 import type { Movie } from '@/types';
-import { cn, formatDuration, formatRating, formatYear } from '@/utils';
+import { cn } from '@/utils/cn';
+import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MovieCard } from '@/components/system/movie/movie-card';

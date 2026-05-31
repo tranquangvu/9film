@@ -1,6 +1,6 @@
 import { Star } from 'lucide-react';
-import { cn } from '@/utils';
-import { formatRating } from '@/utils';
+import { cn } from '@/utils/cn';
+import { formatRating } from '@/utils/format';
 
 interface RatingBadgeProps {
   rating: number

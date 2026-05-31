@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { Movie } from '@/types';
 import { MovieCard } from '@/components/system/movie/movie-card';

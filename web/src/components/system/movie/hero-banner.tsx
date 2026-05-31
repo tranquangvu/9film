@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
-import { cn, formatDuration, formatRating, formatYear } from '@/utils';
+import { cn } from '@/utils/cn';
+import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -119,11 +120,10 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       ref={sectionRef}
       className="group relative min-h-screen w-full overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      onMouseLeave={(e) => { setIsPaused(false); handleMouseUp(e); }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={(e) => { setIsPaused(false); handleMouseUp(e); }}
       style={{ userSelect: 'none', overscrollBehaviorX: 'none' }}
     >
       {/* Backdrop images */}

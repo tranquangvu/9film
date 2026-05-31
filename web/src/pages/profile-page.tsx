@@ -19,7 +19,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { currentUser } from '@/data/movies';
 

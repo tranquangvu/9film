@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 import type { Movie } from '@/types';
 import { myList, continueWatching, movies } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
@@ -64,7 +64,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
 interface RemovableCardProps {
@@ -111,7 +111,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
   return (
     <motion.div
       whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.22, ease: 'easeOut' }}
+      transition={{ duration: 0.22, ease: 'easeOut' as const }}
       className="relative cursor-pointer rounded-xl overflow-hidden bg-surface border border-white/10 hover:border-white/20 transition-colors"
     >
       <div className={cn('relative h-32 bg-linear-to-br', collection.color, 'overflow-hidden')}>

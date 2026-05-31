@@ -12,7 +12,8 @@ import {
   trendingShows,
   topRated,
 } from '@/data/movies';
-import { cn, formatYear } from '@/utils';
+import { cn } from '@/utils/cn';
+import { formatYear } from '@/utils/format';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';

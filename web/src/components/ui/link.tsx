@@ -1,6 +1,6 @@
 import { type AnchorHTMLAttributes } from 'react';
 import { NavLink, type NavLinkProps } from 'react-router-dom';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 
 // ── External / plain anchor ────────────────────────────────────────────────────
 function Link({ className, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {

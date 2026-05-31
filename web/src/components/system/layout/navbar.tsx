@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
 
 interface NavbarProps {

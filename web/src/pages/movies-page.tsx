@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { movies, genres } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { EmptyState } from '@/components/system/common/empty-state';
-import { cn } from '@/utils';
+import { cn } from '@/utils/cn';
 import { Tag } from '@/components/ui/tag';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -15,7 +15,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
 export default function MoviesPage() {
