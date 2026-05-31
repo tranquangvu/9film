@@ -2,10 +2,12 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { movies, genres } from '@/data/movies';
+import { genres, genreName } from '@/data/genres';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { Empty } from '@/components/system/common/empty';
+import { useBrowseTitles } from '@/hooks/use-titles-query';
 import { cn } from '@/utils/cn';
+import { toMovies } from '@/utils/title';
 import { Tag } from '@/components/ui/tag';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -61,24 +63,24 @@ export default function BrowsePage() {
     setSearchParams({});
   };
 
+  const browseType = contentType === 'movie' ? 'movie' : contentType === 'series' ? 'tv' : undefined;
+  const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
+  const browse = useBrowseTitles({ type: browseType, genre: primaryGenre, first: 50 });
+
   const filtered = useMemo(() => {
-    let result = [...movies];
+    let result = toMovies(browse.data?.titles ?? []);
 
     if (contentType) {
       result = result.filter((m) => m.type === contentType);
     }
 
-    if (selectedGenres.size > 0) {
-      const selectedNames = [...selectedGenres].map(
-        (id) => genres.find((g) => g.id === id)?.name.toLowerCase() ?? id,
-      );
-      result = result.filter((m) =>
-        m.genres.some((g) => selectedNames.includes(g.toLowerCase())),
-      );
+    if (selectedGenres.size > 1) {
+      const names = [...selectedGenres].map((id) => genreName(id).toLowerCase());
+      result = result.filter((m) => m.genres.some((g) => names.includes(g.toLowerCase())));
     }
 
-    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
-  }, [contentType, selectedGenres]);
+    return result;
+  }, [browse.data, contentType, selectedGenres]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -166,7 +168,9 @@ export default function BrowsePage() {
       {/* Content */}
       <div className="px-4 md:px-8 lg:px-12 mt-6">
         <AnimatePresence mode="wait">
-          {filtered.length === 0 ? (
+          {browse.isLoading ? (
+            <div className="text-zinc-500 text-sm py-16 text-center">Loading titles…</div>
+          ) : filtered.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Empty
                 icon="🔍"

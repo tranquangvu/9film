@@ -1,4 +1,5 @@
-import type { EmbedParams, MediaType } from './stream';
+import type { CastMember, Movie } from '@/types';
+import type { MediaType } from './stream';
 
 export interface ImdbTitle {
   id?: string;
@@ -15,6 +16,20 @@ export interface ImdbTitle {
   spokenLanguages?: {
     spokenLanguages?: Array<{ id?: string; text?: string }>;
   };
+  principalCredits?: Array<{
+    category?: { text?: string };
+    credits?: Array<{
+      name?: {
+        id?: string;
+        nameText?: { text?: string };
+        primaryImage?: { url?: string };
+      };
+      characters?: Array<{ name?: string }>;
+    }>;
+  }>;
+  images?: {
+    edges?: Array<{ node?: { url?: string; width?: number; height?: number } }>;
+  };
 }
 
 export interface OriginalLanguage {
@@ -22,7 +37,13 @@ export interface OriginalLanguage {
   label: string;
 }
 
-const TV_TYPES = new Set<string>(['tvSeries', 'tvMiniSeries', 'tvSpecial', 'tvMovie']);
+export interface BrowseResult {
+  titles: ImdbTitle[];
+  hasNextPage: boolean;
+  endCursor?: string;
+}
+
+const TV_TYPES = new Set(['tvSeries', 'tvMiniSeries', 'tvSpecial', 'tvMovie']);
 
 const LANG_MAP: Record<string, string> = {
   cn: 'zh-cn',
@@ -35,7 +56,7 @@ export function normId(id: string): string {
   return id.startsWith('tt') ? id : `tt${id}`;
 }
 
-export function embedParams(title: ImdbTitle, mediaId: string): EmbedParams {
+export function embedParams(title: ImdbTitle, mediaId: string) {
   const typeId = title.titleType?.id;
   const mediaType: MediaType = typeId && TV_TYPES.has(typeId) ? 'tv' : 'movie';
   return { mediaType, mediaId: title.id ?? normId(mediaId) };
@@ -48,4 +69,73 @@ export function origLang(title: ImdbTitle): OriginalLanguage {
   const raw = primary.id.trim().toLowerCase();
   const code = LANG_MAP[raw] ?? raw.split('-')[0] ?? raw;
   return { code, label: primary.text ?? code.toUpperCase() };
+}
+
+function mediaType(title: ImdbTitle): Movie['type'] {
+  const id = title.titleType?.id;
+  if (id && TV_TYPES.has(id)) return 'series';
+  return 'movie';
+}
+
+function pickBackdrop(title: ImdbTitle): string {
+  const wide = title.images?.edges?.[0]?.node?.url;
+  return wide ?? title.primaryImage?.url ?? '';
+}
+
+function mapCast(title: ImdbTitle): CastMember[] {
+  const stars = title.principalCredits?.find((g) => g.category?.text === 'Stars');
+  if (!stars?.credits) return [];
+
+  return stars.credits.map((credit) => ({
+    id: credit.name?.id ?? credit.name?.nameText?.text ?? '',
+    name: credit.name?.nameText?.text ?? '',
+    character: credit.characters?.[0]?.name ?? '',
+    photo: credit.name?.primaryImage?.url ?? '',
+  }));
+}
+
+function pickDirector(title: ImdbTitle): string {
+  const group = title.principalCredits?.find((g) => g.category?.text === 'Director');
+  return group?.credits?.[0]?.name?.nameText?.text ?? '';
+}
+
+export function toMovie(title: ImdbTitle): Movie {
+  const poster = title.primaryImage?.url ?? '';
+  const year = title.releaseYear?.year ? String(title.releaseYear.year) : '';
+  const duration = title.runtime?.seconds ? Math.round(title.runtime.seconds / 60) : 0;
+  const type = mediaType(title);
+
+  return {
+    id: title.id ?? '',
+    title: title.titleText?.text ?? '',
+    description: title.plot?.plotText?.plainText ?? '',
+    poster,
+    backdrop: pickBackdrop(title) || poster,
+    rating: title.ratingsSummary?.aggregateRating ?? 0,
+    year,
+    duration,
+    genres: title.genres?.genres?.map((g) => g.text).filter(Boolean) as string[] ?? [],
+    cast: mapCast(title),
+    director: pickDirector(title),
+    language: title.spokenLanguages?.spokenLanguages?.[0]?.text ?? '',
+    country: title.countriesOfOrigin?.countries?.[0]?.text ?? '',
+    type,
+    totalSeasons: type === 'series' && title.releaseYear?.endYear
+      ? Math.max(1, (title.releaseYear.endYear ?? title.releaseYear.year ?? 1) - (title.releaseYear.year ?? 1) + 1)
+      : undefined,
+  };
+}
+
+export function toMovies(titles: ImdbTitle[]): Movie[] {
+  return titles.filter((t) => t.id).map(toMovie);
+}
+
+export function filterMovies(titles: ImdbTitle[], type?: Movie['type']): Movie[] {
+  const movies = toMovies(titles);
+  if (!type) return movies;
+  return movies.filter((m) => m.type === type);
+}
+
+export function topRated(titles: ImdbTitle[], limit = 10): Movie[] {
+  return [...toMovies(titles)].sort((a, b) => b.rating - a.rating).slice(0, limit);
 }

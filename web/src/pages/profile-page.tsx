@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { currentUser } from '@/data/movies';
+import { currentUser } from '@/data/user';
 
 // ---------------------------------------------------------------------------
 // Types

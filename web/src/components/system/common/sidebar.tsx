@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { X, Crown } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
-import { genres, currentUser } from '@/data/movies';
+import { genres } from '@/data/genres';
+import { currentUser } from '@/data/user';
 
 interface SidebarProps {
   isOpen: boolean

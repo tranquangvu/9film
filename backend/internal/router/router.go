@@ -27,14 +27,23 @@ func New(cfg *config.Config) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.GET("/title/:imdb", handler.GetTitle)
-		api.GET("/stream", handler.GetStream())
+		title := api.Group("/title")
+		{
+			title.GET("/popular", handler.GetPopularTitles)
+			title.GET("/trending", handler.GetTrendingTitles)
+			title.GET("/search", handler.SearchTitles)
+			title.GET("/browse", handler.BrowseTitles)
+			title.GET("/:imdb/similar", handler.GetSimilarTitles)
+			title.GET("/:imdb", handler.GetTitle)
+		}
 
 		subs := api.Group("/subtitle")
 		{
 			subs.GET("/search", handler.SearchSubtitles(cfg))
 			subs.GET("/download", handler.GetSubtitleVTT(cfg))
 		}
+
+		api.GET("/stream", handler.GetStream())
 	}
 
 	r.GET("/proxy/hls", handler.ForwardHLS())

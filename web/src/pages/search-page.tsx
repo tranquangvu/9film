@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
-import { movies } from '@/data/movies';
+import { useSearchTitles } from '@/hooks/use-search-query';
+import { toMovie } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
@@ -142,22 +143,16 @@ export default function SearchPage() {
     else setSearchParams({});
   };
 
+  const search = useSearchTitles(query, 30);
+
   const results = useMemo(() => {
     if (!query.trim()) return { films: [], series: [] };
-    const q = query.toLowerCase();
-    const matched = movies.filter(
-      (m) =>
-        m.title.toLowerCase().includes(q) ||
-        m.genres.some((g) => g.toLowerCase().includes(q)) ||
-        m.cast.some((c) => c.name.toLowerCase().includes(q)) ||
-        m.director.toLowerCase().includes(q) ||
-        m.description.toLowerCase().includes(q),
-    );
+    const matched = (search.data ?? []).map(toMovie);
     return {
       films: matched.filter((m) => m.type === 'movie'),
       series: matched.filter((m) => m.type === 'series'),
     };
-  }, [query]);
+  }, [query, search.data]);
 
   const totalCount = results.films.length + results.series.length;
   const isSearching = query.trim().length > 0;

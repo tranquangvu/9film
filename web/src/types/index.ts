@@ -1,5 +1,5 @@
 export interface Movie {
-  id: number
+  id: string
   title: string
   tagline?: string
   description: string
@@ -24,14 +24,14 @@ export interface Movie {
 }
 
 export interface CastMember {
-  id: number
+  id: string
   name: string
   character: string
   photo: string
 }
 
 export interface Episode {
-  id: number
+  id: string
   title: string
   number: number
   season: number

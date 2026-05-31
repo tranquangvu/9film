@@ -1,38 +1,29 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
-import {
-  movies,
-  continueWatching,
-  trendingMovies,
-  popularMovies,
-  trendingShows,
-  topRated,
-} from '@/data/movies';
+import { usePopularTitles, useTrendingTitles } from '@/hooks/use-titles-query';
+import { useSearchTitles } from '@/hooks/use-search-query';
+import { useTitleList } from '@/hooks/use-title-list';
+import { continueWatchingIds } from '@/data/user';
 import { cn } from '@/utils/cn';
 import { formatYear } from '@/utils/format';
+import { filterMovies, topRated, toMovie } from '@/utils/title';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
 
-// ---------------------------------------------------------------------------
-// Inline search section
-// ---------------------------------------------------------------------------
 function QuickSearch() {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const search = useSearchTitles(query, 6);
 
-  const results: Movie[] = query.trim()
-    ? movies.filter(m => {
-        const q = query.trim().toLowerCase();
-        return m.id === Number(q)
-          || m.title.toLowerCase().includes(q)
-          || m.genres.some(g => g.toLowerCase().includes(q));
-      }).slice(0, 6)
-    : [];
+  const results: Movie[] = useMemo(
+    () => (search.data ?? []).map(toMovie),
+    [search.data],
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +32,6 @@ function QuickSearch() {
 
   return (
     <section className="px-6 md:px-12">
-      {/* CTA card */}
       <div
         className="relative overflow-hidden rounded-2xl px-8 py-8 flex flex-col md:flex-row md:items-center gap-6"
         style={{
@@ -49,34 +39,25 @@ function QuickSearch() {
           border: '1px solid rgba(249,115,22,0.15)',
         }}
       >
-        {/* Accent glow blob */}
         <div
           className="absolute -left-10 -top-10 w-48 h-48 rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%)' }}
         />
-
-        {/* Large background search icon — decorative */}
         <Search
           className="absolute top-1/2 -translate-y-1/2 left-0 w-32 h-32 text-orange-500/8 pointer-events-none select-none"
           aria-hidden
         />
-
-        {/* Left */}
         <div className="relative flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Find your next watch
-          </h2>
+          <h2 className="text-xl font-bold text-white tracking-tight">Find your next watch</h2>
           <p className="text-zinc-500 text-sm mt-1">Explore thousands of films, series, and hidden gems</p>
         </div>
-
-        {/* Right: input + button */}
         <form onSubmit={handleSubmit} className="relative flex items-center gap-3 w-full md:w-96 flex-shrink-0">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none top-1/2 -translate-y-1/2" />
             <Input
               type="text"
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g. tt1375666, Inception"
               className="pl-10 pr-4 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
             />
@@ -90,8 +71,6 @@ function QuickSearch() {
           >
             <MoveRight className="w-4 h-4" />
           </motion.button>
-
-          {/* Dropdown results */}
           <AnimatePresence>
             {results.length > 0 && (
               <motion.div
@@ -102,7 +81,7 @@ function QuickSearch() {
                 className="absolute left-0 right-0 top-full mt-2 rounded-2xl overflow-hidden z-50 text-left"
                 style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}
               >
-                {results.map(movie => (
+                {results.map((movie) => (
                   <button
                     key={movie.id}
                     type="button"
@@ -130,7 +109,7 @@ function QuickSearch() {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-wrap justify-end max-w-[120px]">
-                      {movie.genres.slice(0, 2).map(g => (
+                      {movie.genres.slice(0, 2).map((g) => (
                         <span key={g} className="text-xs px-2 py-0.5 rounded-full bg-white/6 text-zinc-400">{g}</span>
                       ))}
                     </div>
@@ -148,13 +127,11 @@ function QuickSearch() {
             )}
           </AnimatePresence>
         </form>
-
       </div>
     </section>
   );
 }
 
-// ---------------------------------------------------------------------------
 interface AnimatedSectionProps {
   children: React.ReactNode
   delay?: number
@@ -177,51 +154,55 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
 }
 
 export default function HomePage() {
+  const popular = usePopularTitles(30);
+  const trending = useTrendingTitles(30);
+  const continueIds = continueWatchingIds.map((item) => item.id);
+  const continueList = useTitleList(continueIds);
+
+  const trendingMovies = useMemo(() => filterMovies(trending.data ?? [], 'movie'), [trending.data]);
+  const trendingShows = useMemo(() => filterMovies(trending.data ?? [], 'series'), [trending.data]);
+  const popularMovies = useMemo(() => filterMovies(popular.data ?? [], 'movie'), [popular.data]);
+  const topRatedList = useMemo(() => topRated([...(popular.data ?? []), ...(trending.data ?? [])], 10), [popular.data, trending.data]);
+
+  const continueWatching = useMemo(
+    () => continueList.movies.map((movie) => {
+      const progress = continueWatchingIds.find((item) => item.id === movie.id)?.progress;
+      return progress != null ? { ...movie, progress } : movie;
+    }),
+    [continueList.movies],
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Hero — slides under the navbar */}
       <div className="-mt-16 md:-mt-20">
-        <HeroBanner movies={trendingMovies} />
+        <HeroBanner movies={trendingMovies.length > 0 ? trendingMovies : popularMovies} />
       </div>
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
-        {/* Continue Watching */}
         {continueWatching.length > 0 && (
           <AnimatedSection delay={0}>
-            <HorizontalCarousel
-              title="Continue Watching"
-              movies={continueWatching}
-              cardType="backdrop"
-            />
+            <HorizontalCarousel title="Continue Watching" movies={continueWatching} cardType="backdrop" />
           </AnimatedSection>
         )}
 
-        {/* Top 10 */}
-        <AnimatedSection delay={0.05}>
-          <HorizontalCarousel
-            title="Top 10 Today"
-            movies={topRated.slice(0, 10)}
-            cardType="top10"
-          />
-        </AnimatedSection>
+        {topRatedList.length > 0 && (
+          <AnimatedSection delay={0.05}>
+            <HorizontalCarousel title="Top 10 Today" movies={topRatedList} cardType="top10" />
+          </AnimatedSection>
+        )}
 
-        {/* Popular Movies */}
-        <AnimatedSection delay={0.05}>
-          <HorizontalCarousel
-            title="Popular Movies"
-            movies={popularMovies}
-          />
-        </AnimatedSection>
+        {popularMovies.length > 0 && (
+          <AnimatedSection delay={0.05}>
+            <HorizontalCarousel title="Popular Movies" movies={popularMovies} />
+          </AnimatedSection>
+        )}
 
-        {/* Popular TV Series */}
-        <AnimatedSection delay={0.05}>
-          <HorizontalCarousel
-            title="Popular TV Series"
-            movies={trendingShows}
-          />
-        </AnimatedSection>
+        {trendingShows.length > 0 && (
+          <AnimatedSection delay={0.05}>
+            <HorizontalCarousel title="Popular TV Series" movies={trendingShows} />
+          </AnimatedSection>
+        )}
 
-        {/* Quick search */}
         <AnimatedSection delay={0.05}>
           <QuickSearch />
         </AnimatedSection>

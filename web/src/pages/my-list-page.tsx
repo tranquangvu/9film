@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { Movie } from '@/types';
-import { myList, continueWatching, movies } from '@/data/movies';
+import { continueWatchingIds, myListIds } from '@/data/user';
+import { useTitleList } from '@/hooks/use-title-list';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import { Empty } from '@/components/system/common/empty';
@@ -33,30 +34,6 @@ interface Collection {
   color: string
 }
 
-const mockCollections: Collection[] = [
-  {
-    id: 'action',
-    name: 'Action Night',
-    count: 8,
-    posters: [movies[1].poster, movies[5].poster, movies[7].poster],
-    color: 'from-red-900/60 to-orange-900/40',
-  },
-  {
-    id: 'weekend',
-    name: 'Weekend Vibes',
-    count: 5,
-    posters: [movies[2].poster, movies[11].poster, movies[12].poster],
-    color: 'from-purple-900/60 to-pink-900/40',
-  },
-  {
-    id: 'mustwatch',
-    name: 'Must Watch',
-    count: 12,
-    posters: [movies[0].poster, movies[3].poster, movies[4].poster],
-    color: 'from-blue-900/60 to-cyan-900/40',
-  },
-];
-
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.04 } },
@@ -69,7 +46,7 @@ const itemVariants = {
 
 interface RemovableCardProps {
   movie: Movie
-  onRemove: (id: number) => void
+  onRemove: (id: string) => void
 }
 
 function RemovableCard({ movie, onRemove }: RemovableCardProps) {
@@ -147,13 +124,60 @@ const emptyMessages: Record<TabId, { title: string; message: string }> = {
   continue: { title: 'Nothing in progress', message: 'Start watching something to see it here.' },
 };
 
+function buildCollections(movies: Movie[]): Collection[] {
+  if (movies.length < 4) return [];
+
+  return [
+    {
+      id: 'action',
+      name: 'Action Night',
+      count: 8,
+      posters: [movies[1]?.poster, movies[2]?.poster, movies[3]?.poster].filter(Boolean),
+      color: 'from-red-900/60 to-orange-900/40',
+    },
+    {
+      id: 'weekend',
+      name: 'Weekend Vibes',
+      count: 5,
+      posters: [movies[0]?.poster, movies[2]?.poster, movies[4]?.poster].filter(Boolean),
+      color: 'from-purple-900/60 to-pink-900/40',
+    },
+    {
+      id: 'mustwatch',
+      name: 'Must Watch',
+      count: 12,
+      posters: [movies[3]?.poster, movies[0]?.poster, movies[1]?.poster].filter(Boolean),
+      color: 'from-blue-900/60 to-cyan-900/40',
+    },
+  ].filter((c) => c.posters.length > 0);
+}
+
 export default function MyListPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
-  const [listItems, setListItems] = useState<Movie[]>(myList);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const handleRemove = (id: number) => {
-    setListItems((prev) => prev.filter((m) => m.id !== id));
+  const savedList = useTitleList(myListIds);
+  const continueIds = continueWatchingIds.map((item) => item.id);
+  const continueList = useTitleList(continueIds);
+
+  const listItems = useMemo(
+    () => savedList.movies.filter((m) => !removedIds.has(m.id)),
+    [savedList.movies, removedIds],
+  );
+
+  const continueWatching = useMemo(
+    () => continueList.movies.map((movie) => {
+      const progress = continueWatchingIds.find((item) => item.id === movie.id)?.progress;
+      return progress != null ? { ...movie, progress } : movie;
+    }),
+    [continueList.movies],
+  );
+
+  const collections = useMemo(() => buildCollections(savedList.movies), [savedList.movies]);
+
+  const handleRemove = (id: string) => {
+    setRemovedIds((prev) => new Set([...prev, id]));
   };
 
   const visibleMovies = listItems.filter((m) => {
@@ -224,7 +248,9 @@ export default function MyListPage() {
       {/* Saved grid */}
       {showGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
-          {visibleMovies.length > 0 ? (
+          {savedList.loading ? (
+            <p className="text-zinc-500 text-sm">Loading your list…</p>
+          ) : visibleMovies.length > 0 ? (
             <>
               <h2 className="text-lg font-bold text-white mb-5">{sectionTitle}</h2>
               <motion.div
@@ -255,7 +281,7 @@ export default function MyListPage() {
       )}
 
       {/* Collections */}
-      {showCollections && (
+      {showCollections && collections.length > 0 && (
         <div className="px-4 md:px-8 lg:px-12 mt-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold text-white">My Collections</h2>
@@ -265,7 +291,7 @@ export default function MyListPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
-            {mockCollections.map((collection) => (
+            {collections.map((collection) => (
               <CollectionCard key={collection.id} collection={collection} />
             ))}
           </div>

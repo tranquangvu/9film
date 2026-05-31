@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, TrendingUp } from 'lucide-react';
-import { genres, movies } from '@/data/movies';
+import { genres } from '@/data/genres';
+import { useTrendingTitles } from '@/hooks/use-titles-query';
 import { formatYear } from '@/utils/format';
+import { toMovies } from '@/utils/title';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -26,6 +29,11 @@ const FEATURED_COLLECTIONS = [
 
 export default function CategoriesPage() {
   const navigate = useNavigate();
+  const trending = useTrendingTitles(12);
+  const featuredMovies = useMemo(() => {
+    const list = toMovies(trending.data ?? []);
+    return FEATURED_INDICES.map((i) => list[i]).filter(Boolean);
+  }, [trending.data]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -120,7 +128,8 @@ export default function CategoriesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {FEATURED_COLLECTIONS.map((collection, idx) => {
-            const movie = movies[FEATURED_INDICES[idx]];
+            const movie = featuredMovies[idx];
+            if (!movie) return null;
             return (
               <motion.div
                 key={collection.title}

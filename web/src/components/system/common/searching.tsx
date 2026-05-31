@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, TrendingUp, Star, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { movies } from '@/data/movies';
+import { useSearchTitles } from '@/hooks/use-search-query';
+import { useTrendingTitles } from '@/hooks/use-titles-query';
+import { toMovie } from '@/utils/title';
 import { cn } from '@/utils/cn';
 import { formatYear } from '@/utils/format';
 import { buttonVariants } from '@/components/ui/button';
@@ -30,14 +32,14 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  const search = useSearchTitles(query, 12);
+  const trending = useTrendingTitles(4);
+
   const results = query.trim().length > 0
-    ? movies.filter(m =>
-        m.title.toLowerCase().includes(query.toLowerCase()) ||
-        m.director.toLowerCase().includes(query.toLowerCase()) ||
-        m.genres.some(g => g.toLowerCase().includes(query.toLowerCase())) ||
-        m.cast.some(c => c.name.toLowerCase().includes(query.toLowerCase()))
-      )
+    ? (search.data ?? []).map(toMovie)
     : [];
+
+  const popular = (trending.data ?? []).map(toMovie).slice(0, 4);
 
   const handleClose = useCallback(() => {
     setQuery('');
@@ -58,8 +60,8 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [handleClose]);
 
-  const handleMovieClick = (id: number) => {
-    navigate(`/movie/${id}`);
+  const handleMovieClick = (imdbId: string) => {
+    navigate(`/movie/${imdbId}`);
     handleClose();
   };
 
@@ -201,7 +203,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   <span className="text-sm font-semibold text-zinc-300">Popular Right Now</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {movies.filter(m => m.isTrending).slice(0, 4).map(movie => (
+                  {popular.map(movie => (
                     <motion.button
                       key={movie.id}
                       onClick={() => handleMovieClick(movie.id)}

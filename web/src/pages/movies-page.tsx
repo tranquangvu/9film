@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { movies, genres } from '@/data/movies';
+import { genres, genreName } from '@/data/genres';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { Empty } from '@/components/system/common/empty';
+import { useBrowseTitles } from '@/hooks/use-titles-query';
 import { cn } from '@/utils/cn';
+import { toMovies } from '@/utils/title';
 import { Tag } from '@/components/ui/tag';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -20,11 +22,19 @@ const itemVariants = {
 
 export default function MoviesPage() {
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
+  const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
+
+  const browse = useBrowseTitles({
+    type: 'movie',
+    genre: primaryGenre,
+    first: 50,
+  });
 
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -32,35 +42,25 @@ export default function MoviesPage() {
   const clearAll = () => setSelectedGenres(new Set());
 
   const filtered = useMemo(() => {
-    let result = movies.filter((m) => m.type === 'movie');
+    let result = toMovies(browse.data?.titles ?? []).filter((m) => m.type === 'movie');
 
-    if (selectedGenres.size > 0) {
-      const selectedNames = [...selectedGenres].map(
-        (id) => genres.find((g) => g.id === id)?.name.toLowerCase() ?? id,
-      );
-      result = result.filter((m) =>
-        m.genres.some((g) => selectedNames.includes(g.toLowerCase())),
-      );
+    if (selectedGenres.size > 1) {
+      const names = [...selectedGenres].map((id) => genreName(id).toLowerCase());
+      result = result.filter((m) => m.genres.some((g) => names.includes(g.toLowerCase())));
     }
 
-    return result.sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
-  }, [selectedGenres]);
+    return result;
+  }, [browse.data, selectedGenres]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      {/* Page header */}
       <div className="pt-24 pb-6 px-4 md:px-8 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <h1 className="text-3xl md:text-4xl font-bold text-white">Movies</h1>
           <p className="text-zinc-500 mt-1 text-sm">Feature films from around the world</p>
         </motion.div>
       </div>
 
-      {/* Genre tag list */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-8 lg:px-12 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {genres.map((g) => {
@@ -96,10 +96,11 @@ export default function MoviesPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="px-4 md:px-8 lg:px-12 mt-6">
         <AnimatePresence mode="wait">
-          {filtered.length === 0 ? (
+          {browse.isLoading ? (
+            <div className="text-zinc-500 text-sm py-16 text-center">Loading movies…</div>
+          ) : filtered.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Empty
                 icon="🎬"

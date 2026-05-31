@@ -15,8 +15,9 @@ import {
   ChevronRight,
   Layers,
 } from 'lucide-react';
-import { movies } from '@/data/movies';
-import type { Movie } from '@/types';
+import { useTitleQuery } from '@/hooks/use-title-query';
+import { useSimilarTitles } from '@/hooks/use-similar-query';
+import { toMovie, toMovies } from '@/utils/title';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -40,11 +41,14 @@ const itemVariants = {
 
 
 export default function MovieDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
-  const movie = movies.find((m) => m.id === Number(id));
+  const titleQuery = useTitleQuery(id);
+  const similarQuery = useSimilarTitles(id);
+  const movie = titleQuery.data ? toMovie(titleQuery.data) : null;
+  const similarMovies = toMovies(similarQuery.data ?? []);
 
 
   const [isFavorited, setIsFavorited] = useState(false);
@@ -54,6 +58,14 @@ export default function MovieDetailPage() {
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3]);
   const heroScale = useTransform(scrollY, [0, 600], [1, 1.05]);
+
+  if (titleQuery.isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <div className="text-zinc-500 text-sm">Loading title…</div>
+      </div>
+    );
+  }
 
   if (!movie) {
     return (
@@ -75,10 +87,6 @@ export default function MovieDetailPage() {
   const availableSeasons = movie.episodes
     ? [...new Set(movie.episodes.map((e) => e.season))].sort()
     : [];
-
-  const similarMovies = movies
-    .filter((m) => m.id !== movie.id && m.genres.some((g) => movie.genres.includes(g)))
-    .slice(0, 6);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
