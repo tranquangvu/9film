@@ -1,7 +1,5 @@
 import type { EmbedParams } from './parse-embed-path';
-import { isImdbId } from './parse-embed-path';
 import type { ImdbTitle } from './imdb';
-import { normalizeSubtitleLanguage } from './subtitle-languages';
 
 const SUBTITLE_DISPLAY_LIMIT = 5;
 
@@ -106,47 +104,6 @@ export function resolveSubtitleSelection(
   return { list, fileId };
 }
 
-function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
-  const { params, imdbId, languages = 'en' } = ctx;
-  const q = new URLSearchParams({
-    type: params.mediaType,
-    languages: normalizeSubtitleLanguage(languages),
-  });
-
-  if (imdbId) {
-    q.set('imdb_id', imdbId);
-  } else if (isImdbId(params.mediaId)) {
-    q.set('imdb_id', params.mediaId);
-  } else if (/^\d+$/.test(params.mediaId)) {
-    q.set('tmdb_id', params.mediaId);
-  } else {
-    return null;
-  }
-
-  if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
-    q.set('season', String(params.season));
-    q.set('episode', String(params.episode));
-  }
-
-  return q.toString();
-}
-
-export async function fetchSubtitles(ctx: SubtitleSearchContext): Promise<SubtitleOption[]> {
-  const query = buildSearchQuery(ctx);
-  if (!query) return [];
-
-  const res = await fetch(`/api/subtitle/search?${query}`);
-  const json = (await res.json()) as {
-    subtitles?: SubtitleOption[];
-    error?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(json.error ?? `Subtitle search failed (${res.status})`);
-  }
-
-  return json.subtitles ?? [];
-}
 
 export function subtitleVttUrl(fileId: number): string {
   return `/api/subtitle/download?file_id=${fileId}`;

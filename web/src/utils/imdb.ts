@@ -22,7 +22,7 @@ export interface OriginalLanguage {
   label: string;
 }
 
-function normalizeImdbId(imdbId: string): string {
+export function normalizeImdbId(imdbId: string): string {
   return imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
 }
 
@@ -61,25 +61,4 @@ export function originalLanguageFromTitle(title: ImdbTitle): OriginalLanguage {
     code,
     label: primary.text ?? code.toUpperCase(),
   };
-}
-
-export async function fetchTitle(imdbId: string): Promise<ImdbTitle> {
-  const id = encodeURIComponent(normalizeImdbId(imdbId));
-  const res = await fetch(`/api/title/${id}`);
-  const json = (await res.json()) as ImdbTitle & { error?: string };
-
-  if (!res.ok) {
-    throw new Error(json.error ?? `Title details failed (${res.status})`);
-  }
-
-  if (!json.id) {
-    throw new Error('No title details returned');
-  }
-
-  return json;
-}
-
-export async function fetchOriginalLanguage(imdbId: string): Promise<OriginalLanguage> {
-  const title = await fetchTitle(imdbId);
-  return originalLanguageFromTitle(title);
 }

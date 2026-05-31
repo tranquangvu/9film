@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Clapperboard, MoveLeft } from 'lucide-react';
 
 import Navbar from '@/components/system/layout/navbar';
@@ -119,10 +120,22 @@ function AppLayout() {
   return isWatchPage ? <WatchLayout /> : <MainLayout />;
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      staleTime: 0,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppLayout />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppLayout />
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }

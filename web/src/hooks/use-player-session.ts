@@ -1,172 +1,102 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { EpisodeMap } from '@/utils/episodes';
 import { mergeEpisodeFromStream } from '@/utils/embed-params';
-import { fetchStreamUrls, pickBestStreamUrl } from '@/utils/fetch-stream';
+import { pickBestStreamUrl } from '@/utils/fetch-stream';
+import { embedParamsFromTitle } from '@/utils/imdb';
 import {
-  embedParamsFromTitle,
-  fetchTitle,
-  originalLanguageFromTitle,
-  type ImdbTitle,
-} from '@/utils/imdb';
-import {
-  fetchSubtitles,
   orderSubtitlesWithSelectedFirst,
   resolveSubtitleSelection,
-  type SubtitleOption,
 } from '@/utils/opensubtitles';
 import { isImdbId, parseMediaId, type EmbedParams } from '@/utils/parse-embed-path';
+import { useTitleQuery } from './use-title-query';
+import { useStreamQuery } from './use-stream-query';
+import { useSubtitlesQuery } from './use-subtitles-query';
 
 export function usePlayerSession(titleId: string) {
-  const [mediaParams, setMediaParams] = useState<EmbedParams | null>(null);
-  const [eps, setEps] = useState<EpisodeMap | null>(null);
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [poster, setPoster] = useState<string | undefined>();
-  const [title, setTitle] = useState<string | null>(null);
-  const [allUrls, setAllUrls] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [userStreamUrl, setStreamUrl] = useState<string | null>(null);
+  const [userSubId, setUserSubId] = useState<number | null>(null);
 
-  const [subList, setSubList] = useState<SubtitleOption[]>([]);
-  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
-  const [subLoading, setSubLoading] = useState(false);
-  const [subError, setSubError] = useState<string | null>(null);
+  const mediaId = parseMediaId(titleId);
 
-  function applyStreamData(data: Awaited<ReturnType<typeof fetchStreamUrls>>) {
-    const urls = data.stream_urls;
-    setAllUrls(urls);
-    setStreamUrl(urls.length ? pickBestStreamUrl(urls) : null);
-    setTitle(data.title ?? null);
-    setPoster(data.backdrop);
-    if (data.eps && Object.keys(data.eps).length > 0) {
-      setEps(data.eps);
-    }
-    if (data.season != null) setSeason(Number(data.season));
-    if (data.episode != null) setEpisode(Number(data.episode));
-  }
+  // 1. Title
+  const titleQuery = useTitleQuery(titleId);
+  const titleData = titleQuery.data;
 
-  const loadSubtitles = useCallback(
-    async (params: EmbedParams, imdbId: string, titleDetails?: ImdbTitle) => {
-      setSubLoading(true);
-      setSubError(null);
-      setSubList([]);
-      setSelectedSubId(null);
-
-      try {
-        const titleDetailsResolved = titleDetails ?? (await fetchTitle(imdbId));
-        const { code } = originalLanguageFromTitle(titleDetailsResolved);
-
-        const rawList = await fetchSubtitles({ params, imdbId, languages: code });
-        const { list, fileId } = resolveSubtitleSelection(rawList, titleDetailsResolved, params);
-        setSubList(list);
-        setSelectedSubId(fileId);
-      } catch (err) {
-        setSubList([]);
-        setSelectedSubId(null);
-        setSubError(err instanceof Error ? err.message : 'Failed to load subtitles');
-      } finally {
-        setSubLoading(false);
-      }
-    },
-    [],
+  // 2. Stream — re-fetches automatically when season/episode change
+  const baseParams = useMemo<EmbedParams | null>(
+    () => (titleData ? embedParamsFromTitle(titleData, mediaId ?? titleId) : null),
+    [titleData, mediaId, titleId],
   );
 
-  const loadStream = useCallback(
-    async (params: EmbedParams, titleDetails?: ImdbTitle) => {
-      const data = await fetchStreamUrls(params);
-      applyStreamData(data);
-
-      const searchParams = mergeEpisodeFromStream(params, data);
-      setMediaParams(searchParams);
-
-      const imdb =
-        data.imdb_id ?? (isImdbId(searchParams.mediaId) ? searchParams.mediaId : undefined);
-      if (imdb) {
-        void loadSubtitles(searchParams, imdb, titleDetails);
-      }
-      return data;
-    },
-    [loadSubtitles],
+  const streamParams = useMemo<EmbedParams | null>(
+    () => (baseParams ? { ...baseParams, season, episode } : null),
+    [baseParams, season, episode],
   );
 
-  useEffect(() => {
-    let cancelled = false;
+  const streamQuery = useStreamQuery(streamParams);
+  const streamData = streamQuery.data;
 
-    async function load() {
-      // Reset all player state at the start of the async function
-      setError(null);
-      setStreamUrl(null);
-      setAllUrls([]);
-      setTitle(null);
-      setPoster(undefined);
-      setEps(null);
-      setMediaParams(null);
-      setSubList([]);
-      setSubError(null);
-      setSelectedSubId(null);
+  const allUrls = useMemo(() => streamData?.stream_urls ?? [], [streamData]);
+  const autoStreamUrl = useMemo(
+    () => (allUrls.length > 0 ? pickBestStreamUrl(allUrls) : null),
+    [allUrls],
+  );
+  const streamUrl = userStreamUrl ?? autoStreamUrl;
 
-      const mediaId = parseMediaId(titleId);
-      if (!mediaId) {
-        setError('Invalid IMDb ID. Expected format: tt2575988');
-        return;
-      }
+  const eps = useMemo<EpisodeMap | null>(() => {
+    if (streamData?.eps && Object.keys(streamData.eps).length > 0) return streamData.eps;
+    return null;
+  }, [streamData]);
 
-      setLoading(true);
-      try {
-        const titleDetails = await fetchTitle(mediaId);
-        if (cancelled) return;
+  // 3. Subtitles — depends on resolved stream params + title language
+  const resolvedStreamParams = useMemo<EmbedParams | null>(
+    () => (streamData && streamParams ? mergeEpisodeFromStream(streamParams, streamData) : null),
+    [streamData, streamParams],
+  );
 
-        const params = embedParamsFromTitle(titleDetails, mediaId);
-        setTitle(titleDetails.titleText?.text ?? null);
-        setPoster(titleDetails.primaryImage?.url);
-        setMediaParams(params);
-        await loadStream(params, titleDetails);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load stream');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
+  const imdbId =
+    streamData?.imdb_id ??
+    (baseParams && isImdbId(baseParams.mediaId) ? baseParams.mediaId : null);
 
-    void load();
+  const subtitleQuery = useSubtitlesQuery(resolvedStreamParams, imdbId, titleData);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [titleId, loadStream]);
+  const resolvedSubs = useMemo(() => {
+    if (!subtitleQuery.data || !titleData || !resolvedStreamParams) return null;
+    return resolveSubtitleSelection(subtitleQuery.data, titleData, resolvedStreamParams);
+  }, [subtitleQuery.data, titleData, resolvedStreamParams]);
 
-  async function handleEpisodeChange(nextSeason: number, nextEpisode: number) {
-    if (!mediaParams || mediaParams.mediaType !== 'tv') return;
+  const autoSubId = resolvedSubs?.fileId ?? null;
+  const selectedSubId = userSubId ?? autoSubId;
 
+  const subList = useMemo(
+    () => orderSubtitlesWithSelectedFirst(resolvedSubs?.list ?? [], selectedSubId),
+    [resolvedSubs, selectedSubId],
+  );
+
+  // Handlers
+  function handleEpisodeChange(nextSeason: number, nextEpisode: number) {
     setSeason(nextSeason);
     setEpisode(nextEpisode);
-    setError(null);
-    setLoading(true);
-
-    const params: EmbedParams = {
-      ...mediaParams,
-      season: nextSeason,
-      episode: nextEpisode,
-    };
-
-    try {
-      await loadStream(params);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load episode');
-    } finally {
-      setLoading(false);
-    }
+    setStreamUrl(null);
+    setUserSubId(null);
   }
 
   function handleSubtitleTrackChange(fileId: number | null) {
-    setSelectedSubId(fileId);
-    setSubList((prev) => orderSubtitlesWithSelectedFirst(prev, fileId));
+    setUserSubId(fileId);
   }
 
   const selectedSub = subList.find((s) => s.fileId === selectedSubId) ?? null;
+
+  const poster = streamData?.backdrop ?? titleData?.primaryImage?.url;
+  const title = streamData?.title ?? titleData?.titleText?.text ?? null;
+
+  const loading = titleQuery.isLoading || streamQuery.isFetching;
+  const error =
+    (titleQuery.error instanceof Error ? titleQuery.error.message : null) ??
+    (streamQuery.error instanceof Error ? streamQuery.error.message : null) ??
+    (!mediaId ? 'Invalid IMDb ID. Expected format: tt2575988' : null);
 
   return {
     titleId,
@@ -183,8 +113,8 @@ export function usePlayerSession(titleId: string) {
     subList,
     selectedSubId,
     selectedSub,
-    subLoading,
-    subError,
+    subLoading: subtitleQuery.isFetching,
+    subError: subtitleQuery.error instanceof Error ? subtitleQuery.error.message : null,
     handleEpisodeChange,
     handleSubtitleTrackChange,
   };
