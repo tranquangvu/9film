@@ -38,9 +38,9 @@ nicefilm/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/titles/:imdbId` | Fetch IMDb title metadata via GraphQL |
-| GET | `/api/subtitles/search` | Search subtitles via OpenSubtitles |
-| GET | `/api/subtitles/vtt` | Download subtitle as WebVTT |
+| GET | `/api/title/:imdb` | Fetch IMDb title metadata via GraphQL |
+| GET | `/api/subtitle/search` | Search subtitles via OpenSubtitles |
+| GET | `/api/subtitle/download` | Download subtitle as WebVTT |
 | GET | `/api/stream` | Proxy stream URLs from CDN |
 | GET | `/proxy/hls` | HLS segment/manifest proxy with URL rewriting |
 

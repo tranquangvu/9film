@@ -65,7 +65,7 @@ export function originalLanguageFromTitle(title: ImdbTitle): OriginalLanguage {
 
 export async function fetchTitle(imdbId: string): Promise<ImdbTitle> {
   const id = encodeURIComponent(normalizeImdbId(imdbId));
-  const res = await fetch(`/api/titles/${id}`);
+  const res = await fetch(`/api/title/${id}`);
   const json = (await res.json()) as ImdbTitle & { error?: string };
 
   if (!res.ok) {

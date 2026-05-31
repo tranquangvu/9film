@@ -135,7 +135,7 @@ export async function fetchSubtitles(ctx: SubtitleSearchContext): Promise<Subtit
   const query = buildSearchQuery(ctx);
   if (!query) return [];
 
-  const res = await fetch(`/api/subtitles/search?${query}`);
+  const res = await fetch(`/api/subtitle/search?${query}`);
   const json = (await res.json()) as {
     subtitles?: SubtitleOption[];
     error?: string;
@@ -149,5 +149,5 @@ export async function fetchSubtitles(ctx: SubtitleSearchContext): Promise<Subtit
 }
 
 export function subtitleVttUrl(fileId: number): string {
-  return `/api/subtitles/vtt?file_id=${fileId}`;
+  return `/api/subtitle/download?file_id=${fileId}`;
 }

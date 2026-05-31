@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ProxyHLS(cfg *config.Config) gin.HandlerFunc {
+func ForwardHLS(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetURL := c.Query("url")
 		if targetURL == "" {

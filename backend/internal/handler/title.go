@@ -10,7 +10,7 @@ import (
 )
 
 func GetTitle(c *gin.Context) {
-	imdbID := c.Param("id")
+	imdbID := c.Param("imdb")
 	if imdbID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing title id"})
 		return
