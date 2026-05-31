@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import type { EpisodeMap } from '@/utils/episodes';
-import { mergeEpisodeFromStream } from '@/utils/embed-params';
-import { pickBestStreamUrl } from '@/utils/fetch-stream';
-import { embedParamsFromTitle } from '@/utils/imdb';
 import {
-  orderSubtitlesWithSelectedFirst,
-  resolveSubtitleSelection,
-} from '@/utils/opensubtitles';
-import { isImdbId, parseMediaId, type EmbedParams } from '@/utils/parse-embed-path';
+  bestUrl,
+  isImdb,
+  mergeEpisode,
+  parseId,
+  type EmbedParams,
+  type EpisodeMap,
+} from '@/utils/stream';
+import { embedParams } from '@/utils/title';
+import { orderSubs, pickSubs } from '@/utils/subtitle';
 import { useTitleQuery } from './use-title-query';
 import { useStreamQuery } from './use-stream-query';
 import { useSubtitlesQuery } from './use-subtitles-query';
@@ -18,7 +19,7 @@ export function usePlayerSession(titleId: string) {
   const [userStreamUrl, setStreamUrl] = useState<string | null>(null);
   const [userSubId, setUserSubId] = useState<number | null>(null);
 
-  const mediaId = parseMediaId(titleId);
+  const mediaId = parseId(titleId);
 
   // 1. Title
   const titleQuery = useTitleQuery(titleId);
@@ -26,7 +27,7 @@ export function usePlayerSession(titleId: string) {
 
   // 2. Stream — re-fetches automatically when season/episode change
   const baseParams = useMemo<EmbedParams | null>(
-    () => (titleData ? embedParamsFromTitle(titleData, mediaId ?? titleId) : null),
+    () => (titleData ? embedParams(titleData, mediaId ?? titleId) : null),
     [titleData, mediaId, titleId],
   );
 
@@ -40,7 +41,7 @@ export function usePlayerSession(titleId: string) {
 
   const allUrls = useMemo(() => streamData?.stream_urls ?? [], [streamData]);
   const autoStreamUrl = useMemo(
-    () => (allUrls.length > 0 ? pickBestStreamUrl(allUrls) : null),
+    () => (allUrls.length > 0 ? bestUrl(allUrls) : null),
     [allUrls],
   );
   const streamUrl = userStreamUrl ?? autoStreamUrl;
@@ -52,26 +53,26 @@ export function usePlayerSession(titleId: string) {
 
   // 3. Subtitles — depends on resolved stream params + title language
   const resolvedStreamParams = useMemo<EmbedParams | null>(
-    () => (streamData && streamParams ? mergeEpisodeFromStream(streamParams, streamData) : null),
+    () => (streamData && streamParams ? mergeEpisode(streamParams, streamData) : null),
     [streamData, streamParams],
   );
 
   const imdbId =
     streamData?.imdb_id ??
-    (baseParams && isImdbId(baseParams.mediaId) ? baseParams.mediaId : null);
+    (baseParams && isImdb(baseParams.mediaId) ? baseParams.mediaId : null);
 
   const subtitleQuery = useSubtitlesQuery(resolvedStreamParams, imdbId, titleData);
 
   const resolvedSubs = useMemo(() => {
     if (!subtitleQuery.data || !titleData || !resolvedStreamParams) return null;
-    return resolveSubtitleSelection(subtitleQuery.data, titleData, resolvedStreamParams);
+    return pickSubs(subtitleQuery.data, titleData, resolvedStreamParams);
   }, [subtitleQuery.data, titleData, resolvedStreamParams]);
 
   const autoSubId = resolvedSubs?.fileId ?? null;
   const selectedSubId = userSubId ?? autoSubId;
 
   const subList = useMemo(
-    () => orderSubtitlesWithSelectedFirst(resolvedSubs?.list ?? [], selectedSubId),
+    () => orderSubs(resolvedSubs?.list ?? [], selectedSubId),
     [resolvedSubs, selectedSubId],
   );
 

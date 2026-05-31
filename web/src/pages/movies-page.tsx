@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { movies, genres } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
-import { EmptyState } from '@/components/system/common/empty-state';
+import { Empty } from '@/components/system/common/empty';
 import { cn } from '@/utils/cn';
 import { Tag } from '@/components/ui/tag';
 import { buttonVariants } from '@/components/ui/button';
@@ -101,7 +101,7 @@ export default function MoviesPage() {
         <AnimatePresence mode="wait">
           {filtered.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <EmptyState
+              <Empty
                 icon="🎬"
                 title="No movies found"
                 message="Try selecting different genres."

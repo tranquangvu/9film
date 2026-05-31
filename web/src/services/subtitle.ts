@@ -1,17 +1,22 @@
-import type { SubtitleOption, SubtitleSearchContext } from '@/utils/opensubtitles';
-import { normalizeSubtitleLanguage } from '@/utils/subtitle-languages';
-import { isImdbId, type EmbedParams } from '@/utils/parse-embed-path';
+import type { SubtitleOption, SubtitleSearchContext } from '@/utils/subtitle';
+import { isImdb } from '@/utils/stream';
+
+function normalizeLanguage(code: string): string {
+  const trimmed = code.trim().toLowerCase();
+  if (trimmed === 'vn') return 'vi';
+  return trimmed;
+}
 
 function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
   const { params, imdbId, languages = 'en' } = ctx;
   const q = new URLSearchParams({
     type: params.mediaType,
-    languages: normalizeSubtitleLanguage(languages),
+    languages: normalizeLanguage(languages),
   });
 
   if (imdbId) {
     q.set('imdb_id', imdbId);
-  } else if (isImdbId(params.mediaId)) {
+  } else if (isImdb(params.mediaId)) {
     q.set('imdb_id', params.mediaId);
   } else if (/^\d+$/.test(params.mediaId)) {
     q.set('tmdb_id', params.mediaId);

@@ -2,9 +2,7 @@ import '@videojs/react/video/skin.css';
 import { createPlayer } from '@videojs/react';
 import { videoFeatures, VideoSkin, Video } from '@videojs/react/video';
 import { HlsVideo } from '@videojs/react/media/hls-video';
-import { proxyStreamUrl } from '@/utils/proxy-url';
-import { subtitleVttUrl } from '@/utils/opensubtitles';
-import type { SubtitleOption } from '@/utils/opensubtitles';
+import type { SubtitleOption } from '@/utils/subtitle';
 
 const Player = createPlayer({ features: videoFeatures });
 
@@ -18,7 +16,7 @@ function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
   return (
     <track
       kind="subtitles"
-      src={subtitleVttUrl(subtitle.fileId)}
+      src={`/api/subtitle/download?file_id=${subtitle.fileId}`}
       srcLang={subtitle.language}
       label={subtitle.label}
       default
@@ -36,7 +34,9 @@ export function VideoPlayer({ src, poster, subtitle }: VideoPlayerProps) {
   }
 
   const isHls = src.includes('.m3u8');
-  const playbackUrl = isHls ? proxyStreamUrl(src) : src;
+  const playbackUrl = isHls && import.meta.env.DEV
+    ? `/proxy/hls?url=${encodeURIComponent(src)}`
+    : src;
 
   return (
     <div className="w-full h-full *:w-full *:h-full **:data-vjs-player:w-full **:data-vjs-player:h-full">

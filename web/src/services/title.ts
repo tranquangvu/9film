@@ -1,8 +1,8 @@
-import type { ImdbTitle, OriginalLanguage } from '@/utils/imdb';
-import { normalizeImdbId, originalLanguageFromTitle } from '@/utils/imdb';
+import type { ImdbTitle, OriginalLanguage } from '@/utils/title';
+import { normId, origLang } from '@/utils/title';
 
 export async function fetchTitle(imdbId: string, signal?: AbortSignal): Promise<ImdbTitle> {
-  const id = encodeURIComponent(normalizeImdbId(imdbId));
+  const id = encodeURIComponent(normId(imdbId));
   const res = await fetch(`/api/title/${id}`, { signal });
   const json = (await res.json()) as ImdbTitle & { error?: string };
 
@@ -22,5 +22,5 @@ export async function fetchOriginalLanguage(
   signal?: AbortSignal,
 ): Promise<OriginalLanguage> {
   const title = await fetchTitle(imdbId, signal);
-  return originalLanguageFromTitle(title);
+  return origLang(title);
 }

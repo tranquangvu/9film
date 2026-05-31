@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubtitles } from '@/services/subtitle';
-import { originalLanguageFromTitle, type ImdbTitle } from '@/utils/imdb';
-import type { EmbedParams } from '@/utils/parse-embed-path';
+import { origLang, type ImdbTitle } from '@/utils/title';
+import type { EmbedParams } from '@/utils/stream';
 
 export function useSubtitlesQuery(
   params: EmbedParams | null,
@@ -10,7 +10,7 @@ export function useSubtitlesQuery(
 ) {
   let language: string | null = null;
   try {
-    language = titleData ? originalLanguageFromTitle(titleData).code : null;
+    language = titleData ? origLang(titleData).code : null;
   } catch {
     language = null;
   }

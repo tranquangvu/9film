@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchStreamUrls } from '@/services/stream';
-import type { EmbedParams } from '@/utils/parse-embed-path';
+import type { EmbedParams } from '@/utils/stream';
 
 export function useStreamQuery(params: EmbedParams | null) {
   return useQuery({

@@ -1,11 +1,10 @@
-import { buildStreamQuery, type EmbedParams } from '@/utils/parse-embed-path';
-import type { StreamResponse } from '@/utils/fetch-stream';
+import { streamQuery, type EmbedParams, type StreamResponse } from '@/utils/stream';
 
 export async function fetchStreamUrls(
   params: EmbedParams,
   signal?: AbortSignal,
 ): Promise<StreamResponse> {
-  const query = buildStreamQuery(params);
+  const query = streamQuery(params);
   const res = await fetch(`/api/stream?${query}`, {
     headers: { Accept: 'application/json' },
     signal,

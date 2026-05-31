@@ -5,7 +5,7 @@ import { Tag } from '@/components/ui/tag';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { usePlayerSession } from '@/hooks/use-player-session';
-import { getSortedSeasons, getEpisodesForSeason } from '@/utils/episodes';
+import { episodes, seasons } from '@/utils/stream';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
@@ -31,8 +31,8 @@ export function WatchPage() {
   } = usePlayerSession(id);
 
   const isSeries = eps !== null;
-  const availableSeasons = eps ? getSortedSeasons(eps) : [];
-  const episodesBySeason = eps ? getEpisodesForSeason(eps, season) : [];
+  const availableSeasons = eps ? seasons(eps) : [];
+  const episodesBySeason = eps ? episodes(eps, season) : [];
 
   // ── Error / not-found state ────────────────────────────────────────────────
   if (error && !streamUrl) {

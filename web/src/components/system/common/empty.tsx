@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 
-interface EmptyStateProps {
+interface EmptyProps {
   icon?: string
   title: string
   message: string
@@ -11,14 +11,14 @@ interface EmptyStateProps {
   className?: string
 }
 
-export function EmptyState({
+export function Empty({
   icon = '🎬',
   title,
   message,
   actionLabel,
   onAction,
   className,
-}: EmptyStateProps) {
+}: EmptyProps) {
   return (
     <motion.div
       className={cn('flex flex-col items-center justify-center py-24 px-6 text-center', className)}

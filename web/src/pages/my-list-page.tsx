@@ -7,7 +7,7 @@ import type { Movie } from '@/types';
 import { myList, continueWatching, movies } from '@/data/movies';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
-import { EmptyState } from '@/components/system/common/empty-state';
+import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
 
 type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
@@ -243,7 +243,7 @@ export default function MyListPage() {
               </motion.div>
             </>
           ) : (
-            <EmptyState
+            <Empty
               icon="📋"
               title={emptyMessages[activeTab].title}
               message={emptyMessages[activeTab].message}

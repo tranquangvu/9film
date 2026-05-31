@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
 import { movies } from '@/data/movies';
-import { EmptyState } from '@/components/system/common/empty-state';
+import { Empty } from '@/components/system/common/empty';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
 import { Tag } from '@/components/ui/tag';
@@ -272,7 +272,7 @@ export default function SearchPage() {
               </motion.p>
 
               {totalCount === 0 ? (
-                <EmptyState
+                <Empty
                   icon="🔭"
                   title="Nothing found"
                   message={`We couldn't find anything matching "${query}". Try a different keyword.`}
