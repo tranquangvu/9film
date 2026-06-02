@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { genres, genreName } from '@/data/genres';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { Empty } from '@/components/system/common/empty';
+import { MovieGridSkeleton } from '@/components/system/movie/skeletons';
 import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { cn } from '@/utils/cn';
 import { toMovies } from '@/utils/title';
@@ -169,7 +170,7 @@ export default function BrowsePage() {
       <div className="px-4 md:px-8 lg:px-12 mt-6">
         <AnimatePresence mode="wait">
           {browse.isLoading ? (
-            <div className="text-zinc-500 text-sm py-16 text-center">Loading titles…</div>
+            <MovieGridSkeleton />
           ) : filtered.length === 0 ? (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Empty

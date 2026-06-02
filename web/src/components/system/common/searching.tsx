@@ -10,6 +10,7 @@ import { formatYear } from '@/utils/format';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tag } from '@/components/ui/tag';
+import { PosterTileSkeleton } from '@/components/system/movie/skeletons';
 
 interface SearchOverlayProps {
   isOpen: boolean
@@ -126,13 +127,23 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 <div className="flex items-center gap-2 mb-4">
                   <Search size={13} className="text-zinc-600" />
                   <span className="text-sm text-zinc-500">
-                    {results.length > 0 ? `${results.length} result${results.length !== 1 ? 's' : ''} for` : 'No results for'}
+                    {search.isLoading
+                      ? 'Searching'
+                      : results.length > 0
+                        ? `${results.length} result${results.length !== 1 ? 's' : ''} for`
+                        : 'No results for'}
                     {' '}
                     <span className="text-white font-medium">"{query}"</span>
                   </span>
                 </div>
 
-                {results.length > 0 ? (
+                {search.isLoading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <PosterTileSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : results.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {results.map(movie => (
                       <motion.button
@@ -203,7 +214,9 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   <span className="text-sm font-semibold text-zinc-300">Popular Right Now</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {popular.map(movie => (
+                  {trending.isLoading
+                    ? Array.from({ length: 4 }).map((_, i) => <PosterTileSkeleton key={i} />)
+                    : popular.map(movie => (
                     <motion.button
                       key={movie.id}
                       onClick={() => handleMovieClick(movie.id)}

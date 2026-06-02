@@ -5,6 +5,8 @@ import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { toMovie } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SearchResultsSkeleton } from '@/components/system/movie/skeletons';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
 import { Tag } from '@/components/ui/tag';
@@ -234,6 +236,19 @@ export default function SearchPage() {
                   Looking for something specific? Start typing above.
                 </p>
               </div>
+            </motion.div>
+          ) : search.isLoading ? (
+            /* Loading results */
+            <motion.div
+              key="searching"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mt-6 space-y-6"
+            >
+              <Skeleton className="h-4 w-40" />
+              <SearchResultsSkeleton />
             </motion.div>
           ) : (
             /* Search results */

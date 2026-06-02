@@ -8,6 +8,8 @@ import { continueWatchingIds, myListIds } from '@/data/user';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
+import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
 
@@ -225,8 +227,13 @@ export default function MyListPage() {
       </div>
 
       {/* Continue Watching */}
+      {showContinueWatching && continueList.loading && (
+        <div className="mt-6">
+          <CarouselSkeleton cardType="backdrop" count={4} />
+        </div>
+      )}
       <AnimatePresence mode="wait">
-        {showContinueWatching && continueWatching.length > 0 && (
+        {showContinueWatching && !continueList.loading && continueWatching.length > 0 && (
           <motion.div
             key="continue"
             initial={{ opacity: 0, y: 20 }}
@@ -249,7 +256,10 @@ export default function MyListPage() {
       {showGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
           {savedList.loading ? (
-            <p className="text-zinc-500 text-sm">Loading your list…</p>
+            <>
+              <Skeleton className="h-6 w-40 mb-5" />
+              <MovieGridSkeleton />
+            </>
           ) : visibleMovies.length > 0 ? (
             <>
               <h2 className="text-lg font-bold text-white mb-5">{sectionTitle}</h2>

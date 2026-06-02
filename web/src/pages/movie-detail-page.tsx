@@ -24,6 +24,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { DetailPageSkeleton } from '@/components/system/movie/skeletons';
 
 
 const containerVariants = {
@@ -60,11 +61,7 @@ export default function MovieDetailPage() {
   const heroScale = useTransform(scrollY, [0, 600], [1, 1.05]);
 
   if (titleQuery.isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <div className="text-zinc-500 text-sm">Loading title…</div>
-      </div>
-    );
+    return <DetailPageSkeleton />;
   }
 
   if (!movie) {

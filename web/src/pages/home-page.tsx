@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
+import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/movie/skeletons';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import {
   useResumeTitles,
@@ -158,42 +159,54 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
 }
 
 export default function HomePage() {
-  const heroMovies = useHeroTitles().data ?? [];
-  const top10Movies = useTop10Titles().data ?? [];
-  const popularMovies = usePopularMovieTitles().data ?? [];
-  const popularSeries = usePopularTVSeriesTitles().data ?? [];
-  const resumeMovies = useResumeTitles().data ?? [];
+  const heroQuery = useHeroTitles();
+  const top10Query = useTop10Titles();
+  const popularMoviesQuery = usePopularMovieTitles();
+  const popularSeriesQuery = usePopularTVSeriesTitles();
+  const resumeQuery = useResumeTitles();
+
+  const heroMovies = heroQuery.data ?? [];
+  const top10Movies = top10Query.data ?? [];
+  const popularMovies = popularMoviesQuery.data ?? [];
+  const popularSeries = popularSeriesQuery.data ?? [];
+  const resumeMovies = resumeQuery.data ?? [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      <div className="-mt-16 md:-mt-20">
-        <HeroBanner movies={heroMovies} />
-      </div>
+      {heroQuery.isLoading ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
-        {resumeMovies.length > 0 && (
+        {resumeQuery.loading ? (
+          <CarouselSkeleton cardType="backdrop" />
+        ) : resumeMovies.length > 0 ? (
           <AnimatedSection delay={0}>
             <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
           </AnimatedSection>
-        )}
+        ) : null}
 
-        {top10Movies.length > 0 && (
+        {top10Query.isLoading ? (
+          <CarouselSkeleton cardType="top10" />
+        ) : top10Movies.length > 0 ? (
           <AnimatedSection delay={0.05}>
             <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />
           </AnimatedSection>
-        )}
+        ) : null}
 
-        {popularMovies.length > 0 && (
+        {popularMoviesQuery.isLoading ? (
+          <CarouselSkeleton />
+        ) : popularMovies.length > 0 ? (
           <AnimatedSection delay={0.05}>
             <HorizontalCarousel title="Popular Movies" movies={popularMovies} />
           </AnimatedSection>
-        )}
+        ) : null}
 
-        {popularSeries.length > 0 && (
+        {popularSeriesQuery.isLoading ? (
+          <CarouselSkeleton />
+        ) : popularSeries.length > 0 ? (
           <AnimatedSection delay={0.05}>
             <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} />
           </AnimatedSection>
-        )}
+        ) : null}
 
         <AnimatedSection delay={0.05}>
           <QuickSearch />
