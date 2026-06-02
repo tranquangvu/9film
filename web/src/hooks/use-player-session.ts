@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   bestUrl,
   isImdb,
@@ -14,8 +14,10 @@ import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
 
 export function usePlayerSession(titleId: string) {
-  const [season, setSeason] = useState(1);
-  const [episode, setEpisode] = useState(1);
+  // The user's explicit episode pick. Null until they choose one — the initial
+  // TV request is deliberately "bare" so the upstream returns the season→episode map.
+  const [selected, setSelected] = useState<{ season: number; episode: number } | null>(null);
+  const [eps, setEps] = useState<EpisodeMap | null>(null);
   const [userStreamUrl, setStreamUrl] = useState<string | null>(null);
   const [userSubId, setUserSubId] = useState<number | null>(null);
 
@@ -31,10 +33,16 @@ export function usePlayerSession(titleId: string) {
     [titleData, mediaId, titleId],
   );
 
-  const streamParams = useMemo<EmbedParams | null>(
-    () => (baseParams ? { ...baseParams, season, episode } : null),
-    [baseParams, season, episode],
-  );
+  // The upstream only returns the full `eps` season→episode map on a request that
+  // omits season/episode (which also yields a default playable episode). So we keep
+  // the first TV request bare and only target a specific episode once the user picks one.
+  const streamParams = useMemo<EmbedParams | null>(() => {
+    if (!baseParams) return null;
+    if (baseParams.mediaType === 'tv' && selected) {
+      return { ...baseParams, season: selected.season, episode: selected.episode };
+    }
+    return baseParams;
+  }, [baseParams, selected]);
 
   const streamQuery = useStreamQuery(streamParams);
   const streamData = streamQuery.data;
@@ -46,10 +54,25 @@ export function usePlayerSession(titleId: string) {
   );
   const streamUrl = userStreamUrl ?? autoStreamUrl;
 
-  const eps = useMemo<EpisodeMap | null>(() => {
-    if (streamData?.eps && Object.keys(streamData.eps).length > 0) return streamData.eps;
-    return null;
+  // `eps` only arrives on the bare request, so persist it across the per-episode
+  // requests (which omit it) rather than deriving it from the latest response.
+  useEffect(() => {
+    if (streamData?.eps && Object.keys(streamData.eps).length > 0) {
+      setEps(streamData.eps);
+    }
   }, [streamData]);
+
+  // Reset per-title state when navigating to a different title.
+  useEffect(() => {
+    setSelected(null);
+    setEps(null);
+    setStreamUrl(null);
+    setUserSubId(null);
+  }, [titleId]);
+
+  // Displayed/selected episode: the user's pick, falling back to the upstream default.
+  const season = selected?.season ?? (streamData?.season != null ? Number(streamData.season) : 1);
+  const episode = selected?.episode ?? (streamData?.episode != null ? Number(streamData.episode) : 1);
 
   // 3. Subtitles — depends on resolved stream params + title language
   const resolvedStreamParams = useMemo<EmbedParams | null>(
@@ -78,8 +101,7 @@ export function usePlayerSession(titleId: string) {
 
   // Handlers
   function handleEpisodeChange(nextSeason: number, nextEpisode: number) {
-    setSeason(nextSeason);
-    setEpisode(nextEpisode);
+    setSelected({ season: nextSeason, episode: nextEpisode });
     setStreamUrl(null);
     setUserSubId(null);
   }
