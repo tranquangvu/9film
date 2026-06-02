@@ -40,7 +40,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
             variant="ghost"
             onClick={onSidebarToggle}
             aria-label="Open menu"
-            className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 border-0 bg-transparent shadow-none"
+            className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
           >
             <Menu size={20} />
           </Button>
@@ -76,7 +76,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
           variant="ghost"
           onClick={onSearchOpen}
           aria-label="Search"
-          className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 border-0 bg-transparent shadow-none"
+          className="p-2 text-zinc-400 hover:text-white rounded-lg border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
         >
           <Search size={18} />
         </Button>

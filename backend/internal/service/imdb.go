@@ -426,7 +426,7 @@ func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
 	mediaType := "movie"
 	if title.TitleType != nil {
 		switch title.TitleType.ID {
-		case "tvSeries", "tvMiniSeries", "tvSpecial":
+		case "tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial":
 			mediaType = "tvseries"
 		}
 	}

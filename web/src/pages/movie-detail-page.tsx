@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Play,
   Heart,
@@ -11,8 +11,6 @@ import {
   Clock,
   MapPin,
   Languages,
-  ChevronLeft,
-  ChevronRight,
   Layers,
 } from 'lucide-react';
 import { useTitleQuery } from '@/hooks/queries/use-title-query';
@@ -50,7 +48,6 @@ export default function MovieDetailPage() {
   const similarQuery = useSimilarQuery(id);
   const movie = titleQuery.data ? toMovie(titleQuery.data) : null;
   const similarMovies = toMovies(similarQuery.data ?? []);
-
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -306,111 +303,20 @@ export default function MovieDetailPage() {
             </section>
           )}
 
-
           {/* ── More Like This ── */}
           {similarMovies.length > 0 && (
-            <MoreLikeThisCarousel movies={similarMovies} />
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4">More Like This</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+                {similarMovies.map((movie) => (
+                  <MovieCard key={movie.id} movie={movie} size="lg" className="w-full" />
+                ))}
+              </div>
+            </section>
           )}
 
         </div>
       </motion.div>
     </div>
-  );
-}
-
-function MoreLikeThisCarousel({ movies: items }: { movies: Movie[] }) {
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-
-  const updateArrows = useCallback(() => {
-    const el = rowRef.current;
-    if (!el) return;
-    setShowLeft(el.scrollLeft > 8);
-    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
-  }, []);
-
-  useEffect(() => {
-    updateArrows();
-    const el = rowRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(updateArrows);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [updateArrows]);
-
-  const scroll = (dir: 'left' | 'right') => {
-    const el = rowRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === 'left' ? -600 : 600, behavior: 'smooth' });
-    setTimeout(updateArrows, 350);
-  };
-
-  return (
-    <section
-      className="relative -mx-4 md:-mx-8 lg:-mx-12"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
-      <h2 className="text-xl font-bold text-white mb-5 px-4 md:px-8 lg:px-12">More Like This</h2>
-
-      <div className="relative">
-        <AnimatePresence>
-          {showLeft && isHovering && (
-            <motion.div
-              className="absolute left-0 top-0 bottom-0 z-20 flex items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <div className="absolute inset-0 w-24 bg-linear-to-r from-background to-transparent pointer-events-none" />
-              <button
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'ml-4 md:ml-8 lg:ml-12 hover:bg-white/20')}
-                onClick={() => scroll('left')}
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {showRight && isHovering && (
-            <motion.div
-              className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <div className="absolute inset-0 bg-linear-to-l from-background to-transparent pointer-events-none" />
-              <button
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'mr-4 md:mr-8 lg:mr-12 hover:bg-white/20')}
-                onClick={() => scroll('right')}
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div
-          ref={rowRef}
-          className="flex gap-4 py-2 px-4 md:px-8 lg:px-12"
-          onScroll={updateArrows}
-          style={{ overflowX: 'auto', overflowY: 'clip', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {items.map((m) => (
-            <div key={m.id} className="flex-none w-36 sm:w-40 md:w-44">
-              <MovieCard movie={m} size="sm" className="w-full" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
