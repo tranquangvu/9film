@@ -160,7 +160,7 @@ export function HeroBannerSkeleton() {
   );
 }
 
-/** Mirrors MovieDetailPage: full-screen hero + About + More Like This row. */
+/** Mirrors MovieDetailPage: full-screen hero + Episodes, About, Cast, More Like This. */
 export function DetailPageSkeleton() {
   return (
     <div className="min-h-screen bg-background">
@@ -169,11 +169,7 @@ export function DetailPageSkeleton() {
         <div className="absolute inset-0 gradient-overlay" />
         <div className="absolute inset-0 gradient-overlay-right" />
 
-        <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-16 md:px-8 lg:px-12 max-w-4xl space-y-5">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-6 w-16 rounded-full" />
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl space-y-5">
           <Skeleton className="h-6 lg:h-8 w-2/3 rounded-lg" />
           <div className="flex flex-wrap items-center gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -192,18 +188,48 @@ export function DetailPageSkeleton() {
         </div>
       </div>
 
-      <div className="px-4 md:px-8 lg:px-12 py-8 space-y-12">
+      <div className="px-4 md:px-8 lg:px-12 pt-0 pb-8 space-y-10">
+        {/* Episodes — season select + episode pills */}
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-28" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-full" />
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-12 rounded-full" />
+            ))}
+          </div>
+        </div>
+
+        {/* About — heading + paragraph lines */}
         <div className="space-y-3">
-          <Skeleton className="h-6 md:h-8 w-32" />
+          <Skeleton className="h-6 w-24" />
           <Skeleton className="h-4 w-full max-w-3xl" />
           <Skeleton className="h-4 w-5/6 max-w-3xl" />
           <Skeleton className="h-4 w-4/6 max-w-3xl" />
         </div>
+
+        {/* Cast — avatar + name/character rows */}
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-20" />
+          <div className="flex flex-wrap gap-x-6 gap-y-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 w-44">
+                <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+                <div className="min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* More Like This — responsive poster grid */}
         <div className="space-y-4">
           <Skeleton className="h-6 w-40" />
-          <div className="flex gap-4 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <MovieCardSkeleton key={i} size="sm" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <MovieCardSkeleton key={i} size="lg" className="w-full" />
             ))}
           </div>
         </div>

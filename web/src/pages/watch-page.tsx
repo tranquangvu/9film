@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { Tag } from '@/components/ui/tag';
@@ -11,6 +11,15 @@ import { episodes, seasons } from '@/utils/stream';
 export function WatchPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Optional deep link from the detail-page episode selector: /watch/:id?s=1&e=3
+  const seasonParam = Number(searchParams.get('s'));
+  const episodeParam = Number(searchParams.get('e'));
+  const initialEpisode =
+    Number.isFinite(seasonParam) && seasonParam > 0 && Number.isFinite(episodeParam) && episodeParam > 0
+      ? { season: seasonParam, episode: episodeParam }
+      : null;
 
   const {
     eps,
@@ -28,7 +37,7 @@ export function WatchPage() {
     selectedSub,
     handleEpisodeChange,
     handleSubtitleTrackChange,
-  } = usePlayerSession(id);
+  } = usePlayerSession(id, initialEpisode);
 
   const isSeries = eps !== null;
   const availableSeasons = eps ? seasons(eps) : [];

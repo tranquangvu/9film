@@ -13,11 +13,20 @@ import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
 
-export function usePlayerSession(titleId: string) {
-  // The user's explicit episode pick. Null until they choose one — the initial
-  // TV request is deliberately "bare" so the upstream returns the season→episode map.
-  const [selected, setSelected] = useState<{ season: number; episode: number } | null>(null);
-  const [eps, setEps] = useState<EpisodeMap | null>(null);
+export function usePlayerSession(
+  titleId: string,
+  initialEpisode?: { season: number; episode: number } | null,
+) {
+  const initialSeason = initialEpisode?.season ?? null;
+  const initialEp = initialEpisode?.episode ?? null;
+
+  // The user's explicit episode pick. May be seeded from a deep link (e.g. the
+  // detail-page episode selector); otherwise null so the first TV request stays bare.
+  const [selected, setSelected] = useState<{ season: number; episode: number } | null>(
+    initialSeason != null && initialEp != null
+      ? { season: initialSeason, episode: initialEp }
+      : null,
+  );
   const [userStreamUrl, setStreamUrl] = useState<string | null>(null);
   const [userSubId, setUserSubId] = useState<number | null>(null);
 
@@ -33,9 +42,20 @@ export function usePlayerSession(titleId: string) {
     [titleData, mediaId, titleId],
   );
 
-  // The upstream only returns the full `eps` season→episode map on a request that
-  // omits season/episode (which also yields a default playable episode). So we keep
-  // the first TV request bare and only target a specific episode once the user picks one.
+  // The `eps` season→episode map only comes back on a request that omits
+  // season/episode, so fetch it from a dedicated bare request (series only). With no
+  // episode selected this is the same query as the stream below, so it's deduped.
+  const epsParams = useMemo<EmbedParams | null>(
+    () => (baseParams?.mediaType === 'tv' ? baseParams : null),
+    [baseParams],
+  );
+  const epsQuery = useStreamQuery(epsParams);
+  const eps = useMemo<EpisodeMap | null>(() => {
+    const map = epsQuery.data?.eps;
+    return map && Object.keys(map).length > 0 ? map : null;
+  }, [epsQuery.data]);
+
+  // The playable stream: bare for movies / no selection, episode-specific once picked.
   const streamParams = useMemo<EmbedParams | null>(() => {
     if (!baseParams) return null;
     if (baseParams.mediaType === 'tv' && selected) {
@@ -54,21 +74,16 @@ export function usePlayerSession(titleId: string) {
   );
   const streamUrl = userStreamUrl ?? autoStreamUrl;
 
-  // `eps` only arrives on the bare request, so persist it across the per-episode
-  // requests (which omit it) rather than deriving it from the latest response.
+  // Reset per-title state when navigating to a different title or deep-link target.
   useEffect(() => {
-    if (streamData?.eps && Object.keys(streamData.eps).length > 0) {
-      setEps(streamData.eps);
-    }
-  }, [streamData]);
-
-  // Reset per-title state when navigating to a different title.
-  useEffect(() => {
-    setSelected(null);
-    setEps(null);
+    setSelected(
+      initialSeason != null && initialEp != null
+        ? { season: initialSeason, episode: initialEp }
+        : null,
+    );
     setStreamUrl(null);
     setUserSubId(null);
-  }, [titleId]);
+  }, [titleId, initialSeason, initialEp]);
 
   // Displayed/selected episode: the user's pick, falling back to the upstream default.
   const season = selected?.season ?? (streamData?.season != null ? Number(streamData.season) : 1);

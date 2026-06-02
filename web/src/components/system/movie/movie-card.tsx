@@ -135,15 +135,12 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
         <motion.div
           className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-6.5"
           style={{
-            background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
           }}
           animate={{ opacity: isHovered ? 0 : 1 }}
           transition={{ duration: 0.18 }}
         >
-          <p
-            className="text-white text-sm font-bold line-clamp-2 leading-snug"
-            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7)' }}
-          >
+          <p className="text-white text-sm font-bold line-clamp-2 leading-snug">
             {movie.title}
           </p>
         </motion.div>

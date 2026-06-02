@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import {
   Play,
   Heart,
@@ -15,11 +15,14 @@ import {
 } from 'lucide-react';
 import { useTitleQuery } from '@/hooks/queries/use-title-query';
 import { useSimilarQuery } from '@/hooks/queries/use-similar-query';
-import { toMovie, toMovies } from '@/utils/title';
+import { useStreamQuery } from '@/hooks/queries/use-stream-query';
+import { toMovie, toMovies, embedParams } from '@/utils/title';
+import { seasons, episodes, type EmbedParams } from '@/utils/stream';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
+import { Tag } from '@/components/ui/tag';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
 import { DetailPageSkeleton } from '@/components/system/movie/skeletons';
@@ -49,9 +52,42 @@ export default function MovieDetailPage() {
   const movie = titleQuery.data ? toMovie(titleQuery.data) : null;
   const similarMovies = toMovies(similarQuery.data ?? []);
 
+  // For series, fetch the season→episode map (a bare stream request) so the
+  // episode selector can offer real per-season episodes.
+  const seriesParams = useMemo<EmbedParams | null>(() => {
+    if (!titleQuery.data) return null;
+    const params = embedParams(titleQuery.data, id);
+    return params.mediaType === 'tv' ? params : null;
+  }, [titleQuery.data, id]);
+  const epsQuery = useStreamQuery(seriesParams);
+  const eps = useMemo(() => {
+    const map = epsQuery.data?.eps;
+    return map && Object.keys(map).length > 0 ? map : null;
+  }, [epsQuery.data]);
+
+  // All title images from the images connection — deduped.
+  const galleryImages = useMemo<string[]>(() => {
+    const title = titleQuery.data;
+    if (!title) return [];
+    const urls = (title.images?.edges?.map((edge) => edge?.node?.url) ?? []).filter(
+      (url): url is string => !!url,
+    );
+    return [...new Set(urls)];
+  }, [titleQuery.data]);
+
+  const [selectedSeason, setSelectedSeason] = useState(1);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    if (galleryImages.length < 2) return;
+    const timer = setInterval(() => {
+      setActiveImageIndex((i) => (i + 1) % galleryImages.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [galleryImages.length]);
 
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3]);
@@ -84,17 +120,32 @@ export default function MovieDetailPage() {
     setTimeout(() => setShareTooltip(false), 2000);
   };
 
+  const availableSeasons = eps ? seasons(eps) : [];
+  // Fall back to the first available season if the picked one isn't in the map.
+  const activeSeason = availableSeasons.includes(selectedSeason)
+    ? selectedSeason
+    : availableSeasons[0] ?? 1;
+  const episodeList = eps ? episodes(eps, activeSeason) : [];
+
   return (
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
       <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
-        {/* Backdrop */}
+        {/* Backdrop — crossfades through gallery images */}
         <motion.div className="absolute inset-0" style={{ opacity: heroOpacity, scale: heroScale }}>
-          <img
-            src={movie.backdrop}
-            alt={movie.title}
-            className="object-cover w-full h-full"
-          />
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={galleryImages[activeImageIndex] ?? movie.backdrop}
+              src={galleryImages[activeImageIndex] ?? movie.backdrop}
+              alt={movie.title}
+              draggable={false}
+              className="absolute inset-0 object-cover w-full h-full"
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: 'easeInOut' }}
+            />
+          </AnimatePresence>
         </motion.div>
 
         {/* Gradient overlays */}
@@ -116,27 +167,11 @@ export default function MovieDetailPage() {
 
         {/* Hero content */}
         <motion.div
-          className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-16 md:px-8 lg:px-12 max-w-4xl"
+          className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {/* Badges row */}
-          <motion.div variants={itemVariants} className="flex items-center gap-3 mb-4">
-            {movie.isTrending && (
-              <Badge variant="orange" className="px-3 py-1 font-bold tracking-widest">
-                Trending
-              </Badge>
-            )}
-            {movie.isNew && (
-              <Badge variant="emerald" className="px-3 py-1 font-bold tracking-widest">
-                New
-              </Badge>
-            )}
-            <Badge variant="default" className="px-3 py-1 font-bold tracking-widest">
-              {movie.type === 'series' ? 'Series' : 'Movie'}
-            </Badge>
-          </motion.div>
 
           {/* Title */}
           <motion.h1
@@ -172,17 +207,6 @@ export default function MovieDetailPage() {
               <MapPin className="w-3.5 h-3.5 text-zinc-500" />
               {movie.country}
             </span>
-            <span className="text-zinc-600">·</span>
-            <span className="flex items-center gap-1">
-              <Languages className="w-3.5 h-3.5 text-zinc-500" />
-              {movie.language}
-            </span>
-            <span className="text-zinc-600">·</span>
-            <span className="flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
-              <span className="font-bold text-white">{formatRating(movie.rating)}</span>
-              <span className="text-zinc-500 text-xs">IMDb</span>
-            </span>
             {movie.type === 'series' && (movie.totalSeasons || movie.totalEpisodes) && (
               <>
                 <span className="text-zinc-600">·</span>
@@ -191,11 +215,17 @@ export default function MovieDetailPage() {
                   {movie.totalSeasons != null && (
                     <>{movie.totalSeasons} {movie.totalSeasons === 1 ? 'Season' : 'Seasons'}</>
                   )}
-                  {movie.totalSeasons != null && movie.totalEpisodes != null && ' · '}
+                  {movie.totalSeasons != null && movie.totalEpisodes != null && ' / '}
                   {movie.totalEpisodes != null && <>{movie.totalEpisodes} Episodes</>}
                 </span>
               </>
             )}
+            <span className="text-zinc-600">·</span>
+            <span className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+              <span className="font-bold text-white">{formatRating(movie.rating)}</span>
+              <span className="text-zinc-500 text-xs">IMDb</span>
+            </span>
           </motion.div>
 
           {/* Genre badges */}
@@ -274,6 +304,26 @@ export default function MovieDetailPage() {
             </div>
           </motion.div>
         </motion.div>
+
+        {/* Dot indicators — auto-rotating hero backdrop */}
+        {galleryImages.length > 1 && (
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+            {galleryImages.map((url, i) => (
+              <button
+                key={url}
+                type="button"
+                onClick={() => setActiveImageIndex(i)}
+                aria-label={`Show image ${i + 1}`}
+                className={cn(
+                  'rounded-full transition-all duration-300 focus:outline-none cursor-pointer',
+                  i === activeImageIndex
+                    ? 'w-6 h-2 bg-orange-500 shadow-md shadow-orange-500/50'
+                    : 'w-2 h-2 bg-white/30 hover:bg-white/60',
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── CONTENT SECTION ── */}
@@ -281,9 +331,34 @@ export default function MovieDetailPage() {
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 bg-background px-4 md:px-8 lg:px-12 py-8"
+        className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8"
       >
-        <div className="space-y-12">
+        <div className="space-y-10">
+
+          {/* ── Episodes (series only) ── */}
+          {eps && (
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4">Episodes</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {availableSeasons.length > 1 && (
+                  <Select
+                    icon={<Layers size={14} />}
+                    value={String(activeSeason)}
+                    onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                    options={availableSeasons.map((s) => ({ id: String(s), label: `S${s}` }))}
+                  />
+                )}
+                {episodeList.map((ep) => (
+                  <Tag
+                    key={ep}
+                    onClick={() => navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)}
+                  >
+                    E{ep}
+                  </Tag>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ── About ── */}
           <section>
