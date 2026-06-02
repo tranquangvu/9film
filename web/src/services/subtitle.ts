@@ -1,17 +1,11 @@
 import type { SubtitleOption, SubtitleSearchContext } from '@/utils/subtitle';
 import { isImdb } from '@/utils/stream';
 
-function normalizeLanguage(code: string): string {
-  const trimmed = code.trim().toLowerCase();
-  if (trimmed === 'vn') return 'vi';
-  return trimmed;
-}
-
 function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
   const { params, imdbId, languages = 'en' } = ctx;
   const q = new URLSearchParams({
     type: params.mediaType,
-    languages: normalizeLanguage(languages),
+    languages,
   });
 
   if (imdbId) {
@@ -24,7 +18,7 @@ function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
     return null;
   }
 
-  if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
+  if (params.mediaType === 'tvseries' && params.season != null && params.episode != null) {
     q.set('season', String(params.season));
     q.set('episode', String(params.episode));
   }
@@ -32,7 +26,7 @@ function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
   return q.toString();
 }
 
-export async function fetchSubtitles(
+export async function getSubtitles(
   ctx: SubtitleSearchContext,
   signal?: AbortSignal,
 ): Promise<SubtitleOption[]> {

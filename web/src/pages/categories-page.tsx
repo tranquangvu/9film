@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, TrendingUp } from 'lucide-react';
 import { genres } from '@/data/genres';
-import { useTrendingTitles } from '@/hooks/use-titles-query';
+import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { formatYear } from '@/utils/format';
 import { toMovies } from '@/utils/title';
 
@@ -29,9 +29,9 @@ const FEATURED_COLLECTIONS = [
 
 export default function CategoriesPage() {
   const navigate = useNavigate();
-  const trending = useTrendingTitles(12);
+  const trending = useBrowseTitleQuery({ sort: 'popular', first: 12 });
   const featuredMovies = useMemo(() => {
-    const list = toMovies(trending.data ?? []);
+    const list = toMovies(trending.data?.titles ?? []);
     return FEATURED_INDICES.map((i) => list[i]).filter(Boolean);
   }, [trending.data]);
 

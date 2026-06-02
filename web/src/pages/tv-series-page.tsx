@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { genres, genreName } from '@/data/genres';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { Empty } from '@/components/system/common/empty';
-import { useBrowseTitles } from '@/hooks/use-titles-query';
+import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { cn } from '@/utils/cn';
 import { toMovies } from '@/utils/title';
 import { Tag } from '@/components/ui/tag';
@@ -24,8 +24,8 @@ export default function TvSeriesPage() {
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
   const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
-  const browse = useBrowseTitles({
-    type: 'tv',
+  const browse = useBrowseTitleQuery({
+    type: 'tvseries',
     genre: primaryGenre,
     first: 50,
   });

@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchSimilar } from '@/services/title';
+import { getSimilarTitles } from '@/services/title';
 import { normId } from '@/utils/title';
 
-export function useSimilarTitles(imdbId: string, limit = 6) {
+export function useSimilarQuery(imdbId: string, limit = 6) {
   const id = normId(imdbId);
   return useQuery({
     queryKey: ['titles', 'similar', id, limit],
-    queryFn: ({ signal }) => fetchSimilar(id, limit, signal),
+    queryFn: ({ signal }) => getSimilarTitles(id, limit, signal),
     enabled: !!id,
     staleTime: 10 * 60 * 1000,
   });

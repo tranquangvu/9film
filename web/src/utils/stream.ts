@@ -1,4 +1,4 @@
-export type MediaType = 'tv' | 'movie';
+export type MediaType = 'tvseries' | 'movie';
 
 export interface EmbedParams {
   mediaType: MediaType;
@@ -23,7 +23,7 @@ export function isImdb(id: string): boolean {
 export function streamQuery(params: EmbedParams): string {
   const q = new URLSearchParams({ type: params.mediaType });
   q.set(isImdb(params.mediaId) ? 'imdb' : 'tmdb', params.mediaId);
-  if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
+  if (params.mediaType === 'tvseries' && params.season != null && params.episode != null) {
     q.set('season', String(params.season));
     q.set('episode', String(params.episode));
   }
@@ -54,7 +54,7 @@ export function mergeEpisode(
   params: EmbedParams,
   data: Pick<StreamResponse, 'season' | 'episode'>,
 ): EmbedParams {
-  if (params.mediaType !== 'tv' || (params.season != null && params.episode != null)) {
+  if (params.mediaType !== 'tvseries' || (params.season != null && params.episode != null)) {
     return params;
   }
   const season = data.season != null ? Number(data.season) : undefined;

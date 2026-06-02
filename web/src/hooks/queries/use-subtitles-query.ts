@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchSubtitles } from '@/services/subtitle';
+import { getSubtitles } from '@/services/subtitle';
 import { origLang, type ImdbTitle } from '@/utils/title';
 import type { EmbedParams } from '@/utils/stream';
 
@@ -25,7 +25,7 @@ export function useSubtitlesQuery(
       language,
     ],
     queryFn: ({ signal }) =>
-      fetchSubtitles({ params: params!, imdbId: imdbId!, languages: language! }, signal),
+      getSubtitles({ params: params!, imdbId: imdbId!, languages: language! }, signal),
     enabled: !!(params && imdbId && language),
     staleTime: Infinity,
   });

@@ -15,8 +15,8 @@ import {
   ChevronRight,
   Layers,
 } from 'lucide-react';
-import { useTitleQuery } from '@/hooks/use-title-query';
-import { useSimilarTitles } from '@/hooks/use-similar-query';
+import { useTitleQuery } from '@/hooks/queries/use-title-query';
+import { useSimilarQuery } from '@/hooks/queries/use-similar-query';
 import { toMovie, toMovies } from '@/utils/title';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
@@ -46,7 +46,7 @@ export default function MovieDetailPage() {
   const heroRef = useRef<HTMLDivElement>(null);
 
   const titleQuery = useTitleQuery(id);
-  const similarQuery = useSimilarTitles(id);
+  const similarQuery = useSimilarQuery(id);
   const movie = titleQuery.data ? toMovie(titleQuery.data) : null;
   const similarMovies = toMovies(similarQuery.data ?? []);
 

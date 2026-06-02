@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
-import { useSearchTitles } from '@/hooks/use-search-query';
+import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { toMovie } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
 import { cn } from '@/utils/cn';
@@ -143,7 +143,7 @@ export default function SearchPage() {
     else setSearchParams({});
   };
 
-  const search = useSearchTitles(query, 30);
+  const search = useSearchQuery(query, 30);
 
   const results = useMemo(() => {
     if (!query.trim()) return { films: [], series: [] };

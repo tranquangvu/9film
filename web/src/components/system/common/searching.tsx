@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, TrendingUp, Star, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useSearchTitles } from '@/hooks/use-search-query';
-import { useTrendingTitles } from '@/hooks/use-titles-query';
+import { useSearchQuery } from '@/hooks/queries/use-search-query';
+import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { toMovie } from '@/utils/title';
 import { cn } from '@/utils/cn';
 import { formatYear } from '@/utils/format';
@@ -32,14 +32,14 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const search = useSearchTitles(query, 12);
-  const trending = useTrendingTitles(4);
+  const search = useSearchQuery(query, 12);
+  const trending = useBrowseTitleQuery({ sort: 'popular', first: 8 });
 
   const results = query.trim().length > 0
     ? (search.data ?? []).map(toMovie)
     : [];
 
-  const popular = (trending.data ?? []).map(toMovie).slice(0, 4);
+  const popular = (trending.data?.titles ?? []).map(toMovie).slice(0, 4);
 
   const handleClose = useCallback(() => {
     setQuery('');

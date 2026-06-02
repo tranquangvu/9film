@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchTitle } from '@/services/title';
+import { getTitle } from '@/services/title';
 import { parseId } from '@/utils/stream';
 
 export function useTitleQuery(titleId: string) {
@@ -7,7 +7,7 @@ export function useTitleQuery(titleId: string) {
 
   return useQuery({
     queryKey: ['title', mediaId],
-    queryFn: ({ signal }) => fetchTitle(mediaId!, signal),
+    queryFn: ({ signal }) => getTitle(mediaId!, signal),
     enabled: !!mediaId,
     staleTime: Infinity,
   });

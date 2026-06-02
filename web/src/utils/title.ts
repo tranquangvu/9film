@@ -58,7 +58,7 @@ export function normId(id: string): string {
 
 export function embedParams(title: ImdbTitle, mediaId: string) {
   const typeId = title.titleType?.id;
-  const mediaType: MediaType = typeId && TV_TYPES.has(typeId) ? 'tv' : 'movie';
+  const mediaType: MediaType = typeId && TV_TYPES.has(typeId) ? 'tvseries' : 'movie';
   return { mediaType, mediaId: title.id ?? normId(mediaId) };
 }
 
@@ -78,8 +78,12 @@ function mediaType(title: ImdbTitle): Movie['type'] {
 }
 
 function pickBackdrop(title: ImdbTitle): string {
-  const wide = title.images?.edges?.[0]?.node?.url;
-  return wide ?? title.primaryImage?.url ?? '';
+  const edges = title.images?.edges ?? [];
+  const landscape = edges.find((e) => {
+    const node = e?.node;
+    return !!node?.url && (node.width ?? 0) > (node.height ?? 0);
+  });
+  return landscape?.node?.url ?? edges[0]?.node?.url ?? title.primaryImage?.url ?? '';
 }
 
 function mapCast(title: ImdbTitle): CastMember[] {
@@ -138,4 +142,27 @@ export function filterMovies(titles: ImdbTitle[], type?: Movie['type']): Movie[]
 
 export function topRated(titles: ImdbTitle[], limit = 10): Movie[] {
   return [...toMovies(titles)].sort((a, b) => b.rating - a.rating).slice(0, limit);
+}
+
+const HERO_GENRES = new Set(['Action', 'Adventure', 'Sci-Fi', 'Thriller', 'Crime', 'Animation']);
+
+function imageArea(title: ImdbTitle): number {
+  return (title.primaryImage?.width ?? 0) * (title.primaryImage?.height ?? 0);
+}
+
+// Picks the strongest hero candidates: those in a marquee genre with a primary
+// image, ranked by image resolution first (sharp banners) then user rating.
+export function heroTitles(titles: ImdbTitle[], limit = 8): Movie[] {
+  const candidates = titles.filter((t) => {
+    if (!t.id || !t.primaryImage?.url) return false;
+    return (t.genres?.genres ?? []).some((g) => g.text && HERO_GENRES.has(g.text));
+  });
+
+  candidates.sort((a, b) => {
+    const byArea = imageArea(b) - imageArea(a);
+    if (byArea !== 0) return byArea;
+    return (b.ratingsSummary?.aggregateRating ?? 0) - (a.ratingsSummary?.aggregateRating ?? 0);
+  });
+
+  return toMovies(candidates.slice(0, limit));
 }

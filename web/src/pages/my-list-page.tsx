@@ -5,7 +5,7 @@ import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { Movie } from '@/types';
 import { continueWatchingIds, myListIds } from '@/data/user';
-import { useTitleList } from '@/hooks/use-title-list';
+import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import { Empty } from '@/components/system/common/empty';
@@ -157,24 +157,24 @@ export default function MyListPage() {
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const savedList = useTitleList(myListIds);
+  const savedList = useTitlesQuery(myListIds);
   const continueIds = continueWatchingIds.map((item) => item.id);
-  const continueList = useTitleList(continueIds);
+  const continueList = useTitlesQuery(continueIds);
 
   const listItems = useMemo(
-    () => savedList.movies.filter((m) => !removedIds.has(m.id)),
-    [savedList.movies, removedIds],
+    () => savedList.data.filter((m) => !removedIds.has(m.id)),
+    [savedList.data, removedIds],
   );
 
   const continueWatching = useMemo(
-    () => continueList.movies.map((movie) => {
+    () => continueList.data.map((movie) => {
       const progress = continueWatchingIds.find((item) => item.id === movie.id)?.progress;
       return progress != null ? { ...movie, progress } : movie;
     }),
-    [continueList.movies],
+    [continueList.data],
   );
 
-  const collections = useMemo(() => buildCollections(savedList.movies), [savedList.movies]);
+  const collections = useMemo(() => buildCollections(savedList.data), [savedList.data]);
 
   const handleRemove = (id: string) => {
     setRemovedIds((prev) => new Set([...prev, id]));

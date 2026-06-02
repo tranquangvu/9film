@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const imdbGraphQLURL = "https://api.graphql.imdb.com/"
@@ -14,6 +15,7 @@ const titleCardFields = `
   id
   titleText { text }
   primaryImage { url width height }
+  images(first: 8) { edges { node { url width height } } }
   ratingsSummary { aggregateRating voteCount }
   releaseYear { year endYear }
   titleType { id text canHaveEpisodes }
@@ -26,7 +28,6 @@ const titleCardFields = `
 
 const titleDetailFields = titleCardFields + `
   originalTitleText { text }
-  images(first: 1) { edges { node { url width height } } }
   principalCredits {
     credits {
       name { id nameText { text } primaryImage { url } }
@@ -144,6 +145,10 @@ type BrowseParams struct {
 	First     int
 	After     string
 	MinRating *float64
+	// Sort selects an advancedTitleSearch ordering: "latest" (newest release first),
+	// "popular" (most popular first), or "rating" (highest user rating first).
+	// Empty falls back to IMDb's default relevance order.
+	Sort string
 }
 
 type BrowseResult struct {
@@ -205,7 +210,7 @@ func imdbRequest(query string, variables map[string]any, dataTarget any) error {
 	return json.Unmarshal(raw.Data, dataTarget)
 }
 
-func FetchTitle(imdbID string) (*ImdbTitle, error) {
+func GetTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
 	query := fmt.Sprintf(`
 	  query TitleDetails($id: ID!) {
@@ -225,52 +230,6 @@ func FetchTitle(imdbID string) (*ImdbTitle, error) {
 		return nil, fmt.Errorf("title not found on IMDb: %s", id)
 	}
 	return data.Title, nil
-}
-
-func FetchPopular(limit int) ([]ImdbTitle, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	query := fmt.Sprintf(`
-	  query PopularTitles($limit: Int!) {
-	    popularTitles(limit: $limit) {
-	      titles { %s }
-	    }
-	  }
-	`, titleCardFields)
-
-	var data struct {
-		PopularTitles struct {
-			Titles []ImdbTitle `json:"titles"`
-		} `json:"popularTitles"`
-	}
-	if err := imdbRequest(query, map[string]any{"limit": limit}, &data); err != nil {
-		return nil, err
-	}
-	return data.PopularTitles.Titles, nil
-}
-
-func FetchTrending(limit int) ([]ImdbTitle, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	query := fmt.Sprintf(`
-	  query TrendingTitles($limit: Int!) {
-	    trendingTitles(limit: $limit) {
-	      titles { %s }
-	    }
-	  }
-	`, titleCardFields)
-
-	var data struct {
-		TrendingTitles struct {
-			Titles []ImdbTitle `json:"titles"`
-		} `json:"trendingTitles"`
-	}
-	if err := imdbRequest(query, map[string]any{"limit": limit}, &data); err != nil {
-		return nil, err
-	}
-	return data.TrendingTitles.Titles, nil
 }
 
 func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
@@ -318,6 +277,37 @@ func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 	return titles, nil
 }
 
+func TrendingTitles(limit int) ([]ImdbTitle, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	query := fmt.Sprintf(`
+	  query TrendingTitles($limit: Int!) {
+	    trendingTitles(limit: $limit) {
+	      titles { %s }
+	    }
+	  }
+	`, titleCardFields)
+
+	var data struct {
+		TrendingTitles struct {
+			Titles []ImdbTitle `json:"titles"`
+		} `json:"trendingTitles"`
+	}
+	if err := imdbRequest(query, map[string]any{"limit": limit}, &data); err != nil {
+		return nil, err
+	}
+
+	titles := make([]ImdbTitle, 0, len(data.TrendingTitles.Titles))
+	for _, title := range data.TrendingTitles.Titles {
+		if title.ID != "" {
+			titles = append(titles, title)
+		}
+	}
+	return titles, nil
+}
+
 func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	first := params.First
 	if first <= 0 {
@@ -328,8 +318,8 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	switch params.Type {
 	case "movie":
 		typeConstraint = []string{"movie"}
-	case "tv", "series":
-		typeConstraint = []string{"tvSeries", "tvMiniSeries", "tvSpecial"}
+	case "tvseries":
+		typeConstraint = []string{"tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial"}
 	}
 
 	constraints := map[string]any{
@@ -348,17 +338,36 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 		}
 	}
 
+	var sort map[string]any
+	switch params.Sort {
+	case "latest":
+		sort = map[string]any{"sortBy": "RELEASE_DATE", "sortOrder": "DESC"}
+		// Cap the range at today so far-future announced titles don't lead the list.
+		constraints["releaseDateConstraint"] = map[string]any{
+			"releaseDateRange": map[string]any{
+				"end": time.Now().UTC().Format("2006-01-02"),
+			},
+		}
+	case "popular":
+		sort = map[string]any{"sortBy": "POPULARITY", "sortOrder": "ASC"}
+	case "rating":
+		sort = map[string]any{"sortBy": "USER_RATING", "sortOrder": "DESC"}
+	}
+
 	variables := map[string]any{
 		"first":       first,
 		"constraints": constraints,
+	}
+	if sort != nil {
+		variables["sort"] = sort
 	}
 	if params.After != "" {
 		variables["after"] = params.After
 	}
 
 	query := fmt.Sprintf(`
-	  query BrowseTitles($first: Int!, $constraints: AdvancedTitleSearchConstraints!, $after: String) {
-	    advancedTitleSearch(first: $first, after: $after, constraints: $constraints) {
+	  query BrowseTitles($first: Int!, $constraints: AdvancedTitleSearchConstraints!, $sort: AdvancedTitleSearchSort, $after: String) {
+	    advancedTitleSearch(first: $first, after: $after, sort: $sort, constraints: $constraints) {
 	      edges {
 	        node {
 	          title { %s }
@@ -402,7 +411,7 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 }
 
 func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
-	title, err := FetchTitle(imdbID)
+	title, err := GetTitle(imdbID)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +427,7 @@ func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
 	if title.TitleType != nil {
 		switch title.TitleType.ID {
 		case "tvSeries", "tvMiniSeries", "tvSpecial":
-			mediaType = "tv"
+			mediaType = "tvseries"
 		}
 	}
 

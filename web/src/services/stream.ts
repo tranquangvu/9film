@@ -1,6 +1,6 @@
 import { streamQuery, type EmbedParams, type StreamResponse } from '@/utils/stream';
 
-export async function fetchStreamUrls(
+export async function getStreamUrls(
   params: EmbedParams,
   signal?: AbortSignal,
 ): Promise<StreamResponse> {

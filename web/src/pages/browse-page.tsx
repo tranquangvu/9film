@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { genres, genreName } from '@/data/genres';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { Empty } from '@/components/system/common/empty';
-import { useBrowseTitles } from '@/hooks/use-titles-query';
+import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { cn } from '@/utils/cn';
 import { toMovies } from '@/utils/title';
 import { Tag } from '@/components/ui/tag';
@@ -63,9 +63,9 @@ export default function BrowsePage() {
     setSearchParams({});
   };
 
-  const browseType = contentType === 'movie' ? 'movie' : contentType === 'series' ? 'tv' : undefined;
+  const browseType = contentType === 'movie' ? 'movie' : contentType === 'series' ? 'tvseries' : undefined;
   const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
-  const browse = useBrowseTitles({ type: browseType, genre: primaryGenre, first: 50 });
+  const browse = useBrowseTitleQuery({ type: browseType, genre: primaryGenre, first: 50 });
 
   const filtered = useMemo(() => {
     let result = toMovies(browse.data?.titles ?? []);

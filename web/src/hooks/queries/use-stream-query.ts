@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchStreamUrls } from '@/services/stream';
+import { getStreamUrls } from '@/services/stream';
 import type { EmbedParams } from '@/utils/stream';
 
 export function useStreamQuery(params: EmbedParams | null) {
@@ -11,7 +11,7 @@ export function useStreamQuery(params: EmbedParams | null) {
       params?.season ?? null,
       params?.episode ?? null,
     ],
-    queryFn: ({ signal }) => fetchStreamUrls(params!, signal),
+    queryFn: ({ signal }) => getStreamUrls(params!, signal),
     enabled: !!params,
     staleTime: 5 * 60 * 1000,
   });

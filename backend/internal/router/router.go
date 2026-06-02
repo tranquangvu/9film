@@ -29,9 +29,8 @@ func New(cfg *config.Config) *gin.Engine {
 	{
 		title := api.Group("/title")
 		{
-			title.GET("/popular", handler.GetPopularTitles)
-			title.GET("/trending", handler.GetTrendingTitles)
 			title.GET("/search", handler.SearchTitles)
+			title.GET("/trending", handler.GetTrendingTitles)
 			title.GET("/browse", handler.BrowseTitles)
 			title.GET("/:imdb/similar", handler.GetSimilarTitles)
 			title.GET("/:imdb", handler.GetTitle)

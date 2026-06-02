@@ -28,7 +28,7 @@ func GetTitle(c *gin.Context) {
 		return
 	}
 
-	title, err := service.FetchTitle(imdbID)
+	title, err := service.GetTitle(imdbID)
 	if err != nil {
 		logger.Get().Warn("imdb fetch failed", zap.String("id", imdbID), zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -36,26 +36,6 @@ func GetTitle(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, title)
-}
-
-func GetPopularTitles(c *gin.Context) {
-	titles, err := service.FetchPopular(parseLimit(c, 20))
-	if err != nil {
-		logger.Get().Warn("popular titles failed", zap.Error(err))
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"titles": titles})
-}
-
-func GetTrendingTitles(c *gin.Context) {
-	titles, err := service.FetchTrending(parseLimit(c, 20))
-	if err != nil {
-		logger.Get().Warn("trending titles failed", zap.Error(err))
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"titles": titles})
 }
 
 func SearchTitles(c *gin.Context) {
@@ -68,6 +48,16 @@ func SearchTitles(c *gin.Context) {
 	titles, err := service.SearchTitles(q, parseLimit(c, 20))
 	if err != nil {
 		logger.Get().Warn("title search failed", zap.String("q", q), zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"titles": titles})
+}
+
+func GetTrendingTitles(c *gin.Context) {
+	titles, err := service.TrendingTitles(parseLimit(c, 10))
+	if err != nil {
+		logger.Get().Warn("trending titles failed", zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
@@ -96,6 +86,7 @@ func BrowseTitles(c *gin.Context) {
 		First:     first,
 		After:     c.Query("after"),
 		MinRating: minRating,
+		Sort:      c.Query("sort"),
 	})
 	if err != nil {
 		logger.Get().Warn("browse titles failed", zap.Error(err))

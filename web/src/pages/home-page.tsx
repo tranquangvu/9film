@@ -4,13 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
-import { usePopularTitles, useTrendingTitles } from '@/hooks/use-titles-query';
-import { useSearchTitles } from '@/hooks/use-search-query';
-import { useTitleList } from '@/hooks/use-title-list';
-import { continueWatchingIds } from '@/data/user';
+import { useSearchQuery } from '@/hooks/queries/use-search-query';
+import {
+  useResumeTitles,
+  useHeroTitles,
+  usePopularMovieTitles,
+  usePopularTVSeriesTitles,
+  useTop10Titles,
+} from '@/hooks/use-home-titles';
 import { cn } from '@/utils/cn';
 import { formatYear } from '@/utils/format';
-import { filterMovies, topRated, toMovie } from '@/utils/title';
+import { toMovie } from '@/utils/title';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
@@ -18,7 +22,7 @@ import type { Movie } from '@/types';
 function QuickSearch() {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const search = useSearchTitles(query, 6);
+  const search = useSearchQuery(query, 6);
 
   const results: Movie[] = useMemo(
     () => (search.data ?? []).map(toMovie),
@@ -154,40 +158,28 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
 }
 
 export default function HomePage() {
-  const popular = usePopularTitles(30);
-  const trending = useTrendingTitles(30);
-  const continueIds = continueWatchingIds.map((item) => item.id);
-  const continueList = useTitleList(continueIds);
-
-  const trendingMovies = useMemo(() => filterMovies(trending.data ?? [], 'movie'), [trending.data]);
-  const trendingShows = useMemo(() => filterMovies(trending.data ?? [], 'series'), [trending.data]);
-  const popularMovies = useMemo(() => filterMovies(popular.data ?? [], 'movie'), [popular.data]);
-  const topRatedList = useMemo(() => topRated([...(popular.data ?? []), ...(trending.data ?? [])], 10), [popular.data, trending.data]);
-
-  const continueWatching = useMemo(
-    () => continueList.movies.map((movie) => {
-      const progress = continueWatchingIds.find((item) => item.id === movie.id)?.progress;
-      return progress != null ? { ...movie, progress } : movie;
-    }),
-    [continueList.movies],
-  );
+  const heroMovies = useHeroTitles().data ?? [];
+  const top10Movies = useTop10Titles().data ?? [];
+  const popularMovies = usePopularMovieTitles().data ?? [];
+  const popularSeries = usePopularTVSeriesTitles().data ?? [];
+  const resumeMovies = useResumeTitles().data ?? [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="-mt-16 md:-mt-20">
-        <HeroBanner movies={trendingMovies.length > 0 ? trendingMovies : popularMovies} />
+        <HeroBanner movies={heroMovies} />
       </div>
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
-        {continueWatching.length > 0 && (
+        {resumeMovies.length > 0 && (
           <AnimatedSection delay={0}>
-            <HorizontalCarousel title="Continue Watching" movies={continueWatching} cardType="backdrop" />
+            <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
           </AnimatedSection>
         )}
 
-        {topRatedList.length > 0 && (
+        {top10Movies.length > 0 && (
           <AnimatedSection delay={0.05}>
-            <HorizontalCarousel title="Top 10 Today" movies={topRatedList} cardType="top10" />
+            <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />
           </AnimatedSection>
         )}
 
@@ -197,9 +189,9 @@ export default function HomePage() {
           </AnimatedSection>
         )}
 
-        {trendingShows.length > 0 && (
+        {popularSeries.length > 0 && (
           <AnimatedSection delay={0.05}>
-            <HorizontalCarousel title="Popular TV Series" movies={trendingShows} />
+            <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} />
           </AnimatedSection>
         )}
 

@@ -9,9 +9,9 @@ import {
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
 import { orderSubs, pickSubs } from '@/utils/subtitle';
-import { useTitleQuery } from './use-title-query';
-import { useStreamQuery } from './use-stream-query';
-import { useSubtitlesQuery } from './use-subtitles-query';
+import { useTitleQuery } from './queries/use-title-query';
+import { useStreamQuery } from './queries/use-stream-query';
+import { useSubtitlesQuery } from './queries/use-subtitles-query';
 
 export function usePlayerSession(titleId: string) {
   const [season, setSeason] = useState(1);
