@@ -19,9 +19,24 @@ import NotFoundPage from '@/pages/not-found-page';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
-      staleTime: 0,
+      // IMDb metadata (titles, casts, genres, similar) rarely changes —
+      // treat it as fresh for 5 min so navigating back to a page is instant.
+      staleTime: 5 * 60 * 1000,
+      // Keep unused data around for 30 min so back/forward nav stays a cache hit.
+      gcTime: 30 * 60 * 1000,
+      // Don't retry client errors (404 for a bad title id, 401, etc.) — only transient ones.
+      retry: (failureCount, error) => {
+        const status = (error as { status?: number })?.status;
+        if (status && status >= 400 && status < 500) return false;
+        return failureCount < 2;
+      },
+      // Exponential backoff between retries; `attempt` is 0-based, so the
+      // waits are 1s (2^0), 2s (2^1), 4s (2^2)… capped at 30s.
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
+      // A video app shouldn't refire requests when the user tabs away and back.
       refetchOnWindowFocus: false,
+      // But do recover after the network drops mid-watch.
+      refetchOnReconnect: true,
     },
   },
 });

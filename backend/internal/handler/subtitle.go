@@ -32,8 +32,8 @@ func SearchSubtitles(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		mediaType := c.Query("type")
-		if mediaType != "tvseries" && mediaType != "movie" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "type must be 'tvseries' or 'movie'"})
+		if mediaType != "tv" && mediaType != "movie" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "type must be 'tv' or 'movie'"})
 			return
 		}
 

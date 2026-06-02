@@ -32,7 +32,7 @@ export function pickSubs(
     const base = name.replace(/\s+/g, '.');
     let pattern = base;
 
-    if (params.mediaType === 'tvseries' && params.season != null && params.episode != null) {
+    if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
       const s = String(params.season).padStart(2, '0');
       const e = String(params.episode).padStart(2, '0');
       pattern = `${base}.S${s}E${e}`;

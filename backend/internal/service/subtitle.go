@@ -128,7 +128,7 @@ func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]Subtit
 
 	if params.IMDbID != "" {
 		numeric := imdbToNumeric(params.IMDbID)
-		if params.MediaType == "tvseries" && params.Season != nil && params.Episode != nil {
+		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
 			q.Set("parent_imdb_id", strconv.Itoa(numeric))
 			q.Set("season_number", strconv.Itoa(*params.Season))
 			q.Set("episode_number", strconv.Itoa(*params.Episode))
@@ -136,7 +136,7 @@ func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]Subtit
 			q.Set("imdb_id", strconv.Itoa(numeric))
 		}
 	} else if params.TMDbID > 0 {
-		if params.MediaType == "tvseries" && params.Season != nil && params.Episode != nil {
+		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
 			q.Set("parent_tmdb_id", strconv.Itoa(params.TMDbID))
 			q.Set("season_number", strconv.Itoa(*params.Season))
 			q.Set("episode_number", strconv.Itoa(*params.Episode))

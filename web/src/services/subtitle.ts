@@ -18,7 +18,7 @@ function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
     return null;
   }
 
-  if (params.mediaType === 'tvseries' && params.season != null && params.episode != null) {
+  if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
     q.set('season', String(params.season));
     q.set('episode', String(params.episode));
   }

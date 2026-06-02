@@ -58,7 +58,7 @@ export function normId(id: string): string {
 
 export function embedParams(title: ImdbTitle, mediaId: string) {
   const typeId = title.titleType?.id;
-  const mediaType: MediaType = typeId && TV_TYPES.has(typeId) ? 'tvseries' : 'movie';
+  const mediaType: MediaType = typeId && TV_TYPES.has(typeId) ? 'tv' : 'movie';
   return { mediaType, mediaId: title.id ?? normId(mediaId) };
 }
 
