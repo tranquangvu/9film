@@ -297,9 +297,30 @@ export default function MovieDetailPage() {
           {movie.cast && movie.cast.length > 0 && (
             <section>
               <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                {movie.cast.map((member) => member.name).join(', ')}
-              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-5">
+                {movie.cast.map((member, i) => (
+                  <div key={member.id || `${member.name}-${i}`} className="flex items-center gap-3 w-44">
+                    {member.photo ? (
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        loading="lazy"
+                        className="w-12 h-12 rounded-full object-cover bg-zinc-800 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-semibold text-zinc-400 flex-shrink-0">
+                        {member.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{member.name}</p>
+                      {member.character && (
+                        <p className="text-xs text-zinc-500 truncate">{member.character}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
