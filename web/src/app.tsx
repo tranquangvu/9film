@@ -6,7 +6,6 @@ import WatchLayout from '@/components/system/layout/watch-layout';
 
 import HomePage from '@/pages/home-page';
 import BrowsePage from '@/pages/browse-page';
-import CategoriesPage from '@/pages/categories-page';
 import MovieDetailPage from '@/pages/movie-detail-page';
 import { WatchPage } from '@/pages/watch-page';
 import MyListPage from '@/pages/my-list-page';
@@ -49,7 +48,6 @@ const router = createBrowserRouter([
       { path: '/browse', element: <BrowsePage /> },
       { path: '/movies', element: <MoviesPage /> },
       { path: '/tv-series', element: <TvSeriesPage /> },
-      { path: '/categories', element: <CategoriesPage /> },
       { path: '/movie/:id', element: <MovieDetailPage /> },
       { path: '/my-list', element: <MyListPage /> },
       { path: '/search', element: <SearchPage /> },
