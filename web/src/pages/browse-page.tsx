@@ -64,7 +64,7 @@ export default function BrowsePage() {
     setSearchParams({});
   };
 
-  const browseType = contentType === 'movie' ? 'movie' : contentType === 'series' ? 'tvseries' : undefined;
+  const browseType = contentType === 'movie' ? 'movie' : contentType === 'series' ? 'tv' : undefined;
   const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
   const browse = useBrowseTitleQuery({ type: browseType, genre: primaryGenre, first: 50 });
 

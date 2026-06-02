@@ -78,10 +78,6 @@ export default function MovieDetailPage() {
     );
   }
 
-  const availableSeasons = movie.episodes
-    ? [...new Set(movie.episodes.map((e) => e.season))].sort()
-    : [];
-
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
     setShareTooltip(true);
@@ -187,14 +183,16 @@ export default function MovieDetailPage() {
               <span className="font-bold text-white">{formatRating(movie.rating)}</span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
-            {movie.type === 'series' && (
+            {movie.type === 'series' && (movie.totalSeasons || movie.totalEpisodes) && (
               <>
                 <span className="text-zinc-600">·</span>
                 <span className="flex items-center gap-1">
                   <Layers className="w-3.5 h-3.5 text-zinc-500" />
-                  {availableSeasons.length} {availableSeasons.length === 1 ? 'Season' : 'Seasons'}
-                  {' · '}
-                  {movie.episodes?.length ?? 0} Episodes
+                  {movie.totalSeasons != null && (
+                    <>{movie.totalSeasons} {movie.totalSeasons === 1 ? 'Season' : 'Seasons'}</>
+                  )}
+                  {movie.totalSeasons != null && movie.totalEpisodes != null && ' · '}
+                  {movie.totalEpisodes != null && <>{movie.totalEpisodes} Episodes</>}
                 </span>
               </>
             )}

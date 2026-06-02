@@ -30,6 +30,10 @@ export interface ImdbTitle {
   images?: {
     edges?: Array<{ node?: { url?: string; width?: number; height?: number } }>;
   };
+  episodes?: {
+    episodes?: { total?: number };
+    seasons?: Array<{ number?: number }>;
+  };
 }
 
 export interface OriginalLanguage {
@@ -124,9 +128,8 @@ export function toMovie(title: ImdbTitle): Movie {
     language: title.spokenLanguages?.spokenLanguages?.[0]?.text ?? '',
     country: title.countriesOfOrigin?.countries?.[0]?.text ?? '',
     type,
-    totalSeasons: type === 'series' && title.releaseYear?.endYear
-      ? Math.max(1, (title.releaseYear.endYear ?? title.releaseYear.year ?? 1) - (title.releaseYear.year ?? 1) + 1)
-      : undefined,
+    totalSeasons: type === 'series' ? title.episodes?.seasons?.length || undefined : undefined,
+    totalEpisodes: type === 'series' ? title.episodes?.episodes?.total || undefined : undefined,
   };
 }
 

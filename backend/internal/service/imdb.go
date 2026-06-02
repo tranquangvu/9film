@@ -29,6 +29,7 @@ const titleCardFields = `
 
 const titleDetailFields = titleCardFields + `
   originalTitleText { text }
+  episodes { episodes(first: 0) { total } seasons { number } }
   principalCredits {
     credits {
       name { id nameText { text } primaryImage { url } }
@@ -129,6 +130,15 @@ type ImagesConnection struct {
 	} `json:"edges,omitempty"`
 }
 
+type EpisodesConnection struct {
+	Episodes *struct {
+		Total int `json:"total,omitempty"`
+	} `json:"episodes,omitempty"`
+	Seasons []struct {
+		Number int `json:"number,omitempty"`
+	} `json:"seasons,omitempty"`
+}
+
 type ImdbTitle struct {
 	ID                string                 `json:"id,omitempty"`
 	TitleText         *TextNode              `json:"titleText,omitempty"`
@@ -145,6 +155,7 @@ type ImdbTitle struct {
 	CountriesOfOrigin *CountriesWrapper      `json:"countriesOfOrigin,omitempty"`
 	PrincipalCredits  []PrincipalCreditGroup `json:"principalCredits,omitempty"`
 	Images            *ImagesConnection      `json:"images,omitempty"`
+	Episodes          *EpisodesConnection    `json:"episodes,omitempty"`
 }
 
 type BrowseParams struct {
@@ -341,7 +352,7 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	switch params.Type {
 	case "movie":
 		typeConstraint = []string{"movie"}
-	case "tvseries":
+	case "tv":
 		typeConstraint = []string{"tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial"}
 	}
 
@@ -451,7 +462,7 @@ func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
 	if title.TitleType != nil {
 		switch title.TitleType.ID {
 		case "tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial":
-			mediaType = "tvseries"
+			mediaType = "tv"
 		}
 	}
 

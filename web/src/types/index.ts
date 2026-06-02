@@ -21,6 +21,7 @@ export interface Movie {
   isFeatured?: boolean
   progress?: number
   totalSeasons?: number
+  totalEpisodes?: number
 }
 
 export interface CastMember {

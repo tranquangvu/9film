@@ -21,7 +21,7 @@ export function usePopularMovieTitles() {
 }
 
 export function usePopularTVSeriesTitles() {
-  return useBrowseTitleQuery({ type: 'tvseries', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
+  return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
 }
 
 export function useResumeTitles() {

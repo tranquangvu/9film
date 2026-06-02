@@ -26,7 +26,7 @@ export default function TvSeriesPage() {
   const primaryGenre = selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
   const browse = useBrowseTitleQuery({
-    type: 'tvseries',
+    type: 'tv',
     genre: primaryGenre,
     first: 50,
   });
