@@ -99,12 +99,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span className="text-base">{genre.icon}</span>
                       <span>{genre.name}</span>
                     </div>
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity font-medium"
-                      style={{ background: `${genre.color}20`, color: genre.color }}
-                    >
-                      {genre.count}
-                    </span>
                   </NavLink>
                 ))}
               </div>

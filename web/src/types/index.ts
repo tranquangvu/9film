@@ -46,7 +46,6 @@ export interface Genre {
   name: string
   icon: string
   color: string
-  count: number
 }
 
 export interface UserProfile {

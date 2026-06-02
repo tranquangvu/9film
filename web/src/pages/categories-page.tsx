@@ -90,17 +90,10 @@ export default function CategoriesPage() {
               <div className="relative h-full flex flex-col justify-between p-4">
                 <div className="flex items-start justify-between">
                   <span className="text-4xl select-none">{genre.icon}</span>
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                    style={{ background: `${genre.color}80` }}
-                  >
-                    {genre.count}
-                  </span>
                 </div>
 
                 <div>
                   <h3 className="text-white font-bold text-lg leading-tight">{genre.name}</h3>
-                  <p className="text-white/60 text-xs mt-0.5">{genre.count} titles</p>
                 </div>
               </div>
 
