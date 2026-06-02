@@ -9,7 +9,7 @@ const TOP_TEN_LIMIT = 10;
 
 // Trending pool, narrowed to the strongest hero candidates inside the hook.
 export function useHeroTitles() {
-  return useTrendingTitlesQuery(50, (titles) => heroTitles(titles, HERO_LIMIT));
+  return useTrendingTitlesQuery(30, (titles) => heroTitles(titles, HERO_LIMIT));
 }
 
 export function useTop10Titles() {
@@ -17,11 +17,11 @@ export function useTop10Titles() {
 }
 
 export function usePopularMovieTitles() {
-  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 30 }, (data) => toMovies(data.titles));
+  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
 }
 
 export function usePopularTVSeriesTitles() {
-  return useBrowseTitleQuery({ type: 'tvseries', sort: 'popular', first: 30 }, (data) => toMovies(data.titles));
+  return useBrowseTitleQuery({ type: 'tvseries', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
 }
 
 export function useResumeTitles() {

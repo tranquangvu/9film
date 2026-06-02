@@ -18,6 +18,7 @@ const titleCardFields = `
   images(first: 8) { edges { node { url width height } } }
   ratingsSummary { aggregateRating voteCount }
   releaseYear { year endYear }
+  releaseDate { day month year }
   titleType { id text canHaveEpisodes }
   genres { genres { text } }
   runtime { seconds }
@@ -50,6 +51,12 @@ type TitleType struct {
 type ReleaseYear struct {
 	Year    *int `json:"year,omitempty"`
 	EndYear *int `json:"endYear,omitempty"`
+}
+
+type ReleaseDate struct {
+	Day   *int `json:"day,omitempty"`
+	Month *int `json:"month,omitempty"`
+	Year  *int `json:"year,omitempty"`
 }
 
 type Image struct {
@@ -128,6 +135,7 @@ type ImdbTitle struct {
 	OriginalTitleText *TextNode              `json:"originalTitleText,omitempty"`
 	TitleType         *TitleType             `json:"titleType,omitempty"`
 	ReleaseYear       *ReleaseYear           `json:"releaseYear,omitempty"`
+	ReleaseDate       *ReleaseDate           `json:"releaseDate,omitempty"`
 	PrimaryImage      *Image                 `json:"primaryImage,omitempty"`
 	Plot              *PlotNode              `json:"plot,omitempty"`
 	RatingsSummary    *RatingsSummary        `json:"ratingsSummary,omitempty"`
@@ -167,6 +175,10 @@ func normalizeImdbID(id string) string {
 		return id
 	}
 	return "tt" + id
+}
+
+func releaseCutoff() time.Time {
+	return time.Now().UTC().AddDate(0, -6, 0)
 }
 
 func imdbRequest(query string, variables map[string]any, dataTarget any) error {
@@ -241,14 +253,25 @@ func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 		limit = 20
 	}
 
+	constraints := map[string]any{
+		"titleTextConstraint": map[string]any{
+			"searchTerm": term,
+		},
+		// Share the same condition as the other list queries: only titles the
+		// user can actually watch (released on or before the cutoff).
+		"releaseDateConstraint": map[string]any{
+			"releaseDateRange": map[string]any{
+				"end": releaseCutoff().Format(time.DateOnly),
+			},
+		},
+	}
+
 	query := fmt.Sprintf(`
-	  query SearchTitles($term: String!, $first: Int!) {
-	    mainSearch(first: $first, options: { searchTerm: $term, type: TITLE }) {
+	  query SearchTitles($first: Int!, $constraints: AdvancedTitleSearchConstraints!) {
+	    advancedTitleSearch(first: $first, constraints: $constraints) {
 	      edges {
 	        node {
-	          entity {
-	            ... on Title { %s }
-	          }
+	          title { %s }
 	        }
 	      }
 	    }
@@ -256,22 +279,22 @@ func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 	`, titleCardFields)
 
 	var data struct {
-		MainSearch struct {
+		AdvancedTitleSearch struct {
 			Edges []struct {
 				Node struct {
-					Entity ImdbTitle `json:"entity"`
+					Title ImdbTitle `json:"title"`
 				} `json:"node"`
 			} `json:"edges"`
-		} `json:"mainSearch"`
+		} `json:"advancedTitleSearch"`
 	}
-	if err := imdbRequest(query, map[string]any{"term": term, "first": limit}, &data); err != nil {
+	if err := imdbRequest(query, map[string]any{"first": limit, "constraints": constraints}, &data); err != nil {
 		return nil, err
 	}
 
-	titles := make([]ImdbTitle, 0, len(data.MainSearch.Edges))
-	for _, edge := range data.MainSearch.Edges {
-		if edge.Node.Entity.ID != "" {
-			titles = append(titles, edge.Node.Entity)
+	titles := make([]ImdbTitle, 0, len(data.AdvancedTitleSearch.Edges))
+	for _, edge := range data.AdvancedTitleSearch.Edges {
+		if edge.Node.Title.ID != "" {
+			titles = append(titles, edge.Node.Title)
 		}
 	}
 	return titles, nil
@@ -326,6 +349,13 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 		"titleTypeConstraint": map[string]any{
 			"anyTitleTypeIds": typeConstraint,
 		},
+		// Only surface titles the user can actually watch; cap the range at the
+		// shared cutoff so recently/just-released titles without streams are excluded.
+		"releaseDateConstraint": map[string]any{
+			"releaseDateRange": map[string]any{
+				"end": releaseCutoff().Format(time.DateOnly),
+			},
+		},
 	}
 	if params.Genre != "" {
 		constraints["genreConstraint"] = map[string]any{
@@ -342,12 +372,6 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	switch params.Sort {
 	case "latest":
 		sort = map[string]any{"sortBy": "RELEASE_DATE", "sortOrder": "DESC"}
-		// Cap the range at today so far-future announced titles don't lead the list.
-		constraints["releaseDateConstraint"] = map[string]any{
-			"releaseDateRange": map[string]any{
-				"end": time.Now().UTC().Format("2006-01-02"),
-			},
-		}
 	case "popular":
 		sort = map[string]any{"sortBy": "POPULARITY", "sortOrder": "ASC"}
 	case "rating":
