@@ -1,6 +1,11 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { useState, useRef, useMemo, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import {
   Play,
   Heart,
@@ -12,21 +17,20 @@ import {
   MapPin,
   Languages,
   Layers,
-} from 'lucide-react';
-import { useTitleQuery } from '@/hooks/queries/use-title-query';
-import { useSimilarQuery } from '@/hooks/queries/use-similar-query';
-import { useStreamQuery } from '@/hooks/queries/use-stream-query';
-import { toMovie, toMovies, embedParams } from '@/utils/title';
-import { seasons, episodes, type EmbedParams } from '@/utils/stream';
-import { cn } from '@/utils/cn';
-import { formatDuration, formatRating, formatYear } from '@/utils/format';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
-import { Tag } from '@/components/ui/tag';
-import { MovieCard } from '@/components/system/movie/movie-card';
-import { GenreBadge } from '@/components/system/movie/genre-badge';
-import { DetailPageSkeleton } from '@/components/system/movie/skeletons';
-
+} from "lucide-react";
+import { useTitleQuery } from "@/hooks/queries/use-title-query";
+import { useSimilarQuery } from "@/hooks/queries/use-similar-query";
+import { useStreamQuery } from "@/hooks/queries/use-stream-query";
+import { toMovie, toMovies, embedParams } from "@/utils/title";
+import { seasons, episodes, type EmbedParams } from "@/utils/stream";
+import { cn } from "@/utils/cn";
+import { formatDuration, formatRating, formatYear } from "@/utils/format";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Tag } from "@/components/ui/tag";
+import { MovieCard } from "@/components/system/movie/movie-card";
+import { GenreBadge } from "@/components/system/movie/genre-badge";
+import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,12 +42,15 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' as const } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" as const },
+  },
 } as const;
 
-
 export default function MovieDetailPage() {
-  const { id = '' } = useParams<{ id: string }>();
+  const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +64,7 @@ export default function MovieDetailPage() {
   const seriesParams = useMemo<EmbedParams | null>(() => {
     if (!titleQuery.data) return null;
     const params = embedParams(titleQuery.data, id);
-    return params.mediaType === 'tv' ? params : null;
+    return params.mediaType === "tv" ? params : null;
   }, [titleQuery.data, id]);
   const epsQuery = useStreamQuery(seriesParams);
   const eps = useMemo(() => {
@@ -69,9 +76,9 @@ export default function MovieDetailPage() {
   const galleryImages = useMemo<string[]>(() => {
     const title = titleQuery.data;
     if (!title) return [];
-    const urls = (title.images?.edges?.map((edge) => edge?.node?.url) ?? []).filter(
-      (url): url is string => !!url,
-    );
+    const urls = (
+      title.images?.edges?.map((edge) => edge?.node?.url) ?? []
+    ).filter((url): url is string => !!url);
     return [...new Set(urls)];
   }, [titleQuery.data]);
 
@@ -102,11 +109,10 @@ export default function MovieDetailPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
         <div className="text-6xl">🎬</div>
         <h1 className="text-3xl font-bold text-white">Movie not found</h1>
-        <p className="text-zinc-400">We couldn't find that title in our library.</p>
-        <Button
-          variant="primary"
-          onClick={() => navigate(-1)}
-        >
+        <p className="text-zinc-400">
+          We couldn't find that title in our library.
+        </p>
+        <Button variant="primary" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4" />
           Go Back
         </Button>
@@ -124,7 +130,7 @@ export default function MovieDetailPage() {
   // Fall back to the first available season if the picked one isn't in the map.
   const activeSeason = availableSeasons.includes(selectedSeason)
     ? selectedSeason
-    : availableSeasons[0] ?? 1;
+    : (availableSeasons[0] ?? 1);
   const episodeList = eps ? episodes(eps, activeSeason) : [];
 
   return (
@@ -132,7 +138,10 @@ export default function MovieDetailPage() {
       {/* ── HERO SECTION ── */}
       <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
         {/* Backdrop — crossfades through gallery images */}
-        <motion.div className="absolute inset-0" style={{ opacity: heroOpacity, scale: heroScale }}>
+        <motion.div
+          className="absolute inset-0"
+          style={{ opacity: heroOpacity, scale: heroScale }}
+        >
           <AnimatePresence mode="wait">
             <motion.img
               key={galleryImages[activeImageIndex] ?? movie.backdrop}
@@ -143,7 +152,7 @@ export default function MovieDetailPage() {
               initial={{ opacity: 0, scale: 1.04 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.9, ease: 'easeInOut' }}
+              transition={{ duration: 0.9, ease: "easeInOut" }}
             />
           </AnimatePresence>
         </motion.div>
@@ -160,7 +169,10 @@ export default function MovieDetailPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           onClick={() => navigate(-1)}
           aria-label="Go back"
-          className={cn(buttonVariants({ variant: 'icon', size: 'icon' }), 'absolute top-16 left-4 md:top-24 md:left-8 lg:left-12 z-20')}
+          className={cn(
+            buttonVariants({ variant: "icon", size: "icon" }),
+            "absolute top-24 left-4 md:top-24 md:left-8 lg:left-12 z-20",
+          )}
         >
           <ArrowLeft className="w-4 h-4" />
         </motion.button>
@@ -172,7 +184,6 @@ export default function MovieDetailPage() {
           initial="hidden"
           animate="visible"
         >
-
           {/* Title */}
           <motion.h1
             variants={itemVariants}
@@ -196,7 +207,9 @@ export default function MovieDetailPage() {
             variants={itemVariants}
             className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-sm text-zinc-300"
           >
-            <span className="font-semibold text-white">{formatYear(movie.year)}</span>
+            <span className="font-semibold text-white">
+              {formatYear(movie.year)}
+            </span>
             <span className="text-zinc-600">·</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-zinc-500" />
@@ -207,42 +220,61 @@ export default function MovieDetailPage() {
               <MapPin className="w-3.5 h-3.5 text-zinc-500" />
               {movie.country}
             </span>
-            {movie.type === 'series' && (movie.totalSeasons || movie.totalEpisodes) && (
-              <>
-                <span className="text-zinc-600">·</span>
-                <span className="flex items-center gap-1">
-                  <Layers className="w-3.5 h-3.5 text-zinc-500" />
-                  {movie.totalSeasons != null && (
-                    <>{movie.totalSeasons} {movie.totalSeasons === 1 ? 'Season' : 'Seasons'}</>
-                  )}
-                  {movie.totalSeasons != null && movie.totalEpisodes != null && ' / '}
-                  {movie.totalEpisodes != null && <>{movie.totalEpisodes} Episodes</>}
-                </span>
-              </>
-            )}
+            {movie.type === "series" &&
+              (movie.totalSeasons || movie.totalEpisodes) && (
+                <>
+                  <span className="text-zinc-600">·</span>
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                    {movie.totalSeasons != null && (
+                      <>
+                        {movie.totalSeasons}{" "}
+                        {movie.totalSeasons === 1 ? "Season" : "Seasons"}
+                      </>
+                    )}
+                    {movie.totalSeasons != null &&
+                      movie.totalEpisodes != null &&
+                      " / "}
+                    {movie.totalEpisodes != null && (
+                      <>{movie.totalEpisodes} Episodes</>
+                    )}
+                  </span>
+                </>
+              )}
             <span className="text-zinc-600">·</span>
             <span className="flex items-center gap-1.5">
               <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
-              <span className="font-bold text-white">{formatRating(movie.rating)}</span>
+              <span className="font-bold text-white">
+                {formatRating(movie.rating)}
+              </span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
           </motion.div>
 
           {/* Genre badges */}
-          <motion.div variants={itemVariants} className="flex flex-wrap gap-2 mb-7">
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-wrap gap-2 mb-7"
+          >
             {movie.genres.map((genre) => (
               <GenreBadge key={genre} genre={genre} />
             ))}
           </motion.div>
 
           {/* Action buttons */}
-          <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-3">
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-wrap items-center gap-3"
+          >
             {/* Play Now */}
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate(`/watch/${movie.id}`)}
-              className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'gap-2.5 font-bold')}
+              className={cn(
+                buttonVariants({ variant: "primary", size: "lg" }),
+                "gap-2.5 font-bold",
+              )}
             >
               <Play className="w-5 h-5 fill-white" />
               Play Now
@@ -254,14 +286,16 @@ export default function MovieDetailPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsFavorited((v) => !v)}
               className={cn(
-                'w-12 h-12 rounded-full flex items-center justify-center border transition-all',
+                "w-12 h-12 rounded-full flex items-center justify-center border transition-all",
                 isFavorited
-                  ? 'bg-pink-500/20 border-pink-500/50 text-pink-400'
-                  : 'glass border-white/20 text-zinc-400 hover:text-white',
+                  ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
+                  : "glass border-white/20 text-zinc-400 hover:text-white",
               )}
-              title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFavorited ? "Remove from favorites" : "Add to favorites"}
             >
-              <Heart className={cn('w-5 h-5', isFavorited && 'fill-pink-400')} />
+              <Heart
+                className={cn("w-5 h-5", isFavorited && "fill-pink-400")}
+              />
             </motion.button>
 
             {/* Bookmark */}
@@ -270,14 +304,16 @@ export default function MovieDetailPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsBookmarked((v) => !v)}
               className={cn(
-                'w-12 h-12 rounded-full flex items-center justify-center border transition-all',
+                "w-12 h-12 rounded-full flex items-center justify-center border transition-all",
                 isBookmarked
-                  ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                  : 'glass border-white/20 text-zinc-400 hover:text-white',
+                  ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                  : "glass border-white/20 text-zinc-400 hover:text-white",
               )}
-              title={isBookmarked ? 'Remove bookmark' : 'Add to watchlist'}
+              title={isBookmarked ? "Remove bookmark" : "Add to watchlist"}
             >
-              <Bookmark className={cn('w-5 h-5', isBookmarked && 'fill-blue-400')} />
+              <Bookmark
+                className={cn("w-5 h-5", isBookmarked && "fill-blue-400")}
+              />
             </motion.button>
 
             {/* Share */}
@@ -315,10 +351,10 @@ export default function MovieDetailPage() {
                 onClick={() => setActiveImageIndex(i)}
                 aria-label={`Show image ${i + 1}`}
                 className={cn(
-                  'rounded-full transition-all duration-300 focus:outline-none cursor-pointer',
+                  "rounded-full transition-all duration-300 focus:outline-none cursor-pointer",
                   i === activeImageIndex
-                    ? 'w-6 h-2 bg-orange-500 shadow-md shadow-orange-500/50'
-                    : 'w-2 h-2 bg-white/30 hover:bg-white/60',
+                    ? "w-6 h-2 bg-orange-500 shadow-md shadow-orange-500/50"
+                    : "w-2 h-2 bg-white/30 hover:bg-white/60",
                 )}
               />
             ))}
@@ -330,11 +366,10 @@ export default function MovieDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.7, ease: 'easeOut' }}
+        transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
         className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8"
       >
         <div className="space-y-10">
-
           {/* ── Episodes (series only) ── */}
           {eps && (
             <section>
@@ -345,13 +380,18 @@ export default function MovieDetailPage() {
                     icon={<Layers size={14} />}
                     value={String(activeSeason)}
                     onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                    options={availableSeasons.map((s) => ({ id: String(s), label: `S${s}` }))}
+                    options={availableSeasons.map((s) => ({
+                      id: String(s),
+                      label: `S${s}`,
+                    }))}
                   />
                 )}
                 {episodeList.map((ep) => (
                   <Tag
                     key={ep}
-                    onClick={() => navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)}
+                    onClick={() =>
+                      navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
+                    }
                   >
                     E{ep}
                   </Tag>
@@ -363,7 +403,9 @@ export default function MovieDetailPage() {
           {/* ── About ── */}
           <section>
             <h2 className="text-xl font-bold text-white mb-4">About</h2>
-            <p className="text-zinc-300 leading-relaxed text-base max-w-3xl">{movie.description}</p>
+            <p className="text-zinc-300 leading-relaxed text-base max-w-3xl">
+              {movie.description}
+            </p>
           </section>
 
           {/* ── Cast ── */}
@@ -372,7 +414,10 @@ export default function MovieDetailPage() {
               <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
               <div className="flex flex-wrap gap-x-6 gap-y-5">
                 {movie.cast.map((member, i) => (
-                  <div key={member.id || `${member.name}-${i}`} className="flex items-center gap-3 w-44">
+                  <div
+                    key={member.id || `${member.name}-${i}`}
+                    className="flex items-center gap-3 w-44"
+                  >
                     {member.photo ? (
                       <img
                         src={member.photo}
@@ -386,9 +431,13 @@ export default function MovieDetailPage() {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{member.name}</p>
+                      <p className="text-sm font-semibold text-white truncate">
+                        {member.name}
+                      </p>
                       {member.character && (
-                        <p className="text-xs text-zinc-500 truncate">{member.character}</p>
+                        <p className="text-xs text-zinc-500 truncate">
+                          {member.character}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -400,15 +449,21 @@ export default function MovieDetailPage() {
           {/* ── More Like This ── */}
           {similarMovies.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-white mb-4">More Like This</h2>
+              <h2 className="text-xl font-bold text-white mb-4">
+                More Like This
+              </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
                 {similarMovies.map((movie) => (
-                  <MovieCard key={movie.id} movie={movie} size="lg" className="w-full" />
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    size="lg"
+                    className="w-full"
+                  />
                 ))}
               </div>
             </section>
           )}
-
         </div>
       </motion.div>
     </div>
