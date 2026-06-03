@@ -1,15 +1,13 @@
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMemo, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import { X, ListFilter } from "lucide-react";
 import { genres, genreName } from "@/data/genres";
-import { MovieCard } from "@/components/system/movie/movie-card";
-import { Empty } from "@/components/system/common/empty";
-import { MovieGridSkeleton } from "@/components/system/movie/skeletons";
 import { useBrowseTitleQuery } from "@/hooks/queries/use-browse-title-query";
 import { cn } from "@/utils/cn";
 import { toMovies } from "@/utils/title";
 import { Tag } from "@/components/ui/tag";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { BrowseContent } from "@/components/system/common/browse-content";
 import {
   Drawer,
   DrawerTrigger,
@@ -20,26 +18,9 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.3, ease: "easeOut" as const },
-  },
-};
-
 export default function TvSeriesPage() {
-  // Applied filters — these drive the query and the visible grid.
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
 
-  // Drawer + draft filters — edited inside the drawer, committed on "Search".
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [draftGenres, setDraftGenres] = useState<Set<string>>(selectedGenres);
 
@@ -54,7 +35,6 @@ export default function TvSeriesPage() {
     first: 50,
   });
 
-  // Sync the drawer's draft with the applied filters whenever it opens.
   const handleDrawerOpenChange = (open: boolean) => {
     if (open) {
       setDraftGenres(new Set(selectedGenres));
@@ -73,16 +53,15 @@ export default function TvSeriesPage() {
 
   const clearDraft = () => setDraftGenres(new Set());
 
-  // Commit the draft filters and close the drawer.
   const handleSearch = () => {
     setSelectedGenres(new Set(draftGenres));
     setDrawerOpen(false);
   };
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setSelectedGenres(new Set());
     setDraftGenres(new Set());
-  };
+  }, []);
 
   const filtered = useMemo(() => {
     let result = toMovies(browse.data?.titles ?? []).filter(
@@ -100,6 +79,8 @@ export default function TvSeriesPage() {
 
     return result;
   }, [browse.data, selectedGenres]);
+
+  const gridKey = `grid-${[...selectedGenres].join("-")}`;
 
   return (
     <Drawer open={drawerOpen} onOpenChange={handleDrawerOpenChange}>
@@ -154,47 +135,19 @@ export default function TvSeriesPage() {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-4 md:px-8 lg:px-12 mt-6">
-          <AnimatePresence mode="wait">
-            {browse.isLoading ? (
-              <MovieGridSkeleton />
-            ) : filtered.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <Empty
-                  icon="📺"
-                  title="No series found"
-                  message="Try selecting different genres."
-                  actionLabel="Clear Filters"
-                  onAction={clearAll}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={`grid-${[...selectedGenres].join("-")}`}
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8"
-              >
-                {filtered.map((series) => (
-                  <motion.div key={series.id} variants={itemVariants}>
-                    <MovieCard movie={series} size="lg" className="w-full" />
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Content — memoized so drawer open/close doesn't reconcile the grid */}
+        <BrowseContent
+          isLoading={browse.isLoading}
+          items={filtered}
+          gridKey={gridKey}
+          emptyIcon="📺"
+          emptyTitle="No series found"
+          emptyMessage="Try selecting different genres."
+          onClearAll={clearAll}
+        />
 
         {/* Filter drawer */}
         <DrawerContent>
-          {/* Header */}
           <DrawerHeader>
             <div className="flex items-center gap-2">
               <ListFilter size={18} className="text-orange-500" />
@@ -213,14 +166,12 @@ export default function TvSeriesPage() {
             </DrawerClose>
           </DrawerHeader>
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-            {/* Genre group */}
+          <div className="flex-1 overflow-y-auto px-5 pt-8 pb-5 space-y-6">
             <div>
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
                 Genre
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {genres.map((g) => {
                   const active = draftGenres.has(g.id);
                   return (
@@ -248,7 +199,6 @@ export default function TvSeriesPage() {
             </div>
           </div>
 
-          {/* Footer actions */}
           <DrawerFooter>
             <Button
               variant="primary"
