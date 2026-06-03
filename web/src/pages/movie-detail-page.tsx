@@ -15,7 +15,6 @@ import {
   Star,
   Clock,
   MapPin,
-  Languages,
   Layers,
 } from "lucide-react";
 import { useTitleQuery } from "@/hooks/queries/use-title-query";
