@@ -126,15 +126,15 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       onMouseUp={handleMouseUp}
       style={{ userSelect: 'none', overscrollBehaviorX: 'none' }}
     >
-      {/* Backdrop images */}
-      <AnimatePresence mode="wait">
+      {/* Backdrop images — overlapping crossfade so the new image appears fast */}
+      <AnimatePresence>
         <motion.div
           key={activeMovie.id}
           className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.6, ease: 'easeInOut' }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
         >
           <img
             src={activeMovie.backdrop}
