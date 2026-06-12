@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -13,6 +14,7 @@ interface HeroBannerProps {
 }
 
 export function HeroBanner({ movies }: HeroBannerProps) {
+  const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -233,6 +235,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             {/* CTA Buttons */}
             <div className="flex items-center gap-3 flex-wrap">
               <button
+                onClick={() => { if (!isDragging.current) navigate(`/watch/${activeMovie.id}`); }}
                 className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm orange-glow transition-transform hover:scale-[1.03] active:scale-[0.97]')}
               >
                 <Play className="w-4 h-4 fill-white" />
@@ -240,6 +243,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               </button>
 
               <button
+                onClick={() => { if (!isDragging.current) navigate(`/movie/${activeMovie.id}`); }}
                 className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm text-white hover:bg-white/15 transition-transform hover:scale-[1.03] active:scale-[0.97]')}
               >
                 <Info className="w-4 h-4" />
