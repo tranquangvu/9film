@@ -40,7 +40,7 @@ const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" as const },
+    transition: { duration: 0.3, ease: "easeOut" as const },
   },
 } as const;
 
@@ -151,7 +151,7 @@ export default function MovieDetailPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.6, ease: "easeInOut" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
             />
           </AnimatePresence>
         </div>
@@ -165,7 +165,7 @@ export default function MovieDetailPage() {
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
           onClick={() => navigate(-1)}
           aria-label="Go back"
           className={cn(
@@ -357,7 +357,7 @@ export default function MovieDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.7, ease: "easeOut" }}
+        transition={{ delay: 0.5, duration: 0.3, ease: "easeOut" }}
         className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8"
       >
         <div className="space-y-10">

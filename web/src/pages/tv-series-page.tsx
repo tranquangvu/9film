@@ -104,7 +104,7 @@ export default function TvSeriesPage() {
               <motion.h1
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.3 }}
                 className="text-3xl md:text-4xl font-bold text-white"
               >
                 TV Series
@@ -113,7 +113,7 @@ export default function TvSeriesPage() {
               <motion.p
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.3 }}
                 className="text-zinc-500 mt-1 text-sm"
               >
                 Binge-worthy shows from around the world
@@ -124,7 +124,7 @@ export default function TvSeriesPage() {
             <motion.div
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.3 }}
               className="shrink-0"
             >
               <DrawerTrigger asChild>

@@ -187,7 +187,7 @@ export default function MyListPage() {
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3 }}
         >
           <h1 className="text-3xl md:text-4xl font-bold text-white">My List</h1>
           <p className="text-zinc-500 mt-1 text-sm">
@@ -225,7 +225,7 @@ export default function MyListPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.3 }}
             className="mt-6"
           >
             <HorizontalCarousel

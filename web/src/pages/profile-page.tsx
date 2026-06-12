@@ -511,7 +511,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.3 }}
           className="mb-8"
         >
           <h1 className="text-3xl font-bold text-white tracking-tight">Account Settings</h1>
@@ -524,7 +524,7 @@ export default function ProfilePage() {
           <motion.aside
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
             className="w-full lg:w-56 shrink-0"
           >
             <div className="bg-surface border border-zinc-800 rounded-2xl p-2 lg:sticky lg:top-24">
