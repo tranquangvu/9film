@@ -160,15 +160,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
 
       {/* Content */}
       <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeMovie.id}
-            className="w-full md:max-w-[58%]"
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          >
+        <div className="w-full md:max-w-[58%]">
             {/* Status badges */}
             <div className="flex items-center gap-2 mb-4">
               {activeMovie.isTrending && (
@@ -254,8 +246,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
                 More Info
               </button>
             </div>
-          </motion.div>
-        </AnimatePresence>
+        </div>
 
         {/* Indicator dots — centered */}
         {movies.length > 1 && (
