@@ -25,6 +25,7 @@ export function useTitlesQuery<T = Movie[]>(
       return {
         data: (select ? select(movies) : movies) as T,
         loading: results.some((q) => q.isLoading),
+        isError: results.some((q) => q.isError),
       };
     },
   });

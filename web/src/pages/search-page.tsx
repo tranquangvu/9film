@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
+import { useToast } from '@/components/ui/toast';
 import { toMovie } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -131,6 +132,7 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
 }
 
 export default function SearchPage() {
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +148,16 @@ export default function SearchPage() {
   };
 
   const search = useSearchQuery(query, 30);
+
+  useEffect(() => {
+    if (search.isError) {
+      toast({
+        title: 'Failed to load content',
+        description: 'Could not load search results. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [search.isError, toast]);
 
   const results = useMemo(() => {
     if (!query.trim()) return { films: [], series: [] };
@@ -237,7 +249,7 @@ export default function SearchPage() {
                 </p>
               </div>
             </motion.div>
-          ) : search.isLoading ? (
+          ) : search.isLoading || search.isError ? (
             /* Loading results */
             <motion.div
               key="searching"

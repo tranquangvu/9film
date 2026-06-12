@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, ListFilter } from "lucide-react";
@@ -7,6 +7,7 @@ import { useBrowseTitleQuery } from "@/hooks/queries/use-browse-title-query";
 import { cn } from "@/utils/cn";
 import { toMovies } from "@/utils/title";
 import { Tag } from "@/components/ui/tag";
+import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { BrowseContent } from "@/components/system/common/browse-content";
 import {
@@ -27,6 +28,7 @@ const TYPE_OPTIONS: { id: ContentType; label: string; icon: string }[] = [
 ];
 
 export default function BrowsePage() {
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const genreParam = searchParams.get("genre");
 
@@ -100,6 +102,16 @@ export default function BrowsePage() {
     genre: primaryGenre,
     first: 50,
   });
+
+  useEffect(() => {
+    if (browse.isError) {
+      toast({
+        title: "Failed to load content",
+        description: "Could not load titles. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [browse.isError, toast]);
 
   const filtered = useMemo(() => {
     let result = toMovies(browse.data?.titles ?? []);
@@ -177,7 +189,7 @@ export default function BrowsePage() {
 
         {/* Content — memoized so drawer open/close doesn't reconcile the grid */}
         <BrowseContent
-          isLoading={browse.isLoading}
+          isLoading={browse.isLoading || !!browse.isError}
           items={filtered}
           gridKey={gridKey}
           emptyIcon="🔍"

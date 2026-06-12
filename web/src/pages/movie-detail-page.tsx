@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
+import { useToast } from "@/components/ui/toast";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   motion,
@@ -52,6 +53,7 @@ export default function MovieDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const titleQuery = useTitleQuery(id);
   const similarQuery = useSimilarQuery(id);
@@ -99,7 +101,17 @@ export default function MovieDetailPage() {
   const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3]);
   const heroScale = useTransform(scrollY, [0, 600], [1, 1.05]);
 
-  if (titleQuery.isLoading) {
+  useEffect(() => {
+    if (titleQuery.isError) {
+      toast({
+        title: "Failed to load content",
+        description: "Could not load title details. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [titleQuery.isError, toast]);
+
+  if (titleQuery.isLoading || titleQuery.isError) {
     return <DetailPageSkeleton />;
   }
 

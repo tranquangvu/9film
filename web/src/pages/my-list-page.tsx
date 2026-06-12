@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
@@ -12,6 +12,7 @@ import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/s
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
+import { useToast } from '@/components/ui/toast';
 
 type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
 
@@ -155,6 +156,7 @@ function buildCollections(movies: Movie[]): Collection[] {
 }
 
 export default function MyListPage() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
@@ -162,6 +164,18 @@ export default function MyListPage() {
   const savedList = useTitlesQuery(myListIds);
   const continueIds = continueWatchingIds.map((item) => item.id);
   const continueList = useTitlesQuery(continueIds);
+
+  const hasError = savedList.isError || continueList.isError;
+
+  useEffect(() => {
+    if (hasError) {
+      toast({
+        title: 'Failed to load content',
+        description: 'Could not load your list. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [hasError, toast]);
 
   const listItems = useMemo(
     () => savedList.data.filter((m) => !removedIds.has(m.id)),
@@ -227,13 +241,13 @@ export default function MyListPage() {
       </div>
 
       {/* Continue Watching */}
-      {showContinueWatching && continueList.loading && (
+      {showContinueWatching && (continueList.loading || continueList.isError) && (
         <div className="mt-6">
           <CarouselSkeleton cardType="backdrop" count={4} />
         </div>
       )}
       <AnimatePresence mode="wait">
-        {showContinueWatching && !continueList.loading && continueWatching.length > 0 && (
+        {showContinueWatching && !continueList.loading && !continueList.isError && continueWatching.length > 0 && (
           <motion.div
             key="continue"
             initial={{ opacity: 0, y: 20 }}
@@ -255,7 +269,7 @@ export default function MyListPage() {
       {/* Saved grid */}
       {showGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
-          {savedList.loading ? (
+          {savedList.loading || savedList.isError ? (
             <>
               <Skeleton className="h-6 w-40 mb-5" />
               <MovieGridSkeleton />

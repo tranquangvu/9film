@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
@@ -18,6 +18,7 @@ import { formatYear } from '@/utils/format';
 import { toMovie } from '@/utils/title';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
 import type { Movie } from '@/types';
 
 function QuickSearch() {
@@ -159,11 +160,29 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
 }
 
 export default function HomePage() {
+  const { toast } = useToast();
   const heroQuery = useHeroTitles();
   const top10Query = useTop10Titles();
   const popularMoviesQuery = usePopularMovieTitles();
   const popularSeriesQuery = usePopularTVSeriesTitles();
   const resumeQuery = useResumeTitles();
+
+  const hasError =
+    heroQuery.isError ||
+    top10Query.isError ||
+    popularMoviesQuery.isError ||
+    popularSeriesQuery.isError ||
+    resumeQuery.isError;
+
+  useEffect(() => {
+    if (hasError) {
+      toast({
+        title: 'Failed to load content',
+        description: 'Could not load some titles. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [hasError, toast]);
 
   const heroMovies = heroQuery.data ?? [];
   const top10Movies = top10Query.data ?? [];
@@ -173,10 +192,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {heroQuery.isLoading ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
+      {heroQuery.isLoading || heroQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
-        {resumeQuery.loading ? (
+        {resumeQuery.loading || resumeQuery.isError ? (
           <CarouselSkeleton cardType="backdrop" />
         ) : resumeMovies.length > 0 ? (
           <AnimatedSection delay={0}>
@@ -184,7 +203,7 @@ export default function HomePage() {
           </AnimatedSection>
         ) : null}
 
-        {top10Query.isLoading ? (
+        {top10Query.isLoading || top10Query.isError ? (
           <CarouselSkeleton cardType="top10" />
         ) : top10Movies.length > 0 ? (
           <AnimatedSection delay={0.05}>
@@ -192,7 +211,7 @@ export default function HomePage() {
           </AnimatedSection>
         ) : null}
 
-        {popularMoviesQuery.isLoading ? (
+        {popularMoviesQuery.isLoading || popularMoviesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularMovies.length > 0 ? (
           <AnimatedSection delay={0.05}>
@@ -200,7 +219,7 @@ export default function HomePage() {
           </AnimatedSection>
         ) : null}
 
-        {popularSeriesQuery.isLoading ? (
+        {popularSeriesQuery.isLoading || popularSeriesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularSeries.length > 0 ? (
           <AnimatedSection delay={0.05}>
