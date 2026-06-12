@@ -1,12 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   Heart,
@@ -97,10 +92,6 @@ export default function MovieDetailPage() {
     return () => clearInterval(timer);
   }, [galleryImages.length]);
 
-  const { scrollY } = useScroll();
-  const heroOpacity = useTransform(scrollY, [0, 600], [1, 0.3]);
-  const heroScale = useTransform(scrollY, [0, 600], [1, 1.05]);
-
   useEffect(() => {
     if (titleQuery.isError) {
       toast({
@@ -149,10 +140,7 @@ export default function MovieDetailPage() {
       {/* ── HERO SECTION ── */}
       <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
         {/* Backdrop — crossfades through gallery images */}
-        <motion.div
-          className="absolute inset-0"
-          style={{ opacity: heroOpacity, scale: heroScale }}
-        >
+        <div className="absolute inset-0">
           <AnimatePresence mode="wait">
             <motion.img
               key={galleryImages[activeImageIndex] ?? movie.backdrop}
@@ -160,13 +148,13 @@ export default function MovieDetailPage() {
               alt={movie.title}
               draggable={false}
               className="absolute inset-0 object-cover w-full h-full"
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.9, ease: "easeInOut" }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
             />
           </AnimatePresence>
-        </motion.div>
+        </div>
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 gradient-overlay" />
@@ -278,26 +266,22 @@ export default function MovieDetailPage() {
             className="flex flex-wrap items-center gap-3"
           >
             {/* Play Now */}
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
+            <button
               onClick={() => navigate(`/watch/${movie.id}`)}
               className={cn(
                 buttonVariants({ variant: "primary", size: "lg" }),
-                "gap-2.5 font-bold",
+                "gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]",
               )}
             >
               <Play className="w-5 h-5 fill-white" />
               Play Now
-            </motion.button>
+            </button>
 
             {/* Favorite */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={() => setIsFavorited((v) => !v)}
               className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center border transition-all",
+                "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
                 isFavorited
                   ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
                   : "glass border-white/20 text-zinc-400 hover:text-white",
@@ -307,15 +291,13 @@ export default function MovieDetailPage() {
               <Heart
                 className={cn("w-5 h-5", isFavorited && "fill-pink-400")}
               />
-            </motion.button>
+            </button>
 
             {/* Bookmark */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={() => setIsBookmarked((v) => !v)}
               className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center border transition-all",
+                "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
                 isBookmarked
                   ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
                   : "glass border-white/20 text-zinc-400 hover:text-white",
@@ -325,19 +307,17 @@ export default function MovieDetailPage() {
               <Bookmark
                 className={cn("w-5 h-5", isBookmarked && "fill-blue-400")}
               />
-            </motion.button>
+            </button>
 
             {/* Share */}
             <div className="relative">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+              <button
                 onClick={handleShare}
-                className="w-12 h-12 rounded-full glass border border-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                className="w-12 h-12 rounded-full glass border border-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-all hover:scale-110 active:scale-90"
                 title="Share"
               >
                 <Share2 className="w-5 h-5" />
-              </motion.button>
+              </button>
               {shareTooltip && (
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}

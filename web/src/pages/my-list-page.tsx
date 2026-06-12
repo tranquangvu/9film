@@ -63,10 +63,8 @@ function RemovableCard({ movie, onRemove }: RemovableCardProps) {
 
 function CollectionCard({ collection }: { collection: Collection }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.22, ease: 'easeOut' as const }}
-      className="relative cursor-pointer rounded-xl overflow-hidden bg-surface border border-white/10 hover:border-white/20 transition-colors"
+    <div
+      className="relative cursor-pointer rounded-xl overflow-hidden bg-surface border border-white/10 hover:border-white/20 transition-all duration-200 hover:scale-[1.03]"
     >
       <div className={cn('relative h-32 bg-linear-to-br', collection.color, 'overflow-hidden')}>
         {collection.posters.map((poster, i) => (
@@ -90,7 +88,7 @@ function CollectionCard({ collection }: { collection: Collection }) {
         <p className="text-sm font-semibold text-white">{collection.name}</p>
         <p className="text-xs text-zinc-500 mt-0.5">{collection.count} titles</p>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

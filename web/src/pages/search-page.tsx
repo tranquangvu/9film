@@ -15,8 +15,6 @@ import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
 
-const MotionTag = motion(Tag);
-
 const TRENDING_TAGS = [
   'Christopher Nolan',
   'Marvel',
@@ -220,20 +218,15 @@ export default function SearchPage() {
               </div>
 
               <div className="flex flex-wrap gap-2.5">
-                {TRENDING_TAGS.map((tag, i) => (
-                  <MotionTag
+                {TRENDING_TAGS.map((tag) => (
+                  <Tag
                     key={tag}
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.04, duration: 0.25 }}
-                    whileHover={{ scale: 1.06 }}
-                    whileTap={{ scale: 0.95 }}
                     active={false}
                     onClick={() => handleQueryChange(tag)}
-                    className="bg-surface-2 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10 px-4 py-2"
+                    className="bg-surface-2 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10 px-4 py-2 transition-transform hover:scale-105 active:scale-95"
                   >
                     {tag}
-                  </MotionTag>
+                  </Tag>
                 ))}
               </div>
 
