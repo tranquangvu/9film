@@ -1,19 +1,21 @@
 import { continueWatchingIds } from '@/data/user';
-import { heroTitles, toMovies } from '@/utils/title';
+import { heroTitles, toMovies, type ImdbTitle } from '@/utils/title';
+import type { Movie } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
-import { useTrendingTitlesQuery } from './queries/use-trending-titles-query';
 import { useTitlesQuery } from './queries/use-titles-query';
 
 const HERO_LIMIT = 8;
 const TOP_TEN_LIMIT = 10;
 
-// Trending pool, narrowed to the strongest hero candidates inside the hook.
-export function useHeroTitles() {
-  return useTrendingTitlesQuery(30, (titles) => heroTitles(titles, HERO_LIMIT));
-}
+// A mixed movie+series pool sorted by popularity. BrowseTitles applies the
+// shared release cutoff, so every title here is old enough to have a stream —
+// unlike IMDb `trendingTitles`, which is dominated by just/unreleased titles.
+// Kept larger than the Popular rows so there's a healthy remainder for hero +
+// Top 10 after the rows are excluded (see partitionHomeTitles).
+const POOL_SIZE = 60;
 
-export function useTop10Titles() {
-  return useTrendingTitlesQuery(10, (titles) => toMovies(titles).slice(0, TOP_TEN_LIMIT));
+export function usePopularPoolTitles() {
+  return useBrowseTitleQuery({ sort: 'popular', first: POOL_SIZE }, (data) => data.titles);
 }
 
 export function usePopularMovieTitles() {
@@ -31,4 +33,19 @@ export function useResumeTitles() {
       return progress != null ? { ...movie, progress } : movie;
     }),
   });
+}
+
+// Carve the hero + Top 10 out of the popular pool, excluding every title already
+// shown in the Popular rows so the sections never 100% duplicate each other.
+// Dedup is by IMDb id (Movie.id === ImdbTitle.id).
+export function partitionHomeTitles(
+  pool: ImdbTitle[],
+  popularRows: Movie[],
+): { hero: Movie[]; top10: Movie[] } {
+  const excluded = new Set(popularRows.map((m) => m.id));
+  const rest = pool.filter((t) => t.id && !excluded.has(t.id));
+  return {
+    hero: heroTitles(rest, HERO_LIMIT),
+    top10: toMovies(rest).slice(0, TOP_TEN_LIMIT),
+  };
 }

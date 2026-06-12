@@ -8,10 +8,10 @@ import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/movie/
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import {
   useResumeTitles,
-  useHeroTitles,
+  usePopularPoolTitles,
   usePopularMovieTitles,
   usePopularTVSeriesTitles,
-  useTop10Titles,
+  partitionHomeTitles,
 } from '@/hooks/use-home-titles';
 import { cn } from '@/utils/cn';
 import { formatYear } from '@/utils/format';
@@ -161,15 +161,13 @@ function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
 
 export default function HomePage() {
   const { toast } = useToast();
-  const heroQuery = useHeroTitles();
-  const top10Query = useTop10Titles();
+  const poolQuery = usePopularPoolTitles();
   const popularMoviesQuery = usePopularMovieTitles();
   const popularSeriesQuery = usePopularTVSeriesTitles();
   const resumeQuery = useResumeTitles();
 
   const hasError =
-    heroQuery.isError ||
-    top10Query.isError ||
+    poolQuery.isError ||
     popularMoviesQuery.isError ||
     popularSeriesQuery.isError ||
     resumeQuery.isError;
@@ -184,15 +182,24 @@ export default function HomePage() {
     }
   }, [hasError, toast]);
 
-  const heroMovies = heroQuery.data ?? [];
-  const top10Movies = top10Query.data ?? [];
   const popularMovies = popularMoviesQuery.data ?? [];
   const popularSeries = popularSeriesQuery.data ?? [];
   const resumeMovies = resumeQuery.data ?? [];
 
+  // Hero + Top 10 are carved out of the popular pool, minus everything the
+  // Popular rows already show, so the sections never fully duplicate.
+  const { hero: heroMovies, top10: top10Movies } = useMemo(
+    () =>
+      partitionHomeTitles(poolQuery.data ?? [], [
+        ...(popularMoviesQuery.data ?? []),
+        ...(popularSeriesQuery.data ?? []),
+      ]),
+    [poolQuery.data, popularMoviesQuery.data, popularSeriesQuery.data],
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {heroQuery.isLoading || heroQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
+      {poolQuery.isLoading || poolQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
         {resumeQuery.loading || resumeQuery.isError ? (
@@ -203,7 +210,7 @@ export default function HomePage() {
           </AnimatedSection>
         ) : null}
 
-        {top10Query.isLoading || top10Query.isError ? (
+        {poolQuery.isLoading || poolQuery.isError ? (
           <CarouselSkeleton cardType="top10" />
         ) : top10Movies.length > 0 ? (
           <AnimatedSection delay={0.05}>
