@@ -7,6 +7,7 @@ import { formatDuration, formatYear } from '@/utils/format';
 import type { Movie } from '@/types';
 import { RatingBadge } from '@/components/system/movie/rating-badge';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { useListButton } from '@/hooks/queries/use-list-query';
 
 interface MovieCardProps {
   movie: Movie
@@ -24,6 +25,7 @@ const sizeClasses = {
 export function MovieCard({ movie, className, showProgress = false, size = 'md' }: MovieCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
+  const favorite = useListButton(movie.id, movie.type, 'favorite');
 
   const handleClick = () => navigate(`/movie/${movie.id}`);
 
@@ -100,11 +102,16 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
             {/* Action icons */}
             <div className="flex items-center gap-2 pt-1">
               <button
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
-                onClick={(e) => e.stopPropagation()}
-                title="Add to list"
+                className={cn(
+                  'w-7 h-7 rounded-full border flex items-center justify-center transition-colors',
+                  favorite.active
+                    ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
+                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-white',
+                )}
+                onClick={favorite.onToggle}
+                title={favorite.active ? 'Remove from favorites' : 'Add to favorites'}
               >
-                <Heart className="w-3.5 h-3.5 text-white" />
+                <Heart className={cn('w-3.5 h-3.5', favorite.active && 'fill-orange-400')} />
               </button>
               <button
                 className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"

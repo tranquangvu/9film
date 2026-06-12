@@ -4,6 +4,7 @@ import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import type { Movie } from '@/types';
+import { useListButton } from '@/hooks/queries/use-list-query';
 
 interface Top10CardProps {
   movie: Movie
@@ -14,6 +15,7 @@ interface Top10CardProps {
 export function Top10Card({ movie, rank, className }: Top10CardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
+  const favorite = useListButton(movie.id, movie.type, 'favorite');
 
   const rankStr = rank.toString();
 
@@ -70,10 +72,14 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
               <Play className="w-3.5 h-3.5 fill-white text-white" />
             </button>
             <button
-              onClick={(e) => e.stopPropagation()}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              onClick={favorite.onToggle}
+              className={cn(
+                'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
+                favorite.active ? 'bg-orange-500/20 text-orange-400' : 'bg-white/10 hover:bg-white/20 text-white',
+              )}
+              title={favorite.active ? 'Remove from favorites' : 'Add to favorites'}
             >
-              <Heart className="w-3.5 h-3.5 text-white" />
+              <Heart className={cn('w-3.5 h-3.5', favorite.active && 'fill-orange-400')} />
             </button>
           </div>
         </div>

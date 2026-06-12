@@ -26,6 +26,7 @@ import { Tag } from "@/components/ui/tag";
 import { MovieCard } from "@/components/system/movie/movie-card";
 import { GenreBadge } from "@/components/system/movie/genre-badge";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
+import { useListButton } from "@/hooks/queries/use-list-query";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -79,10 +80,11 @@ export default function MovieDetailPage() {
   }, [titleQuery.data]);
 
   const [selectedSeason, setSelectedSeason] = useState(1);
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const favorite = useListButton(id, movie?.type ?? "movie", "favorite");
+  const watchlist = useListButton(id, movie?.type ?? "movie", "watchlist");
 
   useEffect(() => {
     if (galleryImages.length < 2) return;
@@ -279,33 +281,33 @@ export default function MovieDetailPage() {
 
             {/* Favorite */}
             <button
-              onClick={() => setIsFavorited((v) => !v)}
+              onClick={favorite.onToggle}
               className={cn(
                 "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
-                isFavorited
+                favorite.active
                   ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
                   : "glass border-white/20 text-zinc-400 hover:text-white",
               )}
-              title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+              title={favorite.active ? "Remove from favorites" : "Add to favorites"}
             >
               <Heart
-                className={cn("w-5 h-5", isFavorited && "fill-pink-400")}
+                className={cn("w-5 h-5", favorite.active && "fill-pink-400")}
               />
             </button>
 
-            {/* Bookmark */}
+            {/* Bookmark / Watch later */}
             <button
-              onClick={() => setIsBookmarked((v) => !v)}
+              onClick={watchlist.onToggle}
               className={cn(
                 "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
-                isBookmarked
+                watchlist.active
                   ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
                   : "glass border-white/20 text-zinc-400 hover:text-white",
               )}
-              title={isBookmarked ? "Remove bookmark" : "Add to watchlist"}
+              title={watchlist.active ? "Remove from watch later" : "Add to watch later"}
             >
               <Bookmark
-                className={cn("w-5 h-5", isBookmarked && "fill-blue-400")}
+                className={cn("w-5 h-5", watchlist.active && "fill-blue-400")}
               />
             </button>
 
