@@ -54,12 +54,7 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      transition={{ duration: 0.25 }}
+    <div
       onClick={() => navigate(`/movie/${movie.id}`)}
       className="flex gap-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
     >
@@ -127,7 +122,7 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
           {movie.type === 'series' ? 'Series' : 'Film'}
         </span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -313,11 +308,9 @@ export default function SearchPage() {
                         </span>
                       </div>
                       <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
-                        <AnimatePresence>
-                          {results.films.map((movie) => (
-                            <SearchResultRow key={movie.id} movie={movie} query={query} />
-                          ))}
-                        </AnimatePresence>
+                        {results.films.map((movie) => (
+                          <SearchResultRow key={movie.id} movie={movie} query={query} />
+                        ))}
                       </div>
                     </section>
                   )}
@@ -332,11 +325,9 @@ export default function SearchPage() {
                         </span>
                       </div>
                       <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
-                        <AnimatePresence>
-                          {results.series.map((movie) => (
-                            <SearchResultRow key={movie.id} movie={movie} query={query} />
-                          ))}
-                        </AnimatePresence>
+                        {results.series.map((movie) => (
+                          <SearchResultRow key={movie.id} movie={movie} query={query} />
+                        ))}
                       </div>
                     </section>
                   )}

@@ -37,53 +37,27 @@ interface Collection {
   color: string
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: 'easeOut' as const } },
-};
-
 interface RemovableCardProps {
   movie: Movie
   onRemove: (id: string) => void
 }
 
 function RemovableCard({ movie, onRemove }: RemovableCardProps) {
-  const [hovered, setHovered] = useState(false);
-
   return (
-    <motion.div
-      layout
-      variants={itemVariants}
-      className="relative"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div className="relative group/removable">
       <MovieCard movie={movie} size="lg" className="w-full" />
 
-      <AnimatePresence>
-        {hovered && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/70 border border-zinc-600 hover:bg-red-600 hover:border-red-500 flex items-center justify-center transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(movie.id);
-            }}
-            aria-label="Remove from list"
-          >
-            <X className="w-3.5 h-3.5 text-white" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      <button
+        className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/70 border border-zinc-600 hover:bg-red-600 hover:border-red-500 flex items-center justify-center transition-all opacity-0 scale-90 group-hover/removable:opacity-100 group-hover/removable:scale-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(movie.id);
+        }}
+        aria-label="Remove from list"
+      >
+        <X className="w-3.5 h-3.5 text-white" />
+      </button>
+    </div>
   );
 }
 
@@ -277,20 +251,11 @@ export default function MyListPage() {
           ) : visibleMovies.length > 0 ? (
             <>
               <h2 className="text-lg font-bold text-white mb-5">{sectionTitle}</h2>
-              <motion.div
-                key={activeTab}
-                layout
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8"
-              >
-                <AnimatePresence>
-                  {visibleMovies.map((movie) => (
-                    <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+                {visibleMovies.map((movie) => (
+                  <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />
+                ))}
+              </div>
             </>
           ) : (
             <Empty
