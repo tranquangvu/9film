@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { X, Crown } from 'lucide-react';
+import { X, Crown, LogIn } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { genres } from '@/data/genres';
-import { currentUser } from '@/data/user';
+import { useAuth } from '@/context/auth-context';
 
 interface SidebarProps {
   isOpen: boolean
@@ -20,6 +20,7 @@ const navLinks = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { isAuthenticated, user } = useAuth();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -106,20 +107,40 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* User profile */}
             <div className="px-4 py-4 border-t border-white/5">
-              <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-10 h-10 rounded-xl object-cover bg-zinc-800 flex-shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white truncate">{currentUser.name}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Crown size={10} className="text-orange-500" />
-                    <p className="text-xs text-orange-500 capitalize font-medium">{currentUser.plan}</p>
+              {isAuthenticated && user ? (
+                <NavLink
+                  to="/profile"
+                  onClick={onClose}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-xl object-cover bg-zinc-800 flex-shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Crown size={10} className="text-orange-500" />
+                      <p className="text-xs text-orange-500 capitalize font-medium">{user.plan}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </NavLink>
+              ) : (
+                <NavLink
+                  to="/login"
+                  onClick={onClose}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-zinc-300"
+                >
+                  <span className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <LogIn size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white">Sign in</p>
+                    <p className="text-xs text-zinc-500">Save your list &amp; progress</p>
+                  </div>
+                </NavLink>
+              )}
             </div>
           </motion.div>
         </>

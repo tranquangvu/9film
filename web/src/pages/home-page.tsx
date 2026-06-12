@@ -196,13 +196,13 @@ export default function HomePage() {
         {popularMoviesQuery.isLoading || popularMoviesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularMovies.length > 0 ? (
-          <HorizontalCarousel title="Popular Movies" movies={popularMovies} />
+          <HorizontalCarousel title="Popular Movies" movies={popularMovies} viewAllTo="/movies" />
         ) : null}
 
         {popularSeriesQuery.isLoading || popularSeriesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularSeries.length > 0 ? (
-          <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} />
+          <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} viewAllTo="/tvs" />
         ) : null}
 
         <QuickSearch />

@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import type { Movie } from '@/types';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { ContinueWatchingCard } from '@/components/system/movie/continue-card';
@@ -13,6 +14,8 @@ interface HorizontalCarouselProps {
   className?: string
   cardType?: 'poster' | 'backdrop' | 'top10'
   showSeeAll?: boolean
+  /** Destination for the "View all" link; the link only shows when set. */
+  viewAllTo?: string
 }
 
 const SCROLL_AMOUNT = 600;
@@ -23,6 +26,7 @@ export function HorizontalCarousel({
   className,
   cardType = 'poster',
   showSeeAll = true,
+  viewAllTo,
 }: HorizontalCarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -56,11 +60,17 @@ export function HorizontalCarousel({
       {/* Section header */}
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
-        {showSeeAll && (
-          <Button variant="ghost" size="sm" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group/seeall shadow-none">
+        {showSeeAll && viewAllTo && (
+          <Link
+            to={viewAllTo}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'sm' }),
+              'flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group/seeall shadow-none',
+            )}
+          >
             View all
             <MoveRight className="w-4 h-4 transition-transform group-hover/seeall:translate-x-0.5" />
-          </Button>
+          </Link>
         )}
       </div>
 
