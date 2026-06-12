@@ -31,7 +31,6 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
           <img
             src={movie.backdrop}
             alt={movie.title}
-            loading="lazy"
             decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
