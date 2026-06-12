@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   bestUrl,
   isImdb,
   mergeEpisode,
   parseId,
+  seasons,
+  episodes,
   type EmbedParams,
   type EpisodeMap,
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
 import { orderSubs, pickSubs } from '@/utils/subtitle';
+import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
+import { useProgressQuery, useSaveProgress } from './queries/use-progress-query';
+import { useSettings } from './queries/use-settings-query';
 
 export function usePlayerSession(
   titleId: string,
@@ -55,26 +60,53 @@ export function usePlayerSession(
     return map && Object.keys(map).length > 0 ? map : null;
   }, [epsQuery.data]);
 
+  const isSeries = eps !== null;
+
+  // ── Watch progress (resume + save) ──────────────────────────────────────────
+  const { isAuthenticated } = useAuth();
+  const settings = useSettings();
+  const { data: progressItems } = useProgressQuery();
+  const saveProgressMut = useSaveProgress();
+
+  const savedProgress = useMemo(
+    () => (progressItems ?? []).find((p) => p.imdbId === titleId) ?? null,
+    [progressItems, titleId],
+  );
+
+  // For a series opened without a deep link, resume on the last-watched episode.
+  const seriesResume = useMemo(() => {
+    if (initialEpisode) return null;
+    if (isSeries && savedProgress && savedProgress.season > 0) {
+      return { season: savedProgress.season, episode: savedProgress.episode };
+    }
+    return null;
+  }, [initialEpisode, isSeries, savedProgress]);
+
+  // Effective episode: an explicit user pick wins, else the series-resume seed.
+  const effectiveSelected = selected ?? seriesResume;
+
   // The playable stream: bare for movies / no selection, episode-specific once picked.
   const streamParams = useMemo<EmbedParams | null>(() => {
     if (!baseParams) return null;
-    if (baseParams.mediaType === 'tv' && selected) {
-      return { ...baseParams, season: selected.season, episode: selected.episode };
+    if (baseParams.mediaType === 'tv' && effectiveSelected) {
+      return { ...baseParams, season: effectiveSelected.season, episode: effectiveSelected.episode };
     }
     return baseParams;
-  }, [baseParams, selected]);
+  }, [baseParams, effectiveSelected]);
 
   const streamQuery = useStreamQuery(streamParams);
   const streamData = streamQuery.data;
 
   const allUrls = useMemo(() => streamData?.stream_urls ?? [], [streamData]);
   const autoStreamUrl = useMemo(
-    () => (allUrls.length > 0 ? bestUrl(allUrls) : null),
-    [allUrls],
+    () => (allUrls.length > 0 ? bestUrl(allUrls, settings.defaultQuality) : null),
+    [allUrls, settings.defaultQuality],
   );
   const streamUrl = userStreamUrl ?? autoStreamUrl;
 
   // Reset per-title state when navigating to a different title or deep-link target.
+  // (Intentional reset-on-navigation; setState here is the simplest correct form.)
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setSelected(
       initialSeason != null && initialEp != null
@@ -84,10 +116,56 @@ export function usePlayerSession(
     setStreamUrl(null);
     setUserSubId(null);
   }, [titleId, initialSeason, initialEp]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Displayed/selected episode: the user's pick, falling back to the upstream default.
-  const season = selected?.season ?? (streamData?.season != null ? Number(streamData.season) : 1);
-  const episode = selected?.episode ?? (streamData?.episode != null ? Number(streamData.episode) : 1);
+  // Displayed/selected episode: the effective pick, falling back to the upstream default.
+  const season = effectiveSelected?.season ?? (streamData?.season != null ? Number(streamData.season) : 1);
+  const episode = effectiveSelected?.episode ?? (streamData?.episode != null ? Number(streamData.episode) : 1);
+
+  // Resume only applies to the episode the saved point belongs to.
+  const matchesSaved =
+    !!savedProgress && (!isSeries || (savedProgress.season === season && savedProgress.episode === episode));
+  const resumeAt =
+    isAuthenticated &&
+    matchesSaved &&
+    savedProgress &&
+    savedProgress.positionSeconds > 5 &&
+    savedProgress.durationSeconds > 0 &&
+    savedProgress.positionSeconds < savedProgress.durationSeconds * 0.95
+      ? savedProgress.positionSeconds
+      : undefined;
+
+  const saveProgress = useCallback(
+    (positionSeconds: number, durationSeconds: number) => {
+      if (!isAuthenticated) return;
+      saveProgressMut.mutate({
+        imdbId: titleId,
+        season: isSeries ? season : 0,
+        episode: isSeries ? episode : 0,
+        positionSeconds,
+        durationSeconds,
+      });
+    },
+    [isAuthenticated, titleId, isSeries, season, episode, saveProgressMut],
+  );
+
+  // Next episode in the eps map (drives autoplay-next).
+  const nextEpisode = useCallback((): { season: number; episode: number } | null => {
+    if (!eps) return null;
+    const epList = episodes(eps, season);
+    const idx = epList.indexOf(episode);
+    if (idx >= 0 && idx + 1 < epList.length) {
+      return { season, episode: epList[idx + 1] };
+    }
+    const seasonList = seasons(eps);
+    const sIdx = seasonList.indexOf(season);
+    if (sIdx >= 0 && sIdx + 1 < seasonList.length) {
+      const nextSeason = seasonList[sIdx + 1];
+      const nextEps = episodes(eps, nextSeason);
+      if (nextEps.length > 0) return { season: nextSeason, episode: nextEps[0] };
+    }
+    return null;
+  }, [eps, season, episode]);
 
   // 3. Subtitles — depends on resolved stream params + title language
   const resolvedStreamParams = useMemo<EmbedParams | null>(
@@ -103,8 +181,8 @@ export function usePlayerSession(
 
   const resolvedSubs = useMemo(() => {
     if (!subtitleQuery.data || !titleData || !resolvedStreamParams) return null;
-    return pickSubs(subtitleQuery.data, titleData, resolvedStreamParams);
-  }, [subtitleQuery.data, titleData, resolvedStreamParams]);
+    return pickSubs(subtitleQuery.data, titleData, resolvedStreamParams, settings.defaultSubtitleLang);
+  }, [subtitleQuery.data, titleData, resolvedStreamParams, settings.defaultSubtitleLang]);
 
   const autoSubId = resolvedSubs?.fileId ?? null;
   const selectedSubId = userSubId ?? autoSubId;
@@ -155,5 +233,10 @@ export function usePlayerSession(
     subError: subtitleQuery.error instanceof Error ? subtitleQuery.error.message : null,
     handleEpisodeChange,
     handleSubtitleTrackChange,
+    // Watch progress
+    resumeAt,
+    saveProgress,
+    nextEpisode,
+    autoplayNext: settings.autoplayNext,
   };
 }

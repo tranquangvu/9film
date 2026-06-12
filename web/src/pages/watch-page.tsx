@@ -39,6 +39,10 @@ export function WatchPage() {
     selectedSub,
     handleEpisodeChange,
     handleSubtitleTrackChange,
+    resumeAt,
+    saveProgress,
+    nextEpisode,
+    autoplayNext,
   } = usePlayerSession(id, initialEpisode);
 
   const isSeries = eps !== null;
@@ -65,7 +69,17 @@ export function WatchPage() {
         className="relative w-full h-screen bg-black"
         style={{ '--media-border-radius': '0' } as React.CSSProperties}
       >
-        <VideoPlayer src={streamUrl} poster={poster} subtitle={selectedSub} />
+        <VideoPlayer
+          src={streamUrl}
+          poster={poster}
+          subtitle={selectedSub}
+          startAt={resumeAt}
+          onProgress={saveProgress}
+          onEnded={() => {
+            const next = nextEpisode();
+            if (autoplayNext && next) handleEpisodeChange(next.season, next.episode);
+          }}
+        />
 
         {/* Header overlay — sits on top of the video */}
         <header className="absolute top-0 left-0 right-0 z-50 px-4 md:px-8 py-4 bg-linear-to-b from-black/70 to-transparent pointer-events-none">

@@ -3,6 +3,7 @@ import { createPlayer } from '@videojs/react';
 import { videoFeatures, VideoSkin, Video } from '@videojs/react/video';
 import { HlsVideo } from '@videojs/react/media/hls-video';
 import type { SubtitleOption } from '@/utils/subtitle';
+import { ProgressReporter } from '@/components/system/player/progress-reporter';
 
 const Player = createPlayer({ features: videoFeatures });
 
@@ -10,6 +11,10 @@ export interface VideoPlayerProps {
   src: string | null;
   poster?: string;
   subtitle?: SubtitleOption | null;
+  /** Resume position in seconds. */
+  startAt?: number;
+  onProgress?: (positionSeconds: number, durationSeconds: number) => void;
+  onEnded?: () => void;
 }
 
 function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
@@ -24,7 +29,7 @@ function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
   );
 }
 
-export function VideoPlayer({ src, poster, subtitle }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnded }: VideoPlayerProps) {
   if (!src) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-black text-white/40 text-sm">
@@ -52,6 +57,9 @@ export function VideoPlayer({ src, poster, subtitle }: VideoPlayerProps) {
             </Video>
           )}
         </VideoSkin>
+        {onProgress && (
+          <ProgressReporter startAt={startAt} onProgress={onProgress} onEnded={onEnded} />
+        )}
       </Player.Provider>
     </div>
   );

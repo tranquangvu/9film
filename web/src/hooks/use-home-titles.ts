@@ -1,8 +1,8 @@
-import { continueWatchingIds } from '@/data/user';
 import { heroTitles, toMovies, type ImdbTitle } from '@/utils/title';
 import type { Movie } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
 import { useTitlesQuery } from './queries/use-titles-query';
+import { useProgressQuery, progressPercent } from './queries/use-progress-query';
 
 const HERO_LIMIT = 8;
 const TOP_TEN_LIMIT = 10;
@@ -27,11 +27,14 @@ export function usePopularTVSeriesTitles() {
 }
 
 export function useResumeTitles() {
-  return useTitlesQuery(continueWatchingIds.map((item) => item.id), {
-    select: (movies) => movies.map((movie) => {
-      const progress = continueWatchingIds.find((item) => item.id === movie.id)?.progress;
-      return progress != null ? { ...movie, progress } : movie;
-    }),
+  const { data: progressItems } = useProgressQuery();
+  const items = progressItems ?? [];
+  return useTitlesQuery(items.map((p) => p.imdbId), {
+    select: (movies) =>
+      movies.map((movie) => {
+        const p = items.find((x) => x.imdbId === movie.id);
+        return p ? { ...movie, progress: progressPercent(p) } : movie;
+      }),
   });
 }
 
