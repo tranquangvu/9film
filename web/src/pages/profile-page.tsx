@@ -249,6 +249,13 @@ function PlaybackSection() {
           description="Automatically start the next episode when one ends"
         />
         <div className="h-px bg-zinc-800" />
+        <Toggle
+          enabled={settings.learningMode}
+          onChange={(v) => update.mutate({ learningMode: v })}
+          label="Learn English mode"
+          description="Show clickable subtitles, word lookups, and a synced transcript while watching"
+        />
+        <div className="h-px bg-zinc-800" />
         <div className="grid sm:grid-cols-2 gap-4">
           <Select
             label="Video Quality"

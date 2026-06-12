@@ -9,6 +9,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   autoplayNext: true,
   defaultSubtitleLang: 'en',
   defaultQuality: 'auto',
+  learningMode: true,
+  learningLang: 'vi',
 };
 
 export function useSettingsQuery() {

@@ -46,6 +46,13 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 
 		api.GET("/stream", handler.GetStream())
 
+		// Language-learning helpers (public)
+		learn := api.Group("/learn")
+		{
+			learn.GET("/define", handler.Define())
+			learn.GET("/translate", handler.Translate())
+		}
+
 		// Auth (public)
 		authGrp := api.Group("/auth")
 		{
@@ -64,6 +71,10 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 			me.DELETE("/list", handler.RemoveList(st))
 			me.GET("/progress", handler.GetProgress(st))
 			me.PUT("/progress", handler.PutProgress(st))
+			me.GET("/saved-words", handler.GetSavedWords(st))
+			me.POST("/saved-words", handler.AddSavedWord(st))
+			me.DELETE("/saved-words", handler.RemoveSavedWord(st))
+			me.PUT("/saved-words/review", handler.ReviewWord(st))
 		}
 	}
 

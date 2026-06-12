@@ -45,6 +45,9 @@ func PutSettings(st *store.Store) gin.HandlerFunc {
 		if s.DefaultQuality == "" {
 			s.DefaultQuality = "auto"
 		}
+		if s.LearningLang == "" {
+			s.LearningLang = "vi"
+		}
 		if err := st.UpsertSettings(middleware.UserID(c), s); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save settings"})
 			return
@@ -142,5 +145,80 @@ func PutProgress(st *store.Store) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, p)
+	}
+}
+
+func GetSavedWords(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		items, err := st.GetSavedWords(middleware.UserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load saved words"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+	}
+}
+
+func AddSavedWord(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var w store.SavedWord
+		if err := c.ShouldBindJSON(&w); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
+		}
+		w.Word = strings.ToLower(strings.TrimSpace(w.Word))
+		if w.Word == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+			return
+		}
+		if err := st.AddSavedWord(middleware.UserID(c), w); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save word"})
+			return
+		}
+		c.JSON(http.StatusCreated, w)
+	}
+}
+
+func RemoveSavedWord(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		word := strings.ToLower(strings.TrimSpace(c.Query("word")))
+		if word == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+			return
+		}
+		if err := st.RemoveSavedWord(middleware.UserID(c), word); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not remove word"})
+			return
+		}
+		c.Status(http.StatusNoContent)
+	}
+}
+
+type reviewWordRequest struct {
+	Word         string `json:"word"`
+	Box          int    `json:"box"`
+	IntervalDays int    `json:"intervalDays"`
+}
+
+func ReviewWord(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req reviewWordRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
+		}
+		req.Word = strings.ToLower(strings.TrimSpace(req.Word))
+		if req.Word == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+			return
+		}
+		if req.IntervalDays < 0 {
+			req.IntervalDays = 0
+		}
+		if err := st.ReviewWord(middleware.UserID(c), req.Word, req.Box, req.IntervalDays); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update review"})
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }

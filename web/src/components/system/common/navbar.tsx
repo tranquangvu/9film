@@ -16,6 +16,7 @@ const navLinks = [
   { label: 'Movies', to: '/movies' },
   { label: 'TV Series', to: '/tvs' },
   { label: 'My List', to: '/my-list' },
+  { label: 'Learn', to: '/learn' },
 ];
 
 export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {

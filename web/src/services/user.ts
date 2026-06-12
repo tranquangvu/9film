@@ -23,6 +23,21 @@ export interface UserSettings {
   autoplayNext: boolean;
   defaultSubtitleLang: string;
   defaultQuality: string;
+  learningMode: boolean;
+  learningLang: string;
+}
+
+export interface SavedWord {
+  word: string;
+  sentence: string;
+  translation: string;
+  imdbId: string;
+  season: number;
+  episode: number;
+  timestamp: number;
+  box: number;
+  dueAt?: string;
+  createdAt?: string;
 }
 
 export function getMe(): Promise<AuthUser> {
@@ -58,4 +73,21 @@ export async function getProgress(): Promise<ProgressItem[]> {
 
 export function putProgress(body: ProgressItem): Promise<ProgressItem> {
   return apiFetch<ProgressItem>('/api/me/progress', { method: 'PUT', body });
+}
+
+export async function getSavedWords(): Promise<SavedWord[]> {
+  const res = await apiFetch<{ items: SavedWord[] }>('/api/me/saved-words');
+  return res.items ?? [];
+}
+
+export function addSavedWord(body: Omit<SavedWord, 'box' | 'dueAt' | 'createdAt'>): Promise<SavedWord> {
+  return apiFetch<SavedWord>('/api/me/saved-words', { method: 'POST', body });
+}
+
+export function removeSavedWord(word: string): Promise<void> {
+  return apiFetch<void>(`/api/me/saved-words?word=${encodeURIComponent(word)}`, { method: 'DELETE' });
+}
+
+export function reviewSavedWord(body: { word: string; box: number; intervalDays: number }): Promise<void> {
+  return apiFetch<void>('/api/me/saved-words/review', { method: 'PUT', body });
 }

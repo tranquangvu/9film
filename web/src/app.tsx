@@ -13,6 +13,7 @@ import BrowsePage from "@/pages/browse-page";
 import MovieDetailPage from "@/pages/movie-detail-page";
 import { WatchPage } from "@/pages/watch-page";
 import MyListPage from "@/pages/my-list-page";
+import LearnPage from "@/pages/learn-page";
 import SearchPage from "@/pages/search-page";
 import ProfilePage from "@/pages/profile-page";
 import MoviesPage from "@/pages/movies-page";
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
       { path: "/tvs", element: <TvSeriesPage /> },
       { path: "/movie/:id", element: <MovieDetailPage /> },
       { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
+      { path: "/learn", element: <RequireAuth><LearnPage /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },
       { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
       { path: "/about", element: <AboutPage /> },

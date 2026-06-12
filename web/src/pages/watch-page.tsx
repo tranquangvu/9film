@@ -1,12 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
+import { ArrowLeft, MonitorPlay, ClosedCaption, Film, FileText } from 'lucide-react';
 import { VideoPlayer } from '@/components/system/player/video-player';
+import { MediaProvider } from '@/components/system/player/media-context';
+import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { Tag } from '@/components/ui/tag';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
 import { episodes, seasons } from '@/utils/stream';
+import { cn } from '@/utils/cn';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
@@ -22,6 +25,11 @@ export function WatchPage() {
     Number.isFinite(seasonParam) && seasonParam > 0 && Number.isFinite(episodeParam) && episodeParam > 0
       ? { season: seasonParam, episode: episodeParam }
       : null;
+
+  // Optional timestamp deep link (?t=seconds) — e.g. the "watch the scene" link
+  // from a saved vocabulary word. Overrides the saved resume point.
+  const tParam = Number(searchParams.get('t'));
+  const startAtOverride = Number.isFinite(tParam) && tParam > 0 ? tParam : undefined;
 
   const {
     eps,
@@ -43,11 +51,21 @@ export function WatchPage() {
     saveProgress,
     nextEpisode,
     autoplayNext,
+    cues,
+    learningMode,
+    learningLang,
   } = usePlayerSession(id, initialEpisode);
 
+  const [showTranscript, setShowTranscript] = useState(false);
   const isSeries = eps !== null;
   const availableSeasons = eps ? seasons(eps) : [];
   const episodesBySeason = eps ? episodes(eps, season) : [];
+
+  const learning =
+    learningMode && cues.length > 0
+      ? { cues, context: { imdbId: id, season: isSeries ? season : 0, episode: isSeries ? episode : 0, learningLang } }
+      : null;
+  const hasTranscript = learningMode && cues.length > 0;
 
   // On a fetch error, keep the loading UI and surface the reason via a toast.
   const blocked = !!error && !streamUrl;
@@ -63,6 +81,7 @@ export function WatchPage() {
   }, [error, toast]);
 
   return (
+    <MediaProvider>
     <div className="min-h-screen bg-background text-white">
       {/* ── Video + overlaid header ─────────────────────────────────────────── */}
       <div
@@ -73,12 +92,13 @@ export function WatchPage() {
           src={streamUrl}
           poster={poster}
           subtitle={selectedSub}
-          startAt={resumeAt}
+          startAt={startAtOverride ?? resumeAt}
           onProgress={saveProgress}
           onEnded={() => {
             const next = nextEpisode();
             if (autoplayNext && next) handleEpisodeChange(next.season, next.episode);
           }}
+          learning={learning}
         />
 
         {/* Header overlay — sits on top of the video */}
@@ -153,6 +173,20 @@ export function WatchPage() {
 
           {/* Right: Source + Subtitle ─────────────────────────────────────── */}
           <div className="flex items-center gap-2 shrink-0">
+            {hasTranscript && (
+              <button
+                onClick={() => setShowTranscript((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                  showTranscript
+                    ? 'bg-orange-500 border-orange-500 text-white'
+                    : 'glass border-white/15 text-zinc-300 hover:text-white hover:bg-white/10',
+                )}
+              >
+                <FileText size={14} />
+                Transcript
+              </button>
+            )}
             {allUrls.length > 0 && (
               <Select
                 icon={<MonitorPlay size={14} />}
@@ -179,7 +213,15 @@ export function WatchPage() {
           </div>
 
         </div>
+
+        {/* Transcript panel ─────────────────────────────────────────────── */}
+        {hasTranscript && showTranscript && (
+          <div className="mt-4">
+            <TranscriptPanel cues={cues} />
+          </div>
+        )}
       </div>
     </div>
+    </MediaProvider>
   );
 }

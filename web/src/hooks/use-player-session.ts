@@ -15,6 +15,7 @@ import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
+import { useSubtitleCues } from './queries/use-subtitle-cues';
 import { useProgressQuery, useSaveProgress } from './queries/use-progress-query';
 import { useSettings } from './queries/use-settings-query';
 
@@ -205,6 +206,11 @@ export function usePlayerSession(
 
   const selectedSub = subList.find((s) => s.fileId === selectedSubId) ?? null;
 
+  // Parsed subtitle cues drive the interactive overlay + transcript panel. Only
+  // fetched/parsed when learning mode is on; reuses the browser-cached VTT file.
+  const cuesQuery = useSubtitleCues(settings.learningMode ? selectedSubId : null);
+  const cues = useMemo(() => cuesQuery.data ?? [], [cuesQuery.data]);
+
   const poster = streamData?.backdrop ?? titleData?.primaryImage?.url;
   const title = streamData?.title ?? titleData?.titleText?.text ?? null;
 
@@ -238,5 +244,9 @@ export function usePlayerSession(
     saveProgress,
     nextEpisode,
     autoplayNext: settings.autoplayNext,
+    // Learning
+    cues,
+    learningMode: settings.learningMode,
+    learningLang: settings.learningLang,
   };
 }

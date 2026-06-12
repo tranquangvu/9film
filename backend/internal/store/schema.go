@@ -36,13 +36,41 @@ func (s *Store) migrate() error {
 			autoplay_next         INTEGER NOT NULL DEFAULT 1,
 			default_subtitle_lang TEXT NOT NULL DEFAULT 'en',
 			default_quality       TEXT NOT NULL DEFAULT 'auto',
+			learning_mode         INTEGER NOT NULL DEFAULT 1,
+			learning_lang         TEXT NOT NULL DEFAULT 'vi',
 			updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
+		`CREATE TABLE IF NOT EXISTS saved_words (
+			user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			word        TEXT NOT NULL,
+			sentence    TEXT NOT NULL DEFAULT '',
+			translation TEXT NOT NULL DEFAULT '',
+			imdb_id     TEXT NOT NULL DEFAULT '',
+			season      INTEGER NOT NULL DEFAULT 0,
+			episode     INTEGER NOT NULL DEFAULT 0,
+			timestamp   REAL NOT NULL DEFAULT 0,
+			box         INTEGER NOT NULL DEFAULT 0,
+			due_at      TEXT NOT NULL DEFAULT (datetime('now')),
+			created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, word)
+		)`,
 	}
+
 	for _, stmt := range stmts {
 		if _, err := s.db.Exec(stmt); err != nil {
 			return err
 		}
+	}
+
+	// Idempotent column adds for settings tables created before these columns
+	// existed. SQLite errors if the column already exists, so failures here are
+	// ignored (the CREATE above already includes them for fresh databases).
+	alters := []string{
+		`ALTER TABLE settings ADD COLUMN learning_mode INTEGER NOT NULL DEFAULT 1`,
+		`ALTER TABLE settings ADD COLUMN learning_lang TEXT NOT NULL DEFAULT 'vi'`,
+	}
+	for _, stmt := range alters {
+		_, _ = s.db.Exec(stmt)
 	}
 	return nil
 }
