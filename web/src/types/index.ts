@@ -58,6 +58,16 @@ export interface UserProfile {
   joinDate: string
 }
 
+// The authenticated user returned by the backend (/api/auth/*, /api/me).
+export interface AuthUser {
+  id: number
+  email: string
+  name: string
+  avatar: string
+  plan: string
+  createdAt?: string
+}
+
 export interface Notification {
   id: number
   title: string

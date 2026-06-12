@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { Search, Menu } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/auth-context';
 
 interface NavbarProps {
   onSearchOpen: () => void
@@ -19,6 +20,7 @@ const navLinks = [
 
 export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -72,14 +74,37 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
         </nav>
 
         {/* Actions */}
-        <Button
-          variant="ghost"
-          onClick={onSearchOpen}
-          aria-label="Search"
-          className="p-2 -mr-2 text-zinc-400 hover:text-white rounded-lg border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
-        >
-          <Search size={18} />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            onClick={onSearchOpen}
+            aria-label="Search"
+            className="p-2 text-zinc-400 hover:text-white rounded-lg border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
+          >
+            <Search size={18} />
+          </Button>
+
+          {isAuthenticated ? (
+            <Link
+              to="/profile"
+              aria-label="Account"
+              className="ml-1 w-8 h-8 rounded-full overflow-hidden ring-1 ring-white/15 hover:ring-orange-500/60 transition-all bg-zinc-800 shrink-0"
+            >
+              <img
+                src={user?.avatar}
+                alt={user?.name ?? 'Account'}
+                className="w-full h-full object-cover"
+              />
+            </Link>
+          ) : (
+            <NavLink
+              to="/login"
+              className="ml-1 px-3 py-1.5 text-sm font-medium rounded-full text-zinc-300 hover:text-white hover:bg-white/5 transition-all"
+            >
+              Sign in
+            </NavLink>
+          )}
+        </div>
       </div>
     </header>
   );

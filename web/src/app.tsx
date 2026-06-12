@@ -2,6 +2,8 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/context/auth-context";
+import { RequireAuth } from "@/components/system/common/require-auth";
 
 import MainLayout from "@/components/system/layout/main-layout";
 import WatchLayout from "@/components/system/layout/watch-layout";
@@ -16,6 +18,12 @@ import ProfilePage from "@/pages/profile-page";
 import MoviesPage from "@/pages/movies-page";
 import TvSeriesPage from "@/pages/tv-series-page";
 import NotFoundPage from "@/pages/not-found-page";
+import LoginPage from "@/pages/login-page";
+import SignupPage from "@/pages/signup-page";
+import AboutPage from "@/pages/about-page";
+import PrivacyPage from "@/pages/privacy-page";
+import TermsPage from "@/pages/terms-page";
+import DisclaimerPage from "@/pages/disclaimer-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,9 +59,13 @@ const router = createBrowserRouter([
       { path: "/movies", element: <MoviesPage /> },
       { path: "/tvs", element: <TvSeriesPage /> },
       { path: "/movie/:id", element: <MovieDetailPage /> },
-      { path: "/my-list", element: <MyListPage /> },
+      { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },
-      { path: "/profile", element: <ProfilePage /> },
+      { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
+      { path: "/about", element: <AboutPage /> },
+      { path: "/privacy", element: <PrivacyPage /> },
+      { path: "/terms", element: <TermsPage /> },
+      { path: "/disclaimer", element: <DisclaimerPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -61,14 +73,18 @@ const router = createBrowserRouter([
     element: <WatchLayout />,
     children: [{ path: "/watch/:id", element: <WatchPage /> }],
   },
+  { path: "/login", element: <LoginPage /> },
+  { path: "/signup", element: <SignupPage /> },
 ]);
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <RouterProvider router={router} />
-        <Toaster />
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <Toaster />
+        </AuthProvider>
       </ToastProvider>
     </QueryClientProvider>
   );

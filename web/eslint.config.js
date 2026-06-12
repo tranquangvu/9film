@@ -23,7 +23,8 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/components/ui/**/*.{ts,tsx}'],
+    // Provider + hook co-located in one file (e.g. toast, auth-context).
+    files: ['src/components/ui/**/*.{ts,tsx}', 'src/context/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
