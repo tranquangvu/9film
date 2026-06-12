@@ -20,7 +20,7 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
   return (
     <div
       className={cn(
-        'relative flex-shrink-0 flex items-end group transition-transform duration-200 ease-out hover:scale-105 hover:z-10',
+        'relative flex-shrink-0 flex items-end group/card transition-transform duration-200 ease-out hover:scale-105 hover:z-10',
         className,
       )}
     >
@@ -60,7 +60,7 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
         )}
 
         {/* Hover overlay (CSS-only) */}
-        <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           <div className="relative z-10 p-2 flex items-center justify-between">
             <button

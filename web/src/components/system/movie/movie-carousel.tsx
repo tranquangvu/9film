@@ -52,7 +52,7 @@ export function HorizontalCarousel({
   };
 
   return (
-    <section className={cn('group relative', className)}>
+    <section className={cn('group/row relative', className)}>
       {/* Section header */}
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
@@ -68,7 +68,7 @@ export function HorizontalCarousel({
       <div className="relative">
         {/* Left fade + arrow — CSS reveal on row hover */}
         {showLeft && (
-          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity duration-150">
             {/* Fade gradient */}
             <div className="absolute inset-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
             <button
@@ -83,7 +83,7 @@ export function HorizontalCarousel({
 
         {/* Right fade + arrow — CSS reveal on row hover */}
         {showRight && (
-          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end opacity-0 group-hover/row:opacity-100 transition-opacity duration-150">
             <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none" />
             <button
               className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative mr-6 md:mr-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}

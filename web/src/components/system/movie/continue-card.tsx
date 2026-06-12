@@ -22,7 +22,7 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
 
   return (
     <div
-      className={cn('relative flex-shrink-0 cursor-pointer w-72 group transition-transform duration-200 ease-out hover:scale-[1.04] hover:z-10', className)}
+      className={cn('relative flex-shrink-0 cursor-pointer w-72 group/card transition-transform duration-200 ease-out hover:scale-[1.04] hover:z-10', className)}
       onClick={handleClick}
     >
       {/* 16:9 backdrop container */}
@@ -57,7 +57,7 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
         </div>
 
         {/* Hover play overlay (CSS-only) */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
           <div className="w-14 h-14 rounded-full bg-orange-500 flex items-center justify-center shadow-xl shadow-orange-500/50 transition-transform hover:scale-110 active:scale-95">
             <Play className="w-6 h-6 fill-white text-white ml-0.5" />
           </div>

@@ -30,7 +30,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
   return (
     <div
       className={cn(
-        'relative flex-shrink-0 cursor-pointer group transition-transform duration-200 ease-out hover:scale-[1.08] hover:z-10',
+        'relative flex-shrink-0 cursor-pointer group/card transition-transform duration-200 ease-out hover:scale-[1.08] hover:z-10',
         sizeClasses[size],
         className,
       )}
@@ -66,7 +66,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
         )}
 
         {/* Hover overlay (CSS-only) */}
-        <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
+        <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover/card:opacity-100 transition-opacity duration-200 pointer-events-none group-hover/card:pointer-events-auto">
           {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20 rounded-xl" />
 
@@ -119,7 +119,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
 
         {/* Default title overlay — hidden on hover */}
         <div
-          className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-6.5 opacity-100 group-hover:opacity-0 transition-opacity duration-200"
+          className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-6.5 opacity-100 group-hover/card:opacity-0 transition-opacity duration-200"
           style={{
             background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
           }}
