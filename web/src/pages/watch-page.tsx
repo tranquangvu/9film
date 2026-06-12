@@ -1,14 +1,16 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MonitorPlay, ClosedCaption, Film } from 'lucide-react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { Tag } from '@/components/ui/tag';
 import { Select } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
 import { episodes, seasons } from '@/utils/stream';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
+  const { toast } = useToast();
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,18 +45,18 @@ export function WatchPage() {
   const availableSeasons = eps ? seasons(eps) : [];
   const episodesBySeason = eps ? episodes(eps, season) : [];
 
-  // ── Error / not-found state ────────────────────────────────────────────────
-  if (error && !streamUrl) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
-        <p className="text-white/50 text-xl">{error}</p>
-        <Button variant="primary" onClick={() => navigate(-1)}>
-          <ArrowLeft size={18} />
-          Go Back
-        </Button>
-      </div>
-    );
-  }
+  // On a fetch error, keep the loading UI and surface the reason via a toast.
+  const blocked = !!error && !streamUrl;
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: 'Failed to load content',
+        description: error,
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
 
   return (
     <div className="min-h-screen bg-background text-white">
@@ -79,7 +81,7 @@ export function WatchPage() {
 
             {/* Movie / show title */}
             <span className="text-white font-bold text-sm md:text-base leading-none whitespace-nowrap truncate shrink min-w-0">
-              {loading && !title ? 'Loading…' : (title ?? id)}
+              {(loading || blocked) && !title ? 'Loading…' : (title ?? id)}
             </span>
 
             {/* Season · Episode */}
@@ -99,7 +101,7 @@ export function WatchPage() {
         </header>
 
         {/* Loading indicator */}
-        {loading && (
+        {(loading || blocked) && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 text-white/50 text-sm">
             Loading stream…
           </div>
