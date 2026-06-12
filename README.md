@@ -29,7 +29,7 @@ nicefilm/
 │   │   ├── hooks/             use-player-session
 │   │   ├── pages/             route-level components
 │   │   └── utils/             IMDb, stream, subtitle, HLS utilities
-│   └── vite.config.ts         proxies /api and /proxy → backend:8080
+│   └── vite.config.ts         proxies /api and /proxy → backend:8081
 ├── docs/
 └── README.md
 ```
@@ -51,7 +51,7 @@ nicefilm/
 ```bash
 cd backend
 cp .env.example .env
-make dev          # http://localhost:8080
+make dev          # http://localhost:8081
 ```
 
 Subtitle support requires an [OpenSubtitles API key](https://www.opensubtitles.com/en/consumers). Fill in `.env`:

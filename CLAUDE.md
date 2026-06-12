@@ -9,7 +9,7 @@ NiceFilm streams real HLS video for any IMDb title ID. A Go/Gin backend acts as 
 ## Commands
 
 Backend (`cd backend`):
-- `make dev` — run API on `:8080` (`go run ./cmd/server/main.go`)
+- `make dev` — run API on `:8081` (`go run ./cmd/server/main.go`)
 - `make build` / `make run` — build to `bin/server` and run
 - `make tidy` — `go mod tidy`
 - Single test: `go test ./internal/service -run TestName` (no tests exist yet)
@@ -20,7 +20,7 @@ Frontend (`cd web`, uses **pnpm**):
 - `pnpm typecheck` — `tsc -b` (no-emit type check)
 - `pnpm lint` — ESLint
 
-Run both apps simultaneously for development; Vite proxies `/api` and `/proxy` to `API_URL` (default `http://localhost:8080`), so the browser never calls the backend directly.
+Run both apps simultaneously for development; Vite proxies `/api` and `/proxy` to `API_URL` (default `http://localhost:8081`), so the browser never calls the backend directly.
 
 ## Architecture
 
