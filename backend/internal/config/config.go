@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -17,6 +18,11 @@ type Config struct {
 	Port          int
 	Host          string
 	OpenSubtitles *OpenSubtitlesConfig
+
+	// Auth / persistence
+	JWTSecret string
+	TokenTTL  time.Duration
+	DBPath    string
 }
 
 func Load() *Config {
@@ -32,6 +38,17 @@ func Load() *Config {
 		host = "0.0.0.0"
 	}
 
+	// Token lifetime — default 7 days (168h).
+	ttlHours := 168
+	if h, err := strconv.Atoi(os.Getenv("TOKEN_TTL_HOURS")); err == nil && h > 0 {
+		ttlHours = h
+	}
+
+	dbPath := trim(os.Getenv("DB_PATH"))
+	if dbPath == "" {
+		dbPath = "./nicefilm.db"
+	}
+
 	var openSubs *OpenSubtitlesConfig
 	if apiKey := trim(os.Getenv("OPENSUBTITLES_API_KEY")); apiKey != "" {
 		openSubs = &OpenSubtitlesConfig{
@@ -45,6 +62,9 @@ func Load() *Config {
 		Port:          port,
 		Host:          host,
 		OpenSubtitles: openSubs,
+		JWTSecret:     trim(os.Getenv("JWT_SECRET")),
+		TokenTTL:      time.Duration(ttlHours) * time.Hour,
+		DBPath:        dbPath,
 	}
 }
 
