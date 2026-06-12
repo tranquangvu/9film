@@ -42,6 +42,8 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
           <img
             src={movie.poster}
             alt={movie.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
           />

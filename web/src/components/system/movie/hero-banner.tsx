@@ -131,10 +131,10 @@ export function HeroBanner({ movies }: HeroBannerProps) {
         <motion.div
           key={activeMovie.id}
           className="absolute inset-0"
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.9, ease: 'easeInOut' }}
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
         >
           <img
             src={activeMovie.backdrop}
@@ -240,23 +240,19 @@ export function HeroBanner({ movies }: HeroBannerProps) {
 
             {/* CTA Buttons */}
             <div className="flex items-center gap-3 flex-wrap">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm orange-glow')}
+              <button
+                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm orange-glow transition-transform hover:scale-[1.03] active:scale-[0.97]')}
               >
                 <Play className="w-4 h-4 fill-white" />
                 Play Now
-              </motion.button>
+              </button>
 
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm text-white hover:bg-white/15')}
+              <button
+                className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm text-white hover:bg-white/15 transition-transform hover:scale-[1.03] active:scale-[0.97]')}
               >
                 <Info className="w-4 h-4" />
                 More Info
-              </motion.button>
+              </button>
             </div>
           </motion.div>
         </AnimatePresence>

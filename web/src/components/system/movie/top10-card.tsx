@@ -48,6 +48,8 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
           <img
             src={movie.poster}
             alt={movie.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
             draggable={false}

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
@@ -138,27 +138,6 @@ function QuickSearch() {
   );
 }
 
-interface AnimatedSectionProps {
-  children: React.ReactNode
-  delay?: number
-}
-
-function AnimatedSection({ children, delay = 0 }: AnimatedSectionProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-80px 0px' });
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-      transition={{ duration: 0.55, ease: 'easeOut', delay }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 export default function HomePage() {
   const { toast } = useToast();
   const poolQuery = usePopularPoolTitles();
@@ -205,38 +184,28 @@ export default function HomePage() {
         {resumeQuery.loading || resumeQuery.isError ? (
           <CarouselSkeleton cardType="backdrop" />
         ) : resumeMovies.length > 0 ? (
-          <AnimatedSection delay={0}>
-            <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
-          </AnimatedSection>
+          <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
         ) : null}
 
         {poolQuery.isLoading || poolQuery.isError ? (
           <CarouselSkeleton cardType="top10" />
         ) : top10Movies.length > 0 ? (
-          <AnimatedSection delay={0.05}>
-            <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />
-          </AnimatedSection>
+          <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />
         ) : null}
 
         {popularMoviesQuery.isLoading || popularMoviesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularMovies.length > 0 ? (
-          <AnimatedSection delay={0.05}>
-            <HorizontalCarousel title="Popular Movies" movies={popularMovies} />
-          </AnimatedSection>
+          <HorizontalCarousel title="Popular Movies" movies={popularMovies} />
         ) : null}
 
         {popularSeriesQuery.isLoading || popularSeriesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularSeries.length > 0 ? (
-          <AnimatedSection delay={0.05}>
-            <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} />
-          </AnimatedSection>
+          <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} />
         ) : null}
 
-        <AnimatedSection delay={0.05}>
-          <QuickSearch />
-        </AnimatedSection>
+        <QuickSearch />
       </div>
     </div>
   );
