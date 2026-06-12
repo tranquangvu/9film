@@ -1,5 +1,4 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -28,7 +27,6 @@ export function HorizontalCarousel({
   const rowRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(false);
-  const [isHoveringRow, setIsHoveringRow] = useState(false);
 
   const updateArrows = useCallback(() => {
     const el = rowRef.current;
@@ -54,68 +52,48 @@ export function HorizontalCarousel({
   };
 
   return (
-    <section
-      className={cn('relative', className)}
-      onMouseEnter={() => setIsHoveringRow(true)}
-      onMouseLeave={() => setIsHoveringRow(false)}
-    >
+    <section className={cn('group relative', className)}>
       {/* Section header */}
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
         {showSeeAll && (
-          <Button variant="ghost" size="sm" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group shadow-none">
+          <Button variant="ghost" size="sm" className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group/seeall shadow-none">
             View all
-            <MoveRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            <MoveRight className="w-4 h-4 transition-transform group-hover/seeall:translate-x-0.5" />
           </Button>
         )}
       </div>
 
       {/* Scrollable row */}
       <div className="relative">
-        {/* Left fade + arrow */}
-        <AnimatePresence>
-          {showLeft && isHoveringRow && (
-            <motion.div
-              className="absolute left-0 top-0 bottom-0 z-20 flex items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+        {/* Left fade + arrow — CSS reveal on row hover */}
+        {showLeft && (
+          <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {/* Fade gradient */}
+            <div className="absolute inset-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
+            <button
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative ml-6 md:ml-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
+              onClick={() => scroll('left')}
+              aria-label="Scroll left"
             >
-              {/* Fade gradient */}
-              <div className="absolute inset-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent pointer-events-none" />
-              <button
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative ml-6 md:ml-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
-                onClick={() => scroll('left')}
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-        {/* Right fade + arrow */}
-        <AnimatePresence>
-          {showRight && isHoveringRow && (
-            <motion.div
-              className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+        {/* Right fade + arrow — CSS reveal on row hover */}
+        {showRight && (
+          <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none" />
+            <button
+              className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative mr-6 md:mr-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
+              onClick={() => scroll('right')}
+              aria-label="Scroll right"
             >
-              <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent pointer-events-none" />
-              <button
-                className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative mr-6 md:mr-12 text-white hover:bg-white/20 hover:text-white hover:border-white/20 hover:scale-100 shadow-lg')}
-                onClick={() => scroll('right')}
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Card row */}
         <div

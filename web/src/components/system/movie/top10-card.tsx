@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { sizedImage } from '@/utils/image';
 import type { Movie } from '@/types';
 
 interface Top10CardProps {
@@ -46,9 +47,8 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
       >
         {!imgError ? (
           <img
-            src={movie.poster}
+            src={sizedImage(movie.poster, 300)}
             alt={movie.title}
-            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
             draggable={false}

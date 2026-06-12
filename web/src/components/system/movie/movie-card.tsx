@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Heart, Info } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { sizedImage } from '@/utils/image';
 import { formatDuration, formatYear } from '@/utils/format';
 import type { Movie } from '@/types';
 import { RatingBadge } from '@/components/system/movie/rating-badge';
@@ -40,9 +41,8 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
         {/* Poster image */}
         {!imgError ? (
           <img
-            src={movie.poster}
+            src={sizedImage(movie.poster, 400)}
             alt={movie.title}
-            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
           />

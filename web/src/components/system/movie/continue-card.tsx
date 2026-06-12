@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { sizedImage } from '@/utils/image';
 import { formatDuration } from '@/utils/format';
 import type { Movie } from '@/types';
 
@@ -29,9 +30,8 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
         {/* Backdrop image */}
         {!imgError ? (
           <img
-            src={movie.backdrop}
+            src={sizedImage(movie.backdrop, 640)}
             alt={movie.title}
-            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
           />
