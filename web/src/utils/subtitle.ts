@@ -21,11 +21,19 @@ export function pickSubs(
   subs: SubtitleOption[],
   title: ImdbTitle,
   params: EmbedParams,
+  preferredLang?: string,
 ): { list: SubtitleOption[]; fileId: number | null } {
   const sorted = [...subs].sort((a, b) => b.downloadCount - a.downloadCount);
   if (!sorted.length) return { list: [], fileId: null };
 
-  let fileId = sorted[0].fileId;
+  // If the user has a preferred subtitle language and any match it, choose the
+  // default from that pool; otherwise fall back to the most-downloaded overall.
+  const langPool = preferredLang
+    ? sorted.filter((s) => s.language?.toLowerCase().startsWith(preferredLang.toLowerCase()))
+    : [];
+  const pool = langPool.length ? langPool : sorted;
+
+  let fileId = pool[0].fileId;
   const name = title.titleText?.text?.trim();
 
   if (name) {
@@ -41,7 +49,7 @@ export function pickSubs(
     }
 
     const pl = pattern.toLowerCase();
-    const matches = sorted.filter((s) => s.release.toLowerCase().includes(pl));
+    const matches = pool.filter((s) => s.release.toLowerCase().includes(pl));
     if (matches.length) {
       fileId = (matches.find((s) => s.release.toLowerCase().includes('.bluray')) ?? matches[0]).fileId;
     }

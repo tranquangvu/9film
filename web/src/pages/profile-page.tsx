@@ -18,10 +18,12 @@ import {
   Shield,
   Calendar,
   RefreshCw,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { currentUser } from '@/data/user';
+import { useAuth } from '@/context/auth-context';
+import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -140,8 +142,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 function ProfileSection() {
-  const joinYear = new Date(currentUser.joinDate).getFullYear();
-  const joinMonth = new Date(currentUser.joinDate).toLocaleString('default', { month: 'long' });
+  const { user } = useAuth();
+  const joined = user?.createdAt ? new Date(user.createdAt.replace(' ', 'T')) : null;
+  const joinedLabel =
+    joined && !Number.isNaN(joined.getTime())
+      ? joined.toLocaleString('default', { month: 'long', year: 'numeric' })
+      : null;
 
   return (
     <SectionCard>
@@ -151,8 +157,8 @@ function ProfileSection() {
         <div className="relative shrink-0">
           <div className="w-24 h-24 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-orange-500/40">
             <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
+              src={user?.avatar}
+              alt={user?.name ?? 'Avatar'}
               className="w-full h-full object-cover"
               onError={(e) => {
                 const t = e.currentTarget;
@@ -169,18 +175,18 @@ function ProfileSection() {
         {/* Info */}
         <div className="flex-1 text-center sm:text-left space-y-1">
           <div className="flex items-center justify-center sm:justify-start gap-2">
-            <h3 className="text-xl font-bold text-white">{currentUser.name}</h3>
-            {currentUser.plan === 'premium' && (
+            <h3 className="text-xl font-bold text-white">{user?.name}</h3>
+            {user?.plan === 'premium' && (
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-xs font-semibold">
                 <Crown className="w-3 h-3" />
                 Premium
               </span>
             )}
           </div>
-          <p className="text-sm text-zinc-400">{currentUser.email}</p>
-          <p className="text-xs text-zinc-600">
-            Member since {joinMonth} {joinYear}
-          </p>
+          <p className="text-sm text-zinc-400">{user?.email}</p>
+          {joinedLabel && (
+            <p className="text-xs text-zinc-600">Member since {joinedLabel}</p>
+          )}
         </div>
 
         {/* Edit button */}
@@ -207,20 +213,38 @@ function ProfileSection() {
   );
 }
 
+const QUALITY_OPTS = [
+  { label: 'Auto', value: 'auto' },
+  { label: '1080p Full HD', value: '1080' },
+  { label: '720p HD', value: '720' },
+  { label: '480p', value: '480' },
+];
+
+const LANG_OPTS = [
+  { label: 'English', value: 'en' },
+  { label: 'Spanish', value: 'es' },
+  { label: 'French', value: 'fr' },
+  { label: 'German', value: 'de' },
+  { label: 'Japanese', value: 'ja' },
+  { label: 'Korean', value: 'ko' },
+];
+
 function PlaybackSection() {
-  const [autoPlay, setAutoPlay] = useState(true);
-  const [quality, setQuality] = useState('Auto');
-  const [subtitleLang, setSubtitleLang] = useState('English');
+  const settings = useSettings();
+  const update = useUpdateSettings();
   const [speed, setSpeed] = useState('1x (Normal)');
   const [downloadQuality, setDownloadQuality] = useState('1080p');
+
+  const qualityLabel = QUALITY_OPTS.find((o) => o.value === settings.defaultQuality)?.label ?? 'Auto';
+  const langLabel = LANG_OPTS.find((o) => o.value === settings.defaultSubtitleLang)?.label ?? 'English';
 
   return (
     <SectionCard>
       <SectionTitle>Playback Settings</SectionTitle>
       <div className="space-y-5">
         <Toggle
-          enabled={autoPlay}
-          onChange={setAutoPlay}
+          enabled={settings.autoplayNext}
+          onChange={(v) => update.mutate({ autoplayNext: v })}
           label="Auto-play next episode"
           description="Automatically start the next episode when one ends"
         />
@@ -228,15 +252,19 @@ function PlaybackSection() {
         <div className="grid sm:grid-cols-2 gap-4">
           <Select
             label="Video Quality"
-            value={quality}
-            options={['Auto', '4K Ultra HD', '1080p Full HD', '720p HD', '480p']}
-            onChange={setQuality}
+            value={qualityLabel}
+            options={QUALITY_OPTS.map((o) => o.label)}
+            onChange={(label) =>
+              update.mutate({ defaultQuality: QUALITY_OPTS.find((o) => o.label === label)?.value ?? 'auto' })
+            }
           />
           <Select
             label="Subtitle Language"
-            value={subtitleLang}
-            options={['Off', 'English', 'Spanish', 'French', 'Japanese', 'Korean']}
-            onChange={setSubtitleLang}
+            value={langLabel}
+            options={LANG_OPTS.map((o) => o.label)}
+            onChange={(label) =>
+              update.mutate({ defaultSubtitleLang: LANG_OPTS.find((o) => o.label === label)?.value ?? 'en' })
+            }
           />
           <Select
             label="Playback Speed"
@@ -502,6 +530,7 @@ const sectionComponents: Record<SectionId, React.ReactNode> = {
 
 export default function ProfilePage() {
   const [activeSection, setActiveSection] = useState<SectionId>('profile');
+  const { logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-16">
@@ -512,10 +541,16 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-8"
+          className="mb-8 flex items-start justify-between gap-4"
         >
-          <h1 className="text-3xl font-bold text-white tracking-tight">Account Settings</h1>
-          <p className="text-zinc-400 text-sm mt-1">Manage your profile and preferences</p>
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Account Settings</h1>
+            <p className="text-zinc-400 text-sm mt-1">Manage your profile and preferences</p>
+          </div>
+          <Button variant="outline" onClick={logout} className="rounded-lg text-sm shrink-0">
+            <LogOut className="w-3.5 h-3.5" />
+            Sign out
+          </Button>
         </motion.div>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">

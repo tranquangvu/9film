@@ -62,8 +62,17 @@ export function mergeEpisode(
   return season != null && episode != null ? { ...params, season, episode } : params;
 }
 
-export function bestUrl(urls: string[]): string {
+export function bestUrl(urls: string[], preferredQuality?: string): string {
   if (!urls.length) return '';
+  // Honor an explicit quality preference (e.g. '1080', '720') when a stream URL
+  // advertises it; 'auto'/unset falls through to the adaptive master playlist.
+  if (preferredQuality && preferredQuality !== 'auto') {
+    const q = preferredQuality.replace(/\D/g, '');
+    if (q) {
+      const match = urls.find((u) => u.includes(q));
+      if (match) return match;
+    }
+  }
   return (
     urls.find((u) => u.includes('master.m3u8'))
     ?? urls.find((u) => !u.includes('justhd.tv'))
