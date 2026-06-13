@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FolderHeart, BookmarkCheck, Play } from 'lucide-react';
+import { X, FolderHeart, BookmarkCheck, Play, Loader2 } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleListItem } from '@/hooks/queries/use-list-query';
@@ -30,6 +30,8 @@ type TabId = 'all' | 'saved' | 'continue'
 // the "View all" drawer, which pages them in as you scroll.
 const CONTINUE_CAROUSEL_MAX = 20;
 const CONTINUE_DRAWER_PAGE = 20;
+// Favorites grid loads this many titles at a time as you scroll.
+const FAVORITES_PAGE = 20;
 
 interface Tab {
   id: TabId
@@ -39,7 +41,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { id: 'all', label: 'All', icon: <FolderHeart className="w-3.5 h-3.5" /> },
-  { id: 'saved', label: 'Saved Titles', icon: <BookmarkCheck className="w-3.5 h-3.5" /> },
+  { id: 'saved', label: 'Favorites', icon: <BookmarkCheck className="w-3.5 h-3.5" /> },
   { id: 'continue', label: 'Continue Watching', icon: <Play className="w-3.5 h-3.5" /> },
 ];
 
@@ -79,12 +81,16 @@ export default function MyListPage() {
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [continueDrawerOpen, setContinueDrawerOpen] = useState(false);
   const [continueVisible, setContinueVisible] = useState(CONTINUE_DRAWER_PAGE);
+  const [favVisible, setFavVisible] = useState(FAVORITES_PAGE);
 
   // Server-backed favorites, hydrated into Movie objects via the IMDb queries.
   const favoritesQ = useFavorites();
   const progressQ = useProgressQuery();
 
-  const favTitles = useTitlesQuery((favoritesQ.data ?? []).map((i) => i.imdbId));
+  // Infinite scroll: only hydrate the first favVisible favorite ids; more are
+  // fetched as the user scrolls near the bottom (each id is its own request).
+  const favIds = useMemo(() => (favoritesQ.data ?? []).map((i) => i.imdbId), [favoritesQ.data]);
+  const favTitles = useTitlesQuery(favIds.slice(0, favVisible));
 
   // Progress is per-episode, so a series has several rows. Collapse to one card
   // per title, keeping the most-recent row (the list is ordered newest-first).
@@ -128,9 +134,13 @@ export default function MyListPage() {
     }
   }, [hasError, toast]);
 
-  // The grid shows saved favorites (All / Saved Titles tabs).
-  const gridLoading = favoritesQ.isLoading || favTitles.loading;
+  // The grid shows favorites (All / Favorites tabs).
   const gridMovies = favTitles.data;
+  // Full-grid skeleton only on the first load; later pages get a bottom spinner.
+  const gridInitialLoading =
+    favoritesQ.isLoading || (favTitles.loading && gridMovies.length === 0);
+  const favHasMore = favVisible < favIds.length;
+  const favLoadingMore = favHasMore && favTitles.loading && gridMovies.length > 0;
 
   const handleRemove = (movie: Movie) => {
     toggleFavorite.mutate({ imdbId: movie.id, mediaType: movie.type, active: true });
@@ -139,6 +149,19 @@ export default function MyListPage() {
   const showContinueWatching = activeTab === 'all' || activeTab === 'continue';
   const showGrid = activeTab !== 'continue';
   const continueLoading = progressQ.isLoading || continueTitles.loading;
+
+  // Reveal more favorites as the window nears the bottom.
+  useEffect(() => {
+    if (!showGrid || !favHasMore) return;
+    const onScroll = () => {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600;
+      if (nearBottom) setFavVisible((n) => Math.min(n + FAVORITES_PAGE, favIds.length));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll(); // top up if the page is shorter than the viewport
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [showGrid, favHasMore, favVisible, favIds.length]);
 
   const continueHasOverflow = continueWatching.length > CONTINUE_CAROUSEL_MAX;
   const openContinueDrawer = () => {
@@ -152,7 +175,7 @@ export default function MyListPage() {
     }
   };
 
-  const savedCount = favTitles.data.length;
+  const savedCount = favIds.length;
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -213,22 +236,27 @@ export default function MyListPage() {
         )}
       </AnimatePresence>
 
-      {/* Saved / Watch Later grid */}
+      {/* Favorites grid */}
       {showGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
-          {gridLoading ? (
+          {gridInitialLoading ? (
             <>
               <Skeleton className="h-6 w-40 mb-5" />
               <MovieGridSkeleton />
             </>
           ) : gridMovies.length > 0 ? (
             <>
-              <h2 className="text-lg font-bold text-white mb-5">Saved Titles</h2>
+              <h2 className="text-lg font-bold text-white mb-5">Favorites</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
                 {gridMovies.map((movie) => (
                   <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />
                 ))}
               </div>
+              {favLoadingMore && (
+                <div className="flex justify-center mt-8 text-zinc-500">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              )}
             </>
           ) : (
             <Empty
