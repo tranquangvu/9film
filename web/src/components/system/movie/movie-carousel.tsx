@@ -16,6 +16,8 @@ interface HorizontalCarouselProps {
   showSeeAll?: boolean
   /** Destination for the "View all" link; the link only shows when set. */
   viewAllTo?: string
+  /** When set, "View all" renders as a button calling this instead of a link. */
+  onViewAll?: () => void
 }
 
 const SCROLL_AMOUNT = 600;
@@ -27,6 +29,7 @@ export function HorizontalCarousel({
   cardType = 'poster',
   showSeeAll = true,
   viewAllTo,
+  onViewAll,
 }: HorizontalCarouselProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -60,7 +63,18 @@ export function HorizontalCarousel({
       {/* Section header */}
       <div className="flex items-center justify-between mb-4 px-6 md:px-12">
         <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
-        {showSeeAll && viewAllTo && (
+        {showSeeAll && onViewAll ? (
+          <button
+            onClick={onViewAll}
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'sm' }),
+              'flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 border-0 bg-transparent hover:bg-transparent p-0 font-medium transition-colors group/seeall shadow-none',
+            )}
+          >
+            View all
+            <MoveRight className="w-4 h-4 transition-transform group-hover/seeall:translate-x-0.5" />
+          </button>
+        ) : showSeeAll && viewAllTo ? (
           <Link
             to={viewAllTo}
             className={cn(
@@ -71,7 +85,7 @@ export function HorizontalCarousel({
             View all
             <MoveRight className="w-4 h-4 transition-transform group-hover/seeall:translate-x-0.5" />
           </Link>
-        )}
+        ) : null}
       </div>
 
       {/* Scrollable row */}

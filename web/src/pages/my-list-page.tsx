@@ -7,14 +7,29 @@ import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleListItem } from '@/hooks/queries/use-list-query';
 import { useProgressQuery, progressPercent } from '@/hooks/queries/use-progress-query';
 import { MovieCard } from '@/components/system/movie/movie-card';
+import { ContinueWatchingCard } from '@/components/system/movie/continue-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/utils/cn';
 import { useToast } from '@/components/ui/toast';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from '@/components/ui/drawer';
 
 type TabId = 'all' | 'saved' | 'continue'
+
+// Continue Watching shows at most this many in the carousel; the rest live in
+// the "View all" drawer, which pages them in as you scroll.
+const CONTINUE_CAROUSEL_MAX = 20;
+const CONTINUE_DRAWER_PAGE = 20;
 
 interface Tab {
   id: TabId
@@ -62,6 +77,8 @@ export default function MyListPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
+  const [continueDrawerOpen, setContinueDrawerOpen] = useState(false);
+  const [continueVisible, setContinueVisible] = useState(CONTINUE_DRAWER_PAGE);
 
   // Server-backed favorites, hydrated into Movie objects via the IMDb queries.
   const favoritesQ = useFavorites();
@@ -123,6 +140,18 @@ export default function MyListPage() {
   const showGrid = activeTab !== 'continue';
   const continueLoading = progressQ.isLoading || continueTitles.loading;
 
+  const continueHasOverflow = continueWatching.length > CONTINUE_CAROUSEL_MAX;
+  const openContinueDrawer = () => {
+    setContinueVisible(CONTINUE_DRAWER_PAGE);
+    setContinueDrawerOpen(true);
+  };
+  const onContinueDrawerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 240) {
+      setContinueVisible((n) => Math.min(n + CONTINUE_DRAWER_PAGE, continueWatching.length));
+    }
+  };
+
   const savedCount = favTitles.data.length;
 
   return (
@@ -175,9 +204,10 @@ export default function MyListPage() {
           >
             <HorizontalCarousel
               title="Continue Watching"
-              movies={continueWatching}
+              movies={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
               cardType="backdrop"
-              showSeeAll={false}
+              showSeeAll={continueHasOverflow}
+              onViewAll={openContinueDrawer}
             />
           </motion.div>
         )}
@@ -211,6 +241,38 @@ export default function MyListPage() {
           )}
         </div>
       )}
+
+      {/* View-all drawer — full Continue Watching list, paged in on scroll */}
+      <Drawer open={continueDrawerOpen} onOpenChange={setContinueDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <div className="flex items-center gap-2">
+              <Play size={18} className="text-orange-500" />
+              <DrawerTitle>Continue Watching</DrawerTitle>
+            </div>
+            <DrawerClose asChild>
+              <button
+                aria-label="Close"
+                className={cn(
+                  buttonVariants({ variant: 'ghost' }),
+                  'p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 border-0 bg-transparent shadow-none',
+                )}
+              >
+                <X size={18} />
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
+
+          <div
+            className="flex-1 overflow-y-auto px-5 pb-5 space-y-4"
+            onScroll={onContinueDrawerScroll}
+          >
+            {continueWatching.slice(0, continueVisible).map((movie) => (
+              <ContinueWatchingCard key={movie.id} movie={movie} className="w-full" />
+            ))}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
