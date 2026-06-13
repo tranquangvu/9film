@@ -20,9 +20,21 @@ export function useListQuery(kind: ListKind) {
 export const useFavorites = () => useListQuery('favorite');
 export const useWatchlist = () => useListQuery('watchlist');
 
+// Subscribes to the list query but `select`s down to a single boolean, so a
+// subscriber only re-renders when *its* membership flips — not on every list
+// change. Critical for grids that mount many cards: toggling one item won't
+// re-render the rest.
 export function useIsInList(imdbId: string, kind: ListKind): boolean {
-  const { data } = useListQuery(kind);
-  return (data ?? []).some((i) => i.imdbId === imdbId);
+  const { isAuthenticated } = useAuth();
+  return (
+    useQuery({
+      queryKey: listKey(kind),
+      queryFn: () => getList(kind),
+      enabled: isAuthenticated,
+      staleTime: 60 * 1000,
+      select: (data) => data.some((i) => i.imdbId === imdbId),
+    }).data ?? false
+  );
 }
 
 interface ToggleVars {

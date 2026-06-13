@@ -3,10 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, ListFilter } from "lucide-react";
 import { genres, genreName } from "@/data/genres";
-import { useBrowseTitleQuery } from "@/hooks/queries/use-browse-title-query";
+import { useTitleListing } from "@/hooks/use-title-listing";
 import { cn } from "@/utils/cn";
-import { toMovies } from "@/utils/title";
 import { Tag } from "@/components/ui/tag";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { BrowseContent } from "@/components/system/common/browse-content";
@@ -31,6 +31,8 @@ export default function BrowsePage() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const genreParam = searchParams.get("genre");
+  // Free-text title search (e.g. arriving from the home search box: /browse?q=…).
+  const searchTerm = (searchParams.get("q") ?? "").trim();
 
   const [contentType, setContentType] = useState<ContentType | null>(null);
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(
@@ -42,13 +44,16 @@ export default function BrowsePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [draftType, setDraftType] = useState<ContentType | null>(contentType);
   const [draftGenres, setDraftGenres] = useState<Set<string>>(selectedGenres);
+  const [draftSearch, setDraftSearch] = useState(searchTerm);
 
-  const activeCount = (contentType ? 1 : 0) + selectedGenres.size;
+  const activeCount =
+    (searchTerm ? 1 : 0) + (contentType ? 1 : 0) + selectedGenres.size;
 
   const handleDrawerOpenChange = (open: boolean) => {
     if (open) {
       setDraftType(contentType);
       setDraftGenres(new Set(selectedGenres));
+      setDraftSearch(searchTerm);
     }
     setDrawerOpen(open);
   };
@@ -72,12 +77,14 @@ export default function BrowsePage() {
   const clearDraft = () => {
     setDraftType(null);
     setDraftGenres(new Set());
+    setDraftSearch("");
   };
 
   const handleSearch = () => {
     setContentType(draftType);
     setSelectedGenres(new Set(draftGenres));
-    setSearchParams({});
+    const term = draftSearch.trim();
+    setSearchParams(term ? { q: term } : {});
     setDrawerOpen(false);
   };
 
@@ -86,6 +93,7 @@ export default function BrowsePage() {
     setSelectedGenres(new Set());
     setDraftType(null);
     setDraftGenres(new Set());
+    setDraftSearch("");
     setSearchParams({});
   }, [setSearchParams]);
 
@@ -97,24 +105,27 @@ export default function BrowsePage() {
         : undefined;
   const primaryGenre =
     selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
-  const browse = useBrowseTitleQuery({
-    type: browseType,
-    genre: primaryGenre,
-    first: 50,
-  });
+
+  // Type/genre always filter client-side on top of whichever source is active.
+  const { searching, movies, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useTitleListing({
+      searchTerm,
+      type: browseType,
+      genre: primaryGenre,
+    });
 
   useEffect(() => {
-    if (browse.isError) {
+    if (isError) {
       toast({
         title: "Failed to load content",
         description: "Could not load titles. Please try again.",
         variant: "destructive",
       });
     }
-  }, [browse.isError, toast]);
+  }, [isError, toast]);
 
   const filtered = useMemo(() => {
-    let result = toMovies(browse.data?.titles ?? []);
+    let result = movies;
 
     if (contentType) {
       result = result.filter((m) => m.type === contentType);
@@ -130,9 +141,9 @@ export default function BrowsePage() {
     }
 
     return result;
-  }, [browse.data, contentType, selectedGenres]);
+  }, [movies, contentType, selectedGenres]);
 
-  const gridKey = `grid-${contentType ?? "all"}-${[...selectedGenres].join("-")}`;
+  const gridKey = `grid-${searchTerm}-${contentType ?? "all"}-${[...selectedGenres].join("-")}`;
 
   return (
     <Drawer open={drawerOpen} onOpenChange={handleDrawerOpenChange}>
@@ -189,13 +200,20 @@ export default function BrowsePage() {
 
         {/* Content — memoized so drawer open/close doesn't reconcile the grid */}
         <BrowseContent
-          isLoading={browse.isLoading || !!browse.isError}
+          isLoading={isLoading || isError}
           items={filtered}
           gridKey={gridKey}
           emptyIcon="🔍"
           emptyTitle="No titles found"
-          emptyMessage="Try selecting different genres."
+          emptyMessage={
+            searching
+              ? `No titles match “${searchTerm}”.`
+              : "Try selecting different genres."
+          }
           onClearAll={clearAll}
+          hasMore={hasNextPage}
+          onLoadMore={fetchNextPage}
+          isLoadingMore={isFetchingNextPage}
         />
 
         {/* Filter drawer */}
@@ -219,6 +237,26 @@ export default function BrowsePage() {
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto px-5 pt-8 pb-5 space-y-6">
+            {/* Title / IMDb id search */}
+            <div>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+                Search
+              </h3>
+              <Input
+                type="text"
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+                placeholder="Name or imdb (e.g. tt2575988)"
+                className="px-4 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
+              />
+            </div>
+
             {/* Type group */}
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
@@ -284,7 +322,11 @@ export default function BrowsePage() {
               variant="ghost"
               size="md"
               onClick={clearDraft}
-              disabled={draftType === null && draftGenres.size === 0}
+              disabled={
+                draftType === null &&
+                draftGenres.size === 0 &&
+                draftSearch.trim() === ""
+              }
               className="w-full"
             >
               Clear

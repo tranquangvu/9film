@@ -1,39 +1,29 @@
 import { useMemo, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Search, Film, Tv, Hash, MoveRight } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { HeroBanner } from '@/components/system/movie/hero-banner';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
 import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/movie/skeletons';
-import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import {
   useResumeTitles,
-  usePopularPoolTitles,
+  usePopularTitles,
   usePopularMovieTitles,
   usePopularTVSeriesTitles,
-  partitionHomeTitles,
+  selectHeroAndTop10,
 } from '@/hooks/use-home-titles';
 import { cn } from '@/utils/cn';
-import { formatYear } from '@/utils/format';
-import { toMovie } from '@/utils/title';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
-import type { Movie } from '@/types';
 
 function QuickSearch() {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const search = useSearchQuery(query, 6);
-
-  const results: Movie[] = useMemo(
-    () => (search.data ?? []).map(toMovie),
-    [search.data],
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    if (query.trim()) navigate(`/browse?q=${encodeURIComponent(query.trim())}`);
   };
 
   return (
@@ -57,81 +47,28 @@ function QuickSearch() {
           <h2 className="text-xl font-bold text-white tracking-tight">Find your next watch</h2>
           <p className="text-zinc-500 text-sm mt-1">Explore thousands of films, series, and hidden gems</p>
         </div>
-        <form onSubmit={handleSubmit} className="relative flex items-center gap-3 w-full md:w-96 flex-shrink-0">
+        <form onSubmit={handleSubmit} className="relative flex items-center w-full md:w-96 flex-shrink-0">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 w-4 h-4 text-zinc-500 pointer-events-none top-1/2 -translate-y-1/2" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g. tt1375666, Inception"
-              className="pl-10 pr-4 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
+              className="pl-4 pr-12 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
             />
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'icon-sm' }),
+                'absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg shadow-none',
+              )}
+              aria-label="Search"
+            >
+              <Search className="w-4 h-4" />
+            </motion.button>
           </div>
-          <motion.button
-            type="submit"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className={cn(buttonVariants({ variant: 'primary' }), 'flex-shrink-0 w-10 h-10 rounded-xl')}
-            aria-label="Search"
-          >
-            <MoveRight className="w-4 h-4" />
-          </motion.button>
-          <AnimatePresence>
-            {results.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                transition={{ duration: 0.15 }}
-                className="absolute left-0 right-0 top-full mt-2 rounded-2xl overflow-hidden z-50 text-left"
-                style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                {results.map((movie) => (
-                  <button
-                    key={movie.id}
-                    type="button"
-                    onClick={() => navigate(`/movie/${movie.id}`)}
-                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 transition-colors"
-                  >
-                    <img
-                      src={movie.poster}
-                      alt={movie.title}
-                      className="w-9 h-12 rounded-lg object-cover flex-shrink-0 bg-zinc-800"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{movie.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-zinc-500">{formatYear(movie.year)}</span>
-                        <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                        {movie.type === 'series'
-                          ? <Tv className="w-3 h-3 text-zinc-500" />
-                          : <Film className="w-3 h-3 text-zinc-500" />}
-                        <span className="text-xs text-zinc-500 capitalize">{movie.type}</span>
-                        <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                        <span className="flex items-center gap-1 text-xs text-zinc-500">
-                          <Hash className="w-2.5 h-2.5" />{movie.id}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 flex-wrap justify-end max-w-[120px]">
-                      {movie.genres.slice(0, 2).map((g) => (
-                        <span key={g} className="text-xs px-2 py-0.5 rounded-full bg-white/6 text-zinc-400">{g}</span>
-                      ))}
-                    </div>
-                  </button>
-                ))}
-                <button
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="flex items-center gap-2 w-full px-4 py-3 border-t border-white/5 text-sm text-orange-500 hover:text-orange-400 hover:bg-white/5 transition-colors"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  See all results for "{query}"
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </form>
       </div>
     </section>
@@ -140,13 +77,13 @@ function QuickSearch() {
 
 export default function HomePage() {
   const { toast } = useToast();
-  const poolQuery = usePopularPoolTitles();
+  const popularQuery = usePopularTitles();
   const popularMoviesQuery = usePopularMovieTitles();
   const popularSeriesQuery = usePopularTVSeriesTitles();
   const resumeQuery = useResumeTitles();
 
   const hasError =
-    poolQuery.isError ||
+    popularQuery.isError ||
     popularMoviesQuery.isError ||
     popularSeriesQuery.isError ||
     resumeQuery.isError;
@@ -165,20 +102,20 @@ export default function HomePage() {
   const popularSeries = popularSeriesQuery.data ?? [];
   const resumeMovies = resumeQuery.data ?? [];
 
-  // Hero + Top 10 are carved out of the popular pool, minus everything the
+  // Hero + Top 10 are carved out of the popular feed, minus everything the
   // Popular rows already show, so the sections never fully duplicate.
   const { hero: heroMovies, top10: top10Movies } = useMemo(
     () =>
-      partitionHomeTitles(poolQuery.data ?? [], [
-        ...(popularMoviesQuery.data ?? []),
-        ...(popularSeriesQuery.data ?? []),
-      ]),
-    [poolQuery.data, popularMoviesQuery.data, popularSeriesQuery.data],
+      selectHeroAndTop10({
+        candidates: popularQuery.data ?? [],
+        popularRows: [...(popularMoviesQuery.data ?? []), ...(popularSeriesQuery.data ?? [])],
+      }),
+    [popularQuery.data, popularMoviesQuery.data, popularSeriesQuery.data],
   );
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {poolQuery.isLoading || poolQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
+      {popularQuery.isLoading || popularQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
         {resumeQuery.loading || resumeQuery.isError ? (
@@ -187,7 +124,7 @@ export default function HomePage() {
           <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
         ) : null}
 
-        {poolQuery.isLoading || poolQuery.isError ? (
+        {popularQuery.isLoading || popularQuery.isError ? (
           <CarouselSkeleton cardType="top10" />
         ) : top10Movies.length > 0 ? (
           <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />

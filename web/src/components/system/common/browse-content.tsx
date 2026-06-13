@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { MovieCard } from "@/components/system/movie/movie-card";
+import { Loader2 } from "lucide-react";
+import { VirtualMovieGrid } from "@/components/system/movie/virtual-movie-grid";
 import { Empty } from "@/components/system/common/empty";
 import { MovieGridSkeleton } from "@/components/system/movie/skeletons";
 import type { Movie } from "@/types";
@@ -12,6 +13,9 @@ interface BrowseContentProps {
   emptyTitle: string;
   emptyMessage: string;
   onClearAll: () => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }
 
 export const BrowseContent = memo(function BrowseContent({
@@ -22,6 +26,9 @@ export const BrowseContent = memo(function BrowseContent({
   emptyTitle,
   emptyMessage,
   onClearAll,
+  hasMore = false,
+  onLoadMore,
+  isLoadingMore = false,
 }: BrowseContentProps) {
   return (
     <div className="px-4 md:px-8 lg:px-12 mt-6">
@@ -36,14 +43,21 @@ export const BrowseContent = memo(function BrowseContent({
           onAction={onClearAll}
         />
       ) : (
-        <div
-          key={gridKey}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8"
-        >
-          {items.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} size="lg" className="w-full" />
-          ))}
-        </div>
+        <>
+          <VirtualMovieGrid
+            key={gridKey}
+            items={items}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={onLoadMore}
+          />
+
+          {isLoadingMore && (
+            <div className="flex justify-center mt-8 text-zinc-500">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

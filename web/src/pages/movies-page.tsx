@@ -1,11 +1,12 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, ListFilter } from "lucide-react";
 import { genres, genreName } from "@/data/genres";
-import { useBrowseTitleQuery } from "@/hooks/queries/use-browse-title-query";
+import { useTitleListing } from "@/hooks/use-title-listing";
 import { cn } from "@/utils/cn";
-import { toMovies } from "@/utils/title";
 import { Tag } from "@/components/ui/tag";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { BrowseContent } from "@/components/system/common/browse-content";
@@ -21,25 +22,32 @@ import {
 
 export default function MoviesPage() {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Free-text title / IMDb id search (?q=…).
+  const searchTerm = (searchParams.get("q") ?? "").trim();
+
   const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [draftGenres, setDraftGenres] = useState<Set<string>>(selectedGenres);
+  const [draftSearch, setDraftSearch] = useState(searchTerm);
 
-  const activeCount = selectedGenres.size;
+  const activeCount = (searchTerm ? 1 : 0) + selectedGenres.size;
 
   const primaryGenre =
     selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
-  const browse = useBrowseTitleQuery({
-    type: "movie",
-    genre: primaryGenre,
-    first: 50,
-  });
+  const { searching, movies, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useTitleListing({
+      searchTerm,
+      type: "movie",
+      genre: primaryGenre,
+    });
 
   const handleDrawerOpenChange = (open: boolean) => {
     if (open) {
       setDraftGenres(new Set(selectedGenres));
+      setDraftSearch(searchTerm);
     }
     setDrawerOpen(open);
   };
@@ -53,32 +61,37 @@ export default function MoviesPage() {
     });
   };
 
-  const clearDraft = () => setDraftGenres(new Set());
+  const clearDraft = () => {
+    setDraftGenres(new Set());
+    setDraftSearch("");
+  };
 
   const handleSearch = () => {
     setSelectedGenres(new Set(draftGenres));
+    const term = draftSearch.trim();
+    setSearchParams(term ? { q: term } : {});
     setDrawerOpen(false);
   };
 
   const clearAll = useCallback(() => {
     setSelectedGenres(new Set());
     setDraftGenres(new Set());
-  }, []);
+    setDraftSearch("");
+    setSearchParams({});
+  }, [setSearchParams]);
 
   useEffect(() => {
-    if (browse.isError) {
+    if (isError) {
       toast({
         title: "Failed to load content",
         description: "Could not load movies. Please try again.",
         variant: "destructive",
       });
     }
-  }, [browse.isError, toast]);
+  }, [isError, toast]);
 
   const filtered = useMemo(() => {
-    let result = toMovies(browse.data?.titles ?? []).filter(
-      (m) => m.type === "movie",
-    );
+    let result = movies.filter((m) => m.type === "movie");
 
     if (selectedGenres.size > 1) {
       const names = [...selectedGenres].map((id) =>
@@ -90,9 +103,9 @@ export default function MoviesPage() {
     }
 
     return result;
-  }, [browse.data, selectedGenres]);
+  }, [movies, selectedGenres]);
 
-  const gridKey = `grid-${[...selectedGenres].join("-")}`;
+  const gridKey = `grid-${searchTerm}-${[...selectedGenres].join("-")}`;
 
   return (
     <Drawer open={drawerOpen} onOpenChange={handleDrawerOpenChange}>
@@ -149,13 +162,20 @@ export default function MoviesPage() {
 
         {/* Content — memoized so drawer open/close doesn't reconcile the grid */}
         <BrowseContent
-          isLoading={browse.isLoading || !!browse.isError}
+          isLoading={isLoading || isError}
           items={filtered}
           gridKey={gridKey}
           emptyIcon="🎬"
           emptyTitle="No movies found"
-          emptyMessage="Try selecting different genres."
+          emptyMessage={
+            searching
+              ? `No movies match “${searchTerm}”.`
+              : "Try selecting different genres."
+          }
           onClearAll={clearAll}
+          hasMore={hasNextPage}
+          onLoadMore={fetchNextPage}
+          isLoadingMore={isFetchingNextPage}
         />
 
         {/* Filter drawer */}
@@ -179,6 +199,27 @@ export default function MoviesPage() {
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto px-5 pt-8 pb-5 space-y-6">
+            {/* Title / IMDb id search */}
+            <div>
+              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+                Search
+              </h3>
+              <Input
+                type="text"
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+                placeholder="Title name or IMDb id (e.g. tt2575988)"
+                className="px-4 py-3 rounded-xl text-sm bg-white/6 border border-white/10 focus:border-orange-500/50"
+              />
+            </div>
+
+            {/* Genre group */}
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
                 Genre
@@ -224,7 +265,7 @@ export default function MoviesPage() {
               variant="ghost"
               size="md"
               onClick={clearDraft}
-              disabled={draftGenres.size === 0}
+              disabled={draftGenres.size === 0 && draftSearch.trim() === ""}
               className="w-full"
             >
               Clear

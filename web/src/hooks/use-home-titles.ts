@@ -7,15 +7,16 @@ import { useProgressQuery, progressPercent } from './queries/use-progress-query'
 const HERO_LIMIT = 8;
 const TOP_TEN_LIMIT = 10;
 
-// A mixed movie+series pool sorted by popularity. BrowseTitles applies the
-// shared release cutoff, so every title here is old enough to have a stream —
-// unlike IMDb `trendingTitles`, which is dominated by just/unreleased titles.
-// Kept larger than the Popular rows so there's a healthy remainder for hero +
-// Top 10 after the rows are excluded (see partitionHomeTitles).
-const POOL_SIZE = 60;
+// A mixed movie+series feed sorted by popularity, used to source the hero banner
+// and the Top 10 row. BrowseTitles applies the shared release cutoff, so every
+// title here is old enough to have a stream — unlike IMDb `trendingTitles`, which
+// is dominated by just/unreleased titles. Kept larger than the Popular rows so
+// there's a healthy remainder for hero + Top 10 after the rows are excluded
+// (see selectHeroAndTop10).
+const POPULAR_LIMIT = 100;
 
-export function usePopularPoolTitles() {
-  return useBrowseTitleQuery({ sort: 'popular', first: POOL_SIZE }, (data) => data.titles);
+export function usePopularTitles() {
+  return useBrowseTitleQuery({ sort: 'popular', first: POPULAR_LIMIT }, (data) => data.titles);
 }
 
 export function usePopularMovieTitles() {
@@ -53,18 +54,20 @@ export function useResumeTitles() {
   });
 }
 
-// Carve the hero + Top 10 out of the popular pool, excluding every title already
+// Carve the hero + Top 10 out of the popular feed, excluding every title already
 // shown in the Popular rows so the sections never 100% duplicate each other.
 // Dedup is by IMDb id (Movie.id === ImdbTitle.id).
-export function partitionHomeTitles(
-  pool: ImdbTitle[],
-  popularRows: Movie[],
-): { hero: Movie[]; top10: Movie[] } {
+export function selectHeroAndTop10({
+  candidates,
+  popularRows,
+}: {
+  candidates: ImdbTitle[];
+  popularRows: Movie[];
+}): { hero: Movie[]; top10: Movie[] } {
   const excluded = new Set(popularRows.map((m) => m.id));
-  const rest = pool.filter((t) => t.id && !excluded.has(t.id));
+  const rest = candidates.filter((t) => t.id && !excluded.has(t.id));
   return {
     hero: heroTitles(rest, HERO_LIMIT),
-    // Top 10 shares the hero's marquee-genre gate, keeping popularity order.
     top10: toMovies(rest.filter(matchesHeroGenres)).slice(0, TOP_TEN_LIMIT),
   };
 }
