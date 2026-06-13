@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 import Navbar from '@/components/system/common/navbar';
 import Sidebar from '@/components/system/common/sidebar';
 import Footer from '@/components/system/common/footer';
@@ -19,6 +19,8 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
+      {/* Reset to top on navigation; restore prior position on back/forward. */}
+      <ScrollRestoration />
       <Navbar
         onSearchOpen={() => setIsSearchOpen(true)}
         onSidebarToggle={() => setIsSidebarOpen(true)}

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -11,6 +11,8 @@ export default function WatchLayout() {
   const location = useLocation();
 
   return (
+    <>
+    <ScrollRestoration />
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
@@ -23,5 +25,6 @@ export default function WatchLayout() {
         <Outlet />
       </motion.div>
     </AnimatePresence>
+    </>
   );
 }

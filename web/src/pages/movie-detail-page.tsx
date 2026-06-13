@@ -143,9 +143,11 @@ export default function MovieDetailPage() {
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
       <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
-        {/* Backdrop — crossfades through gallery images */}
+        {/* Backdrop — crossfades through gallery images. Sync (no "wait") so the
+            incoming image fades in while the old fades out, instead of dipping to
+            empty between them. */}
         <div className="absolute inset-0">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.img
               key={galleryImages[activeImageIndex] ?? movie.backdrop}
               src={galleryImages[activeImageIndex] ?? movie.backdrop}
