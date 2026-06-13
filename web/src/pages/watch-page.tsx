@@ -92,6 +92,7 @@ export function WatchPage() {
       >
         <VideoPlayer
           src={streamUrl}
+          loading={loading || blocked}
           poster={poster}
           subtitle={selectedSub}
           startAt={startAtOverride ?? resumeAt}
@@ -123,12 +124,12 @@ export function WatchPage() {
             {/* Season · Episode */}
             {isSeries && (
               <>
-                <span className="text-white/70 shrink-0 leading-none">|</span>
-                <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
+                <span className="text-white/70 font-bold shrink-0 leading-none">·</span>
+                <span className="text-white text-sm font-bold shrink-0 leading-none whitespace-nowrap">
                   S{season}
                 </span>
-                <span className="text-white/70 shrink-0 leading-none">|</span>
-                <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
+                <span className="text-white/70 font-bold shrink-0 leading-none">·</span>
+                <span className="text-white text-sm font-bold shrink-0 leading-none whitespace-nowrap">
                   E{episode}
                 </span>
               </>

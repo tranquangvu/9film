@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
@@ -16,6 +16,10 @@ interface HeroBannerProps {
 export function HeroBanner({ movies }: HeroBannerProps) {
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
+  // The backdrop shown as the opaque base layer. The active backdrop fades in on
+  // top of it and, once the fade finishes, becomes the new base — so a fully
+  // opaque layer is always underneath and the crossfade never dips to black.
+  const [baseIndex, setBaseIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -25,6 +29,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
   const wheelCooldown = useRef(false);
 
   const activeMovie = movies[activeIndex];
+  const baseMovie = movies[baseIndex] ?? activeMovie;
 
   const goToNext = useCallback(() => {
     setActiveIndex(prev => (prev + 1) % movies.length);
@@ -128,24 +133,34 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       onMouseUp={handleMouseUp}
       style={{ userSelect: 'none', overscrollBehaviorX: 'none' }}
     >
-      {/* Backdrop images — overlapping crossfade so the new image appears fast */}
-      <AnimatePresence>
-        <motion.div
-          key={activeMovie.id}
-          className="absolute inset-0"
+      {/* Backdrop images — the base layer stays fully opaque while the incoming
+          backdrop fades in on top, so the composite never dips to black. */}
+      <div className="absolute inset-0 bg-black">
+        {/* Stable element (no key) so it fades in once on first load, then just
+            swaps src under the crossfade layer without re-animating. */}
+        <motion.img
+          src={baseMovie.backdrop}
+          alt={baseMovie.title}
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          draggable={false}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        >
-          <img
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
+        />
+        {activeIndex !== baseIndex && (
+          <motion.img
+            key={`top-${activeMovie.id}`}
             src={activeMovie.backdrop}
             alt={activeMovie.title}
-            className="w-full h-full object-cover object-center"
+            className="absolute inset-0 w-full h-full object-cover object-center"
             draggable={false}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            onAnimationComplete={() => setBaseIndex(activeIndex)}
           />
-        </motion.div>
-      </AnimatePresence>
+        )}
+      </div>
 
       {/* Gradient overlays */}
       <div className="gradient-overlay-right absolute inset-0 z-10" />

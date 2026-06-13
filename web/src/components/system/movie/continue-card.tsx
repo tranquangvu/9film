@@ -18,7 +18,15 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
   const progress = movie.progress ?? 0;
   const remaining = Math.round((movie.duration * (100 - progress)) / 100);
 
-  const handleClick = () => navigate(`/movie/${movie.id}`);
+  // Continue Watching jumps straight into playback, resuming at the saved
+  // season/episode for series.
+  const handleClick = () => {
+    const resume =
+      movie.resumeSeason != null
+        ? `?s=${movie.resumeSeason}&e=${movie.resumeEpisode}`
+        : '';
+    navigate(`/watch/${movie.id}${resume}`);
+  };
 
   return (
     <div

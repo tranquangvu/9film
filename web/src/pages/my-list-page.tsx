@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { X, FolderHeart, BookmarkCheck, Play, Loader2 } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
@@ -25,6 +25,9 @@ import {
 } from '@/components/ui/drawer';
 
 type TabId = 'all' | 'saved' | 'continue'
+
+const TAB_IDS: TabId[] = ['all', 'saved', 'continue'];
+const isTabId = (v: string | null): v is TabId => v !== null && (TAB_IDS as string[]).includes(v);
 
 // Continue Watching shows at most this many in the carousel; the rest live in
 // the "View all" drawer, which pages them in as you scroll.
@@ -78,7 +81,20 @@ const emptyMessages: Record<TabId, { title: string; message: string }> = {
 export default function MyListPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: TabId = isTabId(tabParam) ? tabParam : 'all';
+  const setActiveTab = (tab: TabId) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === 'all') next.delete('tab');
+        else next.set('tab', tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const [continueDrawerOpen, setContinueDrawerOpen] = useState(false);
   const [continueVisible, setContinueVisible] = useState(CONTINUE_DRAWER_PAGE);
   const [favVisible, setFavVisible] = useState(FAVORITES_PAGE);
@@ -215,26 +231,17 @@ export default function MyListPage() {
           <CarouselSkeleton cardType="backdrop" count={4} />
         </div>
       )}
-      <AnimatePresence mode="wait">
-        {showContinueWatching && !continueLoading && continueWatching.length > 0 && (
-          <motion.div
-            key="continue"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6"
-          >
-            <HorizontalCarousel
-              title="Continue Watching"
-              movies={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
-              cardType="backdrop"
-              showSeeAll={continueHasOverflow}
-              onViewAll={openContinueDrawer}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showContinueWatching && !continueLoading && continueWatching.length > 0 && (
+        <div className="mt-6">
+          <HorizontalCarousel
+            title="Continue Watching"
+            movies={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
+            cardType="backdrop"
+            showSeeAll={continueHasOverflow}
+            onViewAll={openContinueDrawer}
+          />
+        </div>
+      )}
 
       {/* Favorites grid */}
       {showGrid && (

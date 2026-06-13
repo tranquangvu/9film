@@ -170,18 +170,18 @@ export function DetailPageSkeleton() {
         <div className="absolute inset-0 gradient-overlay-right" />
 
         <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl space-y-5">
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-16 rounded-full" />
+            ))}
+          </div>
           <Skeleton className="h-6 lg:h-8 w-2/3 rounded-lg" />
           <div className="flex flex-wrap items-center gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-4 w-16" />
             ))}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-6 w-16 rounded-full" />
-            ))}
-          </div>
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-4 pt-1">
             <Skeleton className="h-12 w-36 rounded-full" />
             <Skeleton className="h-12 w-12 rounded-full" />
           </div>

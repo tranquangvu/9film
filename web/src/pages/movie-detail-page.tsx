@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Play,
   Heart,
@@ -27,23 +27,6 @@ import { GenreBadge } from "@/components/system/movie/genre-badge";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
 import { useListButton } from "@/hooks/queries/use-list-query";
 import { useWatchedEpisodes } from "@/hooks/queries/use-progress-query";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.3 },
-  },
-} as const;
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: "easeOut" as const },
-  },
-} as const;
 
 export default function MovieDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -82,6 +65,10 @@ export default function MovieDetailPage() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [shareTooltip, setShareTooltip] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  // The image currently shown as the opaque base layer. The active image fades
+  // in on top of it; once the fade finishes, it becomes the new base. Keeping a
+  // fully-opaque layer underneath avoids the mid-crossfade darkening dip.
+  const [baseImageIndex, setBaseImageIndex] = useState(0);
 
   const favorite = useListButton(id, movie?.type ?? "movie");
   const watchedEpisodes = useWatchedEpisodes(id);
@@ -141,23 +128,30 @@ export default function MovieDetailPage() {
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
       <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
-        {/* Backdrop — crossfades through gallery images. Sync (no "wait") so the
-            incoming image fades in while the old fades out, instead of dipping to
-            empty between them. */}
-        <div className="absolute inset-0">
-          <AnimatePresence>
+        {/* Backdrop — crossfades through gallery images. The base layer always
+            stays fully opaque while the incoming image fades in on top, so the
+            composite never dips to the (dark) background mid-transition. */}
+        <div className="absolute inset-0 bg-black">
+          <img
+            key={`base-${galleryImages[baseImageIndex] ?? movie.backdrop}`}
+            src={galleryImages[baseImageIndex] ?? movie.backdrop}
+            alt={movie.title}
+            draggable={false}
+            className="absolute inset-0 object-cover w-full h-full"
+          />
+          {activeImageIndex !== baseImageIndex && (
             <motion.img
-              key={galleryImages[activeImageIndex] ?? movie.backdrop}
+              key={`top-${galleryImages[activeImageIndex] ?? movie.backdrop}`}
               src={galleryImages[activeImageIndex] ?? movie.backdrop}
               alt={movie.title}
               draggable={false}
               className="absolute inset-0 object-cover w-full h-full"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
+              onAnimationComplete={() => setBaseImageIndex(activeImageIndex)}
             />
-          </AnimatePresence>
+          )}
         </div>
 
         {/* Gradient overlays */}
@@ -166,10 +160,7 @@ export default function MovieDetailPage() {
         <div className="absolute inset-0 bg-linear-to-t from-background via-transparent to-black/30" />
 
         {/* Back button */}
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, duration: 0.3 }}
+        <button
           onClick={() => navigate(-1)}
           aria-label="Go back"
           className={cn(
@@ -178,38 +169,31 @@ export default function MovieDetailPage() {
           )}
         >
           <ArrowLeft className="w-4 h-4" />
-        </motion.button>
+        </button>
 
         {/* Hero content */}
-        <motion.div
-          className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl">
+          {/* Genre badges */}
+          <div className="flex flex-wrap gap-2 mb-2">
+            {movie.genres.map((genre) => (
+              <GenreBadge key={genre} genre={genre} />
+            ))}
+          </div>
+
           {/* Title */}
-          <motion.h1
-            variants={itemVariants}
-            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 drop-shadow-2xl"
-          >
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 drop-shadow-2xl">
             {movie.title}
-          </motion.h1>
+          </h1>
 
           {/* Tagline */}
           {movie.tagline && (
-            <motion.p
-              variants={itemVariants}
-              className="text-lg text-zinc-300 italic mb-5 drop-shadow-lg"
-            >
+            <p className="text-lg text-zinc-300 italic mb-5 drop-shadow-lg">
               "{movie.tagline}"
-            </motion.p>
+            </p>
           )}
 
           {/* Metadata row */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-sm text-zinc-300"
-          >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-7 text-sm text-zinc-300">
             <span className="font-semibold text-white">
               {formatYear(movie.year)}
             </span>
@@ -252,23 +236,10 @@ export default function MovieDetailPage() {
               </span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
-          </motion.div>
-
-          {/* Genre badges */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-wrap gap-2 mb-7"
-          >
-            {movie.genres.map((genre) => (
-              <GenreBadge key={genre} genre={genre} />
-            ))}
-          </motion.div>
+          </div>
 
           {/* Action buttons */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-wrap items-center gap-3"
-          >
+          <div className="flex flex-wrap items-center gap-4">
             {/* Play Now */}
             <button
               onClick={() => navigate(`/watch/${movie.id}`)}
@@ -287,13 +258,13 @@ export default function MovieDetailPage() {
               className={cn(
                 "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
                 favorite.active
-                  ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
+                  ? "bg-orange-500/20 border-orange-500/60 text-orange-500"
                   : "glass border-white/20 text-zinc-400 hover:text-white",
               )}
               title={favorite.active ? "Remove from favorites" : "Add to favorites"}
             >
               <Heart
-                className={cn("w-5 h-5", favorite.active && "fill-pink-400")}
+                className={cn("w-5 h-5", favorite.active && "fill-orange-500")}
               />
             </button>
 
@@ -307,18 +278,13 @@ export default function MovieDetailPage() {
                 <Share2 className="w-5 h-5" />
               </button>
               {shareTooltip && (
-                <motion.div
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg bg-zinc-800 text-xs text-white whitespace-nowrap border border-zinc-700"
-                >
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg bg-zinc-800 text-xs text-white whitespace-nowrap border border-zinc-700">
                   Link copied!
-                </motion.div>
+                </div>
               )}
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Dot indicators — auto-rotating hero backdrop */}
         {galleryImages.length > 1 && (
@@ -342,12 +308,7 @@ export default function MovieDetailPage() {
       </div>
 
       {/* ── CONTENT SECTION ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.3, ease: "easeOut" }}
-        className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8"
-      >
+      <div className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8">
         <div className="space-y-10">
           {/* ── Episodes (series only) ── */}
           {eps && (
@@ -445,7 +406,7 @@ export default function MovieDetailPage() {
             </section>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
