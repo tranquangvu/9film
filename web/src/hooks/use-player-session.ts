@@ -61,15 +61,20 @@ export function usePlayerSession(
     return map && Object.keys(map).length > 0 ? map : null;
   }, [epsQuery.data]);
 
-  const isSeries = eps !== null;
-
   // ── Watch progress (resume + save) ──────────────────────────────────────────
   const { isAuthenticated } = useAuth();
   const settings = useSettings();
   const { data: progressItems } = useProgressQuery();
   const saveProgressMut = useSaveProgress();
 
-  const savedProgress = useMemo(
+  // Reliable "is this a series?" signal derived from title metadata — available
+  // before the `eps` map (a separate stream request) resolves, so early saves
+  // and resume decisions don't mistakenly treat a series as a movie.
+  const isTv = baseParams?.mediaType === 'tv';
+
+  // Most-recently-watched row for this title (the API orders progress
+  // newest-first), used to seed which episode a series resumes into.
+  const lastWatched = useMemo(
     () => (progressItems ?? []).find((p) => p.imdbId === titleId) ?? null,
     [progressItems, titleId],
   );
@@ -77,11 +82,11 @@ export function usePlayerSession(
   // For a series opened without a deep link, resume on the last-watched episode.
   const seriesResume = useMemo(() => {
     if (initialEpisode) return null;
-    if (isSeries && savedProgress && savedProgress.season > 0) {
-      return { season: savedProgress.season, episode: savedProgress.episode };
+    if (isTv && lastWatched && lastWatched.season > 0) {
+      return { season: lastWatched.season, episode: lastWatched.episode };
     }
     return null;
-  }, [initialEpisode, isSeries, savedProgress]);
+  }, [initialEpisode, isTv, lastWatched]);
 
   // Effective episode: an explicit user pick wins, else the series-resume seed.
   const effectiveSelected = selected ?? seriesResume;
@@ -123,17 +128,23 @@ export function usePlayerSession(
   const season = effectiveSelected?.season ?? (streamData?.season != null ? Number(streamData.season) : 1);
   const episode = effectiveSelected?.episode ?? (streamData?.episode != null ? Number(streamData.episode) : 1);
 
-  // Resume only applies to the episode the saved point belongs to.
-  const matchesSaved =
-    !!savedProgress && (!isSeries || (savedProgress.season === season && savedProgress.episode === episode));
+  // Resume position for the episode actually being shown. Series progress is
+  // keyed by season+episode so each episode keeps its own resume point; movies
+  // have a single row per title (season/episode 0).
+  const currentProgress = useMemo(() => {
+    const items = progressItems ?? [];
+    return isTv
+      ? items.find((p) => p.imdbId === titleId && p.season === season && p.episode === episode) ?? null
+      : items.find((p) => p.imdbId === titleId) ?? null;
+  }, [progressItems, titleId, isTv, season, episode]);
+
   const resumeAt =
     isAuthenticated &&
-    matchesSaved &&
-    savedProgress &&
-    savedProgress.positionSeconds > 5 &&
-    savedProgress.durationSeconds > 0 &&
-    savedProgress.positionSeconds < savedProgress.durationSeconds * 0.95
-      ? savedProgress.positionSeconds
+    currentProgress &&
+    currentProgress.positionSeconds > 5 &&
+    currentProgress.durationSeconds > 0 &&
+    currentProgress.positionSeconds < currentProgress.durationSeconds * 0.95
+      ? currentProgress.positionSeconds
       : undefined;
 
   const saveProgress = useCallback(
@@ -141,13 +152,13 @@ export function usePlayerSession(
       if (!isAuthenticated) return;
       saveProgressMut.mutate({
         imdbId: titleId,
-        season: isSeries ? season : 0,
-        episode: isSeries ? episode : 0,
+        season: isTv ? season : 0,
+        episode: isTv ? episode : 0,
         positionSeconds,
         durationSeconds,
       });
     },
-    [isAuthenticated, titleId, isSeries, season, episode, saveProgressMut],
+    [isAuthenticated, titleId, isTv, season, episode, saveProgressMut],
   );
 
   // Next episode in the eps map (drives autoplay-next).

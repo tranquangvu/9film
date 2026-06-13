@@ -27,6 +27,7 @@ import { MovieCard } from "@/components/system/movie/movie-card";
 import { GenreBadge } from "@/components/system/movie/genre-badge";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
 import { useListButton } from "@/hooks/queries/use-list-query";
+import { useWatchedEpisodes } from "@/hooks/queries/use-progress-query";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -85,6 +86,7 @@ export default function MovieDetailPage() {
 
   const favorite = useListButton(id, movie?.type ?? "movie", "favorite");
   const watchlist = useListButton(id, movie?.type ?? "movie", "watchlist");
+  const watchedEpisodes = useWatchedEpisodes(id);
 
   useEffect(() => {
     if (galleryImages.length < 2) return;
@@ -382,6 +384,7 @@ export default function MovieDetailPage() {
                 {episodeList.map((ep) => (
                   <Tag
                     key={ep}
+                    watched={watchedEpisodes.has(`${activeSeason}:${ep}`)}
                     onClick={() =>
                       navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
                     }

@@ -29,11 +29,26 @@ export function usePopularTVSeriesTitles() {
 export function useResumeTitles() {
   const { data: progressItems } = useProgressQuery();
   const items = progressItems ?? [];
-  return useTitlesQuery(items.map((p) => p.imdbId), {
+  // Progress is per-episode, so a series has several rows. Collapse to one card
+  // per title, keeping the most-recent row (the list is ordered newest-first).
+  const seen = new Set<string>();
+  const latestPerTitle = items.filter((p) => {
+    if (seen.has(p.imdbId)) return false;
+    seen.add(p.imdbId);
+    return true;
+  });
+  return useTitlesQuery(latestPerTitle.map((p) => p.imdbId), {
     select: (movies) =>
       movies.map((movie) => {
-        const p = items.find((x) => x.imdbId === movie.id);
-        return p ? { ...movie, progress: progressPercent(p) } : movie;
+        const p = latestPerTitle.find((x) => x.imdbId === movie.id);
+        if (!p) return movie;
+        return {
+          ...movie,
+          progress: progressPercent(p),
+          // season > 0 only for series; movies stay undefined.
+          resumeSeason: p.season > 0 ? p.season : undefined,
+          resumeEpisode: p.season > 0 ? p.episode : undefined,
+        };
       }),
   });
 }

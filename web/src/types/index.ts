@@ -20,6 +20,9 @@ export interface Movie {
   isNew?: boolean
   isFeatured?: boolean
   progress?: number
+  // Resume point for the Continue Watching row (series only; 0 for movies).
+  resumeSeason?: number
+  resumeEpisode?: number
   totalSeasons?: number
   totalEpisodes?: number
 }

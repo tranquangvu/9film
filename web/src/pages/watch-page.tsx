@@ -8,6 +8,7 @@ import { Tag } from '@/components/ui/tag';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
+import { useWatchedEpisodes } from '@/hooks/queries/use-progress-query';
 import { episodes, seasons } from '@/utils/stream';
 import { cn } from '@/utils/cn';
 
@@ -57,6 +58,7 @@ export function WatchPage() {
   } = usePlayerSession(id, initialEpisode);
 
   const [showTranscript, setShowTranscript] = useState(false);
+  const watchedEpisodes = useWatchedEpisodes(id);
   const isSeries = eps !== null;
   const availableSeasons = eps ? seasons(eps) : [];
   const episodesBySeason = eps ? episodes(eps, season) : [];
@@ -121,11 +123,11 @@ export function WatchPage() {
             {/* Season · Episode */}
             {isSeries && (
               <>
-                <span className="text-white/30 shrink-0 leading-none">·</span>
+                <span className="text-white/70 shrink-0 leading-none">|</span>
                 <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
                   S{season}
                 </span>
-                <span className="text-white/30 shrink-0 leading-none">·</span>
+                <span className="text-white/70 shrink-0 leading-none">|</span>
                 <span className="text-white/70 text-sm font-medium shrink-0 leading-none whitespace-nowrap">
                   E{episode}
                 </span>
@@ -162,6 +164,7 @@ export function WatchPage() {
                   <Tag
                     key={ep}
                     active={episode === ep}
+                    watched={watchedEpisodes.has(`${season}:${ep}`)}
                     onClick={() => handleEpisodeChange(season, ep)}
                   >
                     E{ep}

@@ -29,7 +29,7 @@ func (s *Store) migrate() error {
 			position_seconds REAL NOT NULL,
 			duration_seconds REAL NOT NULL,
 			updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
-			PRIMARY KEY (user_id, imdb_id)
+			PRIMARY KEY (user_id, imdb_id, season, episode)
 		)`,
 		`CREATE TABLE IF NOT EXISTS settings (
 			user_id               INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -71,6 +71,68 @@ func (s *Store) migrate() error {
 	}
 	for _, stmt := range alters {
 		_, _ = s.db.Exec(stmt)
+	}
+
+	if err := s.migrateProgressKey(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateProgressKey rebuilds the progress table when it still uses the original
+// (user_id, imdb_id) primary key — one resume point per title. The current schema
+// keys by (user_id, imdb_id, season, episode) so each TV episode keeps its own
+// resume point. Existing rows map 1:1 to the new table, so no data is lost.
+func (s *Store) migrateProgressKey() error {
+	rows, err := s.db.Query(`PRAGMA table_info(progress)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// `season` participates in the PK only under the new schema.
+	seasonInPK := false
+	for rows.Next() {
+		var (
+			cid, notNull, pk int
+			name, ctype      string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "season" && pk > 0 {
+			seasonInPK = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if seasonInPK {
+		return nil // already on the per-episode key
+	}
+
+	stmts := []string{
+		`CREATE TABLE progress_new (
+			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			imdb_id          TEXT NOT NULL,
+			season           INTEGER NOT NULL DEFAULT 0,
+			episode          INTEGER NOT NULL DEFAULT 0,
+			position_seconds REAL NOT NULL,
+			duration_seconds REAL NOT NULL,
+			updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, imdb_id, season, episode)
+		)`,
+		`INSERT INTO progress_new
+			SELECT user_id, imdb_id, season, episode, position_seconds, duration_seconds, updated_at
+			FROM progress`,
+		`DROP TABLE progress`,
+		`ALTER TABLE progress_new RENAME TO progress`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.Exec(stmt); err != nil {
+			return err
+		}
 	}
 	return nil
 }

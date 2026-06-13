@@ -34,17 +34,17 @@ export function ProgressReporter({ startAt, onProgress, onEnded }: ProgressRepor
     onEndedRef.current = onEnded;
   });
 
+  // Allow exactly one resume-seek per loaded media element.
+  useEffect(() => {
+    seekedRef.current = false;
+  }, [media]);
+
+  // Seek to the resume point once. Re-runs when startAt changes (e.g. switching
+  // episode), but the seekedRef guard prevents re-seeking the same media — and
+  // crucially this effect never saves, so cache patches caused by saving (which
+  // change startAt) cannot loop back into a save here.
   useEffect(() => {
     if (!media) return;
-    seekedRef.current = false;
-
-    const save = () => {
-      const pos = media.currentTime;
-      const dur = media.duration;
-      if (Number.isFinite(dur) && dur > 0 && pos > 0) {
-        onProgressRef.current(pos, dur);
-      }
-    };
 
     const seekToStart = () => {
       if (seekedRef.current || !startAt || startAt <= 1) return;
@@ -58,6 +58,27 @@ export function ProgressReporter({ startAt, onProgress, onEnded }: ProgressRepor
       }
     };
 
+    // Metadata may already be available when this mounts.
+    seekToStart();
+    media.addEventListener('loadedmetadata', seekToStart);
+    return () => media.removeEventListener('loadedmetadata', seekToStart);
+  }, [media, startAt]);
+
+  // Report progress: throttled on timeupdate, plus on pause/ended/unmount.
+  // Depends only on `media`, so the frequent saves below — which patch the
+  // progress cache and thus change `startAt` — never re-bind these listeners.
+  // That's what keeps the unthrottled cleanup save() from firing in a loop.
+  useEffect(() => {
+    if (!media) return;
+
+    const save = () => {
+      const pos = media.currentTime;
+      const dur = media.duration;
+      if (Number.isFinite(dur) && dur > 0 && pos > 0) {
+        onProgressRef.current(pos, dur);
+      }
+    };
+
     const handleTimeUpdate = () => {
       const now = Date.now();
       if (now - lastSaveRef.current >= SAVE_INTERVAL_MS) {
@@ -65,29 +86,23 @@ export function ProgressReporter({ startAt, onProgress, onEnded }: ProgressRepor
         save();
       }
     };
-    const handleLoaded = () => seekToStart();
     const handlePause = () => save();
     const handleEnded = () => {
       save();
       onEndedRef.current?.();
     };
 
-    // Metadata may already be available when this mounts.
-    seekToStart();
-
-    media.addEventListener('loadedmetadata', handleLoaded);
     media.addEventListener('timeupdate', handleTimeUpdate);
     media.addEventListener('pause', handlePause);
     media.addEventListener('ended', handleEnded);
 
     return () => {
-      media.removeEventListener('loadedmetadata', handleLoaded);
       media.removeEventListener('timeupdate', handleTimeUpdate);
       media.removeEventListener('pause', handlePause);
       media.removeEventListener('ended', handleEnded);
       save();
     };
-  }, [media, startAt]);
+  }, [media]);
 
   return null;
 }

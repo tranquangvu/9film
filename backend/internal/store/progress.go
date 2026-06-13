@@ -34,15 +34,14 @@ func (s *Store) GetProgress(userID int64) ([]Progress, error) {
 	return items, rows.Err()
 }
 
-// UpsertProgress writes the single resume point for a title (one row per
-// user+imdb_id), refreshing updated_at so it bubbles to the top of the list.
+// UpsertProgress writes a resume point keyed by user+imdb_id+season+episode, so
+// each TV episode keeps its own position (movies use season/episode 0). It
+// refreshes updated_at so the title bubbles to the top of the list.
 func (s *Store) UpsertProgress(userID int64, p Progress) error {
 	_, err := s.db.Exec(
 		`INSERT INTO progress (user_id, imdb_id, season, episode, position_seconds, duration_seconds, updated_at)
 		   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-		   ON CONFLICT(user_id, imdb_id) DO UPDATE SET
-		     season = excluded.season,
-		     episode = excluded.episode,
+		   ON CONFLICT(user_id, imdb_id, season, episode) DO UPDATE SET
 		     position_seconds = excluded.position_seconds,
 		     duration_seconds = excluded.duration_seconds,
 		     updated_at = datetime('now')`,
