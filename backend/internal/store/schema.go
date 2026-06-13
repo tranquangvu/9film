@@ -16,10 +16,9 @@ func (s *Store) migrate() error {
 		`CREATE TABLE IF NOT EXISTS list_items (
 			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id    TEXT NOT NULL,
-			kind       TEXT NOT NULL CHECK(kind IN ('favorite','watchlist')),
 			media_type TEXT NOT NULL DEFAULT 'movie' CHECK(media_type IN ('movie','series')),
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
-			PRIMARY KEY (user_id, imdb_id, kind)
+			PRIMARY KEY (user_id, imdb_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS progress (
 			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -75,6 +74,62 @@ func (s *Store) migrate() error {
 
 	if err := s.migrateProgressKey(); err != nil {
 		return err
+	}
+	if err := s.migrateListItemsDropKind(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateListItemsDropKind rebuilds list_items when it still carries the old
+// `kind` column (favorite|watchlist). The app now only has favorites, so the
+// column and PRIMARY KEY (user_id, imdb_id, kind) are dropped down to
+// (user_id, imdb_id), keeping only the favorite rows.
+func (s *Store) migrateListItemsDropKind() error {
+	rows, err := s.db.Query(`PRAGMA table_info(list_items)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasKind := false
+	for rows.Next() {
+		var (
+			cid, notNull, pk int
+			name, ctype      string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "kind" {
+			hasKind = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !hasKind {
+		return nil // already on the kind-less schema
+	}
+
+	stmts := []string{
+		`CREATE TABLE list_items_new (
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			imdb_id    TEXT NOT NULL,
+			media_type TEXT NOT NULL DEFAULT 'movie' CHECK(media_type IN ('movie','series')),
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, imdb_id)
+		)`,
+		`INSERT OR IGNORE INTO list_items_new (user_id, imdb_id, media_type, created_at)
+			SELECT user_id, imdb_id, media_type, created_at FROM list_items WHERE kind = 'favorite'`,
+		`DROP TABLE list_items`,
+		`ALTER TABLE list_items_new RENAME TO list_items`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.Exec(stmt); err != nil {
+			return err
+		}
 	}
 	return nil
 }

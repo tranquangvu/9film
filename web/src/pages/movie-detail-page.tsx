@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   Heart,
-  Bookmark,
   Share2,
   ArrowLeft,
   Star,
@@ -84,8 +83,7 @@ export default function MovieDetailPage() {
   const [shareTooltip, setShareTooltip] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const favorite = useListButton(id, movie?.type ?? "movie", "favorite");
-  const watchlist = useListButton(id, movie?.type ?? "movie", "watchlist");
+  const favorite = useListButton(id, movie?.type ?? "movie");
   const watchedEpisodes = useWatchedEpisodes(id);
 
   useEffect(() => {
@@ -296,22 +294,6 @@ export default function MovieDetailPage() {
             >
               <Heart
                 className={cn("w-5 h-5", favorite.active && "fill-pink-400")}
-              />
-            </button>
-
-            {/* Bookmark / Watch later */}
-            <button
-              onClick={watchlist.onToggle}
-              className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-90",
-                watchlist.active
-                  ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
-                  : "glass border-white/20 text-zinc-400 hover:text-white",
-              )}
-              title={watchlist.active ? "Remove from watch later" : "Add to watch later"}
-            >
-              <Bookmark
-                className={cn("w-5 h-5", watchlist.active && "fill-blue-400")}
               />
             </button>
 

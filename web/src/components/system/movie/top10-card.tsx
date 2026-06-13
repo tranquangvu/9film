@@ -15,7 +15,7 @@ interface Top10CardProps {
 export function Top10Card({ movie, rank, className }: Top10CardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useListButton(movie.id, movie.type, 'favorite');
+  const favorite = useListButton(movie.id, movie.type);
 
   const rankStr = rank.toString();
 

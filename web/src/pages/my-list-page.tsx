@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FolderHeart, BookmarkCheck, Clock, Play } from 'lucide-react';
+import { X, FolderHeart, BookmarkCheck, Play } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
-import { useFavorites, useWatchlist, useToggleListItem } from '@/hooks/queries/use-list-query';
+import { useFavorites, useToggleListItem } from '@/hooks/queries/use-list-query';
 import { useProgressQuery, progressPercent } from '@/hooks/queries/use-progress-query';
 import { MovieCard } from '@/components/system/movie/movie-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
@@ -14,7 +14,7 @@ import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
 import { useToast } from '@/components/ui/toast';
 
-type TabId = 'all' | 'saved' | 'watchlater' | 'continue'
+type TabId = 'all' | 'saved' | 'continue'
 
 interface Tab {
   id: TabId
@@ -25,7 +25,6 @@ interface Tab {
 const tabs: Tab[] = [
   { id: 'all', label: 'All', icon: <FolderHeart className="w-3.5 h-3.5" /> },
   { id: 'saved', label: 'Saved Titles', icon: <BookmarkCheck className="w-3.5 h-3.5" /> },
-  { id: 'watchlater', label: 'Watch Later', icon: <Clock className="w-3.5 h-3.5" /> },
   { id: 'continue', label: 'Continue Watching', icon: <Play className="w-3.5 h-3.5" /> },
 ];
 
@@ -56,7 +55,6 @@ function RemovableCard({ movie, onRemove }: RemovableCardProps) {
 const emptyMessages: Record<TabId, { title: string; message: string }> = {
   all: { title: 'Your list is empty', message: 'Start adding movies and shows to see them here.' },
   saved: { title: 'Nothing saved yet', message: 'Browse movies and shows, then tap the heart to save your favorites here.' },
-  watchlater: { title: 'Nothing to watch later', message: 'Bookmark titles to build your Watch Later queue.' },
   continue: { title: 'Nothing in progress', message: 'Start watching something to see it here.' },
 };
 
@@ -65,31 +63,43 @@ export default function MyListPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('all');
 
-  // Server-backed id lists, hydrated into Movie objects via the IMDb queries.
+  // Server-backed favorites, hydrated into Movie objects via the IMDb queries.
   const favoritesQ = useFavorites();
-  const watchlistQ = useWatchlist();
   const progressQ = useProgressQuery();
 
   const favTitles = useTitlesQuery((favoritesQ.data ?? []).map((i) => i.imdbId));
-  const watchTitles = useTitlesQuery((watchlistQ.data ?? []).map((i) => i.imdbId));
 
-  const progressItems = useMemo(() => progressQ.data ?? [], [progressQ.data]);
+  // Progress is per-episode, so a series has several rows. Collapse to one card
+  // per title, keeping the most-recent row (the list is ordered newest-first).
+  const progressItems = useMemo(() => {
+    const seen = new Set<string>();
+    return (progressQ.data ?? []).filter((p) => {
+      if (seen.has(p.imdbId)) return false;
+      seen.add(p.imdbId);
+      return true;
+    });
+  }, [progressQ.data]);
   const continueTitles = useTitlesQuery(progressItems.map((p) => p.imdbId));
   const continueWatching = useMemo(
     () =>
       continueTitles.data.map((movie) => {
         const p = progressItems.find((x) => x.imdbId === movie.id);
-        return p ? { ...movie, progress: progressPercent(p) } : movie;
+        if (!p) return movie;
+        return {
+          ...movie,
+          progress: progressPercent(p),
+          resumeSeason: p.season > 0 ? p.season : undefined,
+          resumeEpisode: p.season > 0 ? p.episode : undefined,
+        };
       }),
     [continueTitles.data, progressItems],
   );
 
-  const toggleFavorite = useToggleListItem('favorite');
-  const toggleWatchlist = useToggleListItem('watchlist');
+  const toggleFavorite = useToggleListItem();
 
   const hasError =
-    favoritesQ.isError || watchlistQ.isError || progressQ.isError ||
-    favTitles.isError || watchTitles.isError || continueTitles.isError;
+    favoritesQ.isError || progressQ.isError ||
+    favTitles.isError || continueTitles.isError;
 
   useEffect(() => {
     if (hasError) {
@@ -101,24 +111,18 @@ export default function MyListPage() {
     }
   }, [hasError, toast]);
 
-  // The grid shows favorites for All/Saved, watchlist for Watch Later.
-  const gridKind = activeTab === 'watchlater' ? 'watchlist' : 'favorite';
-  const gridTitles = gridKind === 'watchlist' ? watchTitles : favTitles;
-  const gridLoading = gridKind === 'watchlist'
-    ? watchlistQ.isLoading || watchTitles.loading
-    : favoritesQ.isLoading || favTitles.loading;
-  const gridMovies = gridTitles.data;
+  // The grid shows saved favorites (All / Saved Titles tabs).
+  const gridLoading = favoritesQ.isLoading || favTitles.loading;
+  const gridMovies = favTitles.data;
 
   const handleRemove = (movie: Movie) => {
-    const toggle = gridKind === 'watchlist' ? toggleWatchlist : toggleFavorite;
-    toggle.mutate({ imdbId: movie.id, mediaType: movie.type, active: true });
+    toggleFavorite.mutate({ imdbId: movie.id, mediaType: movie.type, active: true });
   };
 
   const showContinueWatching = activeTab === 'all' || activeTab === 'continue';
   const showGrid = activeTab !== 'continue';
   const continueLoading = progressQ.isLoading || continueTitles.loading;
 
-  const sectionTitle = activeTab === 'watchlater' ? 'Watch Later' : 'Saved Titles';
   const savedCount = favTitles.data.length;
 
   return (
@@ -189,7 +193,7 @@ export default function MyListPage() {
             </>
           ) : gridMovies.length > 0 ? (
             <>
-              <h2 className="text-lg font-bold text-white mb-5">{sectionTitle}</h2>
+              <h2 className="text-lg font-bold text-white mb-5">Saved Titles</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
                 {gridMovies.map((movie) => (
                   <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />

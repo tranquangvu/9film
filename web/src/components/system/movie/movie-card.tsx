@@ -25,7 +25,7 @@ const sizeClasses = {
 export function MovieCard({ movie, className, showProgress = false, size = 'md' }: MovieCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useListButton(movie.id, movie.type, 'favorite');
+  const favorite = useListButton(movie.id, movie.type);
 
   const handleClick = () => navigate(`/movie/${movie.id}`);
 

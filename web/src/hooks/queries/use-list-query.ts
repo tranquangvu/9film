@@ -1,35 +1,32 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getList, addListItem, removeListItem, type ListItem, type ListKind } from '@/services/user';
+import { getList, addListItem, removeListItem, type ListItem } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
 
-const listKey = (kind: ListKind) => ['list', kind] as const;
+const LIST_KEY = ['list'] as const;
 
-export function useListQuery(kind: ListKind) {
+export function useFavorites() {
   const { isAuthenticated } = useAuth();
   return useQuery({
-    queryKey: listKey(kind),
-    queryFn: () => getList(kind),
+    queryKey: LIST_KEY,
+    queryFn: getList,
     enabled: isAuthenticated,
     staleTime: 60 * 1000,
   });
 }
 
-export const useFavorites = () => useListQuery('favorite');
-export const useWatchlist = () => useListQuery('watchlist');
-
-// Subscribes to the list query but `select`s down to a single boolean, so a
+// Subscribes to the favorites query but `select`s down to a single boolean, so a
 // subscriber only re-renders when *its* membership flips — not on every list
 // change. Critical for grids that mount many cards: toggling one item won't
 // re-render the rest.
-export function useIsInList(imdbId: string, kind: ListKind): boolean {
+export function useIsInList(imdbId: string): boolean {
   const { isAuthenticated } = useAuth();
   return (
     useQuery({
-      queryKey: listKey(kind),
-      queryFn: () => getList(kind),
+      queryKey: LIST_KEY,
+      queryFn: getList,
       enabled: isAuthenticated,
       staleTime: 60 * 1000,
       select: (data) => data.some((i) => i.imdbId === imdbId),
@@ -40,45 +37,45 @@ export function useIsInList(imdbId: string, kind: ListKind): boolean {
 interface ToggleVars {
   imdbId: string;
   mediaType: 'movie' | 'series';
-  active: boolean; // currently in the list?
+  active: boolean; // currently favorited?
 }
 
-export function useToggleListItem(kind: ListKind) {
+export function useToggleListItem() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ imdbId, mediaType, active }: ToggleVars) => {
-      if (active) await removeListItem(imdbId, kind);
-      else await addListItem({ imdbId, kind, mediaType });
+      if (active) await removeListItem(imdbId);
+      else await addListItem({ imdbId, mediaType });
     },
     onMutate: async ({ imdbId, mediaType, active }) => {
-      await qc.cancelQueries({ queryKey: listKey(kind) });
-      const prev = qc.getQueryData<ListItem[]>(listKey(kind));
-      qc.setQueryData<ListItem[]>(listKey(kind), (old = []) =>
+      await qc.cancelQueries({ queryKey: LIST_KEY });
+      const prev = qc.getQueryData<ListItem[]>(LIST_KEY);
+      qc.setQueryData<ListItem[]>(LIST_KEY, (old = []) =>
         active
           ? old.filter((i) => i.imdbId !== imdbId)
-          : [{ imdbId, kind, mediaType }, ...old],
+          : [{ imdbId, mediaType }, ...old],
       );
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(listKey(kind), ctx.prev);
+      if (ctx?.prev) qc.setQueryData(LIST_KEY, ctx.prev);
       toast({ title: 'Could not update your list', description: 'Please try again.', variant: 'destructive' });
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: listKey(kind) });
+      qc.invalidateQueries({ queryKey: LIST_KEY });
     },
   });
 }
 
-// Convenience for buttons on cards / detail page: derives current membership and
-// returns a toggle handler that redirects to /login when signed out.
-export function useListButton(imdbId: string, mediaType: 'movie' | 'series', kind: ListKind) {
+// Convenience for the favorite button on cards / detail page: derives current
+// membership and returns a toggle handler that redirects to /login when signed out.
+export function useListButton(imdbId: string, mediaType: 'movie' | 'series') {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const active = useIsInList(imdbId, kind);
-  const toggle = useToggleListItem(kind);
+  const active = useIsInList(imdbId);
+  const toggle = useToggleListItem();
 
   const onToggle = useCallback(
     (e?: { stopPropagation?: () => void; preventDefault?: () => void }) => {

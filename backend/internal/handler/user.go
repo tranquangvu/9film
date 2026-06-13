@@ -58,12 +58,7 @@ func PutSettings(st *store.Store) gin.HandlerFunc {
 
 func GetList(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		kind := c.Query("kind")
-		if kind != "favorite" && kind != "watchlist" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "kind must be 'favorite' or 'watchlist'"})
-			return
-		}
-		items, err := st.ListItems(middleware.UserID(c), kind)
+		items, err := st.ListItems(middleware.UserID(c))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load list"})
 			return
@@ -74,7 +69,6 @@ func GetList(st *store.Store) gin.HandlerFunc {
 
 type addListRequest struct {
 	ImdbID    string `json:"imdbId"`
-	Kind      string `json:"kind"`
 	MediaType string `json:"mediaType"`
 }
 
@@ -86,30 +80,29 @@ func AddList(st *store.Store) gin.HandlerFunc {
 			return
 		}
 		req.ImdbID = strings.TrimSpace(req.ImdbID)
-		if req.ImdbID == "" || (req.Kind != "favorite" && req.Kind != "watchlist") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId and a valid kind are required"})
+		if req.ImdbID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId is required"})
 			return
 		}
 		if req.MediaType != "series" {
 			req.MediaType = "movie"
 		}
-		if err := st.AddListItem(middleware.UserID(c), req.ImdbID, req.Kind, req.MediaType); err != nil {
+		if err := st.AddListItem(middleware.UserID(c), req.ImdbID, req.MediaType); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not add to list"})
 			return
 		}
-		c.JSON(http.StatusCreated, gin.H{"imdbId": req.ImdbID, "kind": req.Kind, "mediaType": req.MediaType})
+		c.JSON(http.StatusCreated, gin.H{"imdbId": req.ImdbID, "mediaType": req.MediaType})
 	}
 }
 
 func RemoveList(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		imdbID := strings.TrimSpace(c.Query("imdbId"))
-		kind := c.Query("kind")
-		if imdbID == "" || (kind != "favorite" && kind != "watchlist") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId and a valid kind are required"})
+		if imdbID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId is required"})
 			return
 		}
-		if err := st.RemoveListItem(middleware.UserID(c), imdbID, kind); err != nil {
+		if err := st.RemoveListItem(middleware.UserID(c), imdbID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not remove from list"})
 			return
 		}
