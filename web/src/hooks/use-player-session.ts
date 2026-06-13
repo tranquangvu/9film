@@ -11,6 +11,7 @@ import {
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
 import { orderSubs, pickSubs } from '@/utils/subtitle';
+import { getSubtitlePref, setSubtitlePref } from '@/utils/subtitle-pref';
 import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
@@ -197,7 +198,21 @@ export function usePlayerSession(
   }, [subtitleQuery.data, titleData, resolvedStreamParams, settings.defaultSubtitleLang]);
 
   const autoSubId = resolvedSubs?.fileId ?? null;
-  const selectedSubId = userSubId ?? autoSubId;
+
+  // A previously-saved selection for this title: prefer the exact release
+  // (fileId), else any track in the same language. Falls back to the auto pick.
+  const prefSubId = useMemo(() => {
+    if (!resolvedSubs) return null;
+    const pref = getSubtitlePref(titleId);
+    if (!pref) return null;
+    const match =
+      resolvedSubs.list.find((s) => s.fileId === pref.fileId) ??
+      resolvedSubs.list.find((s) => s.language === pref.language);
+    return match?.fileId ?? null;
+  }, [resolvedSubs, titleId]);
+
+  // In-session pick wins; then the persisted preference; then the auto pick.
+  const selectedSubId = userSubId ?? prefSubId ?? autoSubId;
 
   const subList = useMemo(
     () => orderSubs(resolvedSubs?.list ?? [], selectedSubId),
@@ -213,6 +228,8 @@ export function usePlayerSession(
 
   function handleSubtitleTrackChange(fileId: number | null) {
     setUserSubId(fileId);
+    const opt = fileId != null ? resolvedSubs?.list.find((s) => s.fileId === fileId) : null;
+    setSubtitlePref(titleId, opt ? { fileId: opt.fileId, language: opt.language } : null);
   }
 
   const selectedSub = subList.find((s) => s.fileId === selectedSubId) ?? null;
