@@ -30,6 +30,14 @@ func (s *Store) migrate() error {
 			updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, imdb_id, season, episode)
 		)`,
+		`CREATE TABLE IF NOT EXISTS subtitle_prefs (
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			imdb_id    TEXT NOT NULL,
+			file_id    INTEGER NOT NULL,
+			language   TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, imdb_id)
+		)`,
 		`CREATE TABLE IF NOT EXISTS settings (
 			user_id               INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			autoplay_next         INTEGER NOT NULL DEFAULT 1,

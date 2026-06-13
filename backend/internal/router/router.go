@@ -71,6 +71,8 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 			me.DELETE("/list", handler.RemoveList(st))
 			me.GET("/progress", handler.GetProgress(st))
 			me.PUT("/progress", handler.PutProgress(st))
+			me.GET("/subtitle-prefs", handler.GetSubtitlePrefs(st))
+			me.PUT("/subtitle-prefs", handler.PutSubtitlePref(st))
 			me.GET("/saved-words", handler.GetSavedWords(st))
 			me.POST("/saved-words", handler.AddSavedWord(st))
 			me.DELETE("/saved-words", handler.RemoveSavedWord(st))

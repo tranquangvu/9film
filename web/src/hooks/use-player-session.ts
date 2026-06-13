@@ -18,6 +18,7 @@ import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
 import { useSubtitleCues } from './queries/use-subtitle-cues';
 import { useProgressQuery, useSaveProgress } from './queries/use-progress-query';
+import { useSubtitlePrefsQuery, useSaveSubtitlePref } from './queries/use-subtitle-pref-query';
 import { useSettings } from './queries/use-settings-query';
 
 export function usePlayerSession(
@@ -199,17 +200,23 @@ export function usePlayerSession(
 
   const autoSubId = resolvedSubs?.fileId ?? null;
 
-  // A previously-saved selection for this title: prefer the exact release
-  // (fileId), else any track in the same language. Falls back to the auto pick.
+  // Saved selection for this title. For signed-in users it lives in the DB and
+  // follows them across devices; otherwise we fall back to localStorage.
+  const { data: subPrefs } = useSubtitlePrefsQuery();
+  const saveSubPrefMut = useSaveSubtitlePref();
+  const savedSubPref = useMemo(() => {
+    const dbPref = (subPrefs ?? []).find((p) => p.imdbId === titleId);
+    return dbPref ?? getSubtitlePref(titleId);
+  }, [subPrefs, titleId]);
+
+  // Prefer the exact release (fileId), else any track in the same language.
   const prefSubId = useMemo(() => {
-    if (!resolvedSubs) return null;
-    const pref = getSubtitlePref(titleId);
-    if (!pref) return null;
+    if (!resolvedSubs || !savedSubPref) return null;
     const match =
-      resolvedSubs.list.find((s) => s.fileId === pref.fileId) ??
-      resolvedSubs.list.find((s) => s.language === pref.language);
+      resolvedSubs.list.find((s) => s.fileId === savedSubPref.fileId) ??
+      resolvedSubs.list.find((s) => s.language === savedSubPref.language);
     return match?.fileId ?? null;
-  }, [resolvedSubs, titleId]);
+  }, [resolvedSubs, savedSubPref]);
 
   // In-session pick wins; then the persisted preference; then the auto pick.
   const selectedSubId = userSubId ?? prefSubId ?? autoSubId;
@@ -229,7 +236,11 @@ export function usePlayerSession(
   function handleSubtitleTrackChange(fileId: number | null) {
     setUserSubId(fileId);
     const opt = fileId != null ? resolvedSubs?.list.find((s) => s.fileId === fileId) : null;
-    setSubtitlePref(titleId, opt ? { fileId: opt.fileId, language: opt.language } : null);
+    const pref = opt ? { fileId: opt.fileId, language: opt.language } : null;
+    setSubtitlePref(titleId, pref); // localStorage (instant + offline fallback)
+    if (isAuthenticated && pref) {
+      saveSubPrefMut.mutate({ imdbId: titleId, ...pref });
+    }
   }
 
   const selectedSub = subList.find((s) => s.fileId === selectedSubId) ?? null;

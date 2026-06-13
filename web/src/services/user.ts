@@ -72,6 +72,21 @@ export function putProgress(body: ProgressItem): Promise<ProgressItem> {
   return apiFetch<ProgressItem>('/api/me/progress', { method: 'PUT', body });
 }
 
+export interface SubtitlePrefItem {
+  imdbId: string;
+  fileId: number;
+  language: string;
+}
+
+export async function getSubtitlePrefs(): Promise<SubtitlePrefItem[]> {
+  const res = await apiFetch<{ items: SubtitlePrefItem[] }>('/api/me/subtitle-prefs');
+  return res.items ?? [];
+}
+
+export function putSubtitlePref(body: SubtitlePrefItem): Promise<SubtitlePrefItem> {
+  return apiFetch<SubtitlePrefItem>('/api/me/subtitle-prefs', { method: 'PUT', body });
+}
+
 export async function getSavedWords(): Promise<SavedWord[]> {
   const res = await apiFetch<{ items: SavedWord[] }>('/api/me/saved-words');
   return res.items ?? [];

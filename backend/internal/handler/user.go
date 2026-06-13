@@ -141,6 +141,37 @@ func PutProgress(st *store.Store) gin.HandlerFunc {
 	}
 }
 
+func GetSubtitlePrefs(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		items, err := st.GetSubtitlePrefs(middleware.UserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load subtitle preferences"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+	}
+}
+
+func PutSubtitlePref(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var p store.SubtitlePref
+		if err := c.ShouldBindJSON(&p); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
+		}
+		p.ImdbID = strings.TrimSpace(p.ImdbID)
+		if p.ImdbID == "" || p.FileID <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId and a positive fileId are required"})
+			return
+		}
+		if err := st.UpsertSubtitlePref(middleware.UserID(c), p); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save subtitle preference"})
+			return
+		}
+		c.JSON(http.StatusOK, p)
+	}
+}
+
 func GetSavedWords(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		items, err := st.GetSavedWords(middleware.UserID(c))
