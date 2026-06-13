@@ -17,7 +17,7 @@ const navLinks = [
   { label: 'Movies', to: '/movies', emoji: '🎬' },
   { label: 'TV Series', to: '/tvs', emoji: '📺' },
   { label: 'My List', to: '/my-list', emoji: '📋' },
-  { label: 'Learn', to: '/learn', emoji: '📚' },
+  { label: 'My Learning', to: '/my-learning', emoji: '📚' },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {

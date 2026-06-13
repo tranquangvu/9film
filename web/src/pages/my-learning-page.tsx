@@ -152,7 +152,7 @@ function WordList({ words }: { words: SavedWord[] }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function LearnPage() {
+export default function MyLearningPage() {
   const { isAuthenticated } = useAuth();
   const { data: words, isLoading } = useSavedWordsQuery();
   const [tab, setTab] = useState<'review' | 'all'>('review');
