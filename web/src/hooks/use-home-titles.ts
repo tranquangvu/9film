@@ -1,4 +1,4 @@
-import { heroTitles, toMovies, type ImdbTitle } from '@/utils/title';
+import { heroTitles, matchesHeroGenres, toMovies, type ImdbTitle } from '@/utils/title';
 import type { Movie } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
 import { useTitlesQuery } from './queries/use-titles-query';
@@ -64,6 +64,7 @@ export function partitionHomeTitles(
   const rest = pool.filter((t) => t.id && !excluded.has(t.id));
   return {
     hero: heroTitles(rest, HERO_LIMIT),
-    top10: toMovies(rest).slice(0, TOP_TEN_LIMIT),
+    // Top 10 shares the hero's marquee-genre gate, keeping popularity order.
+    top10: toMovies(rest.filter(matchesHeroGenres)).slice(0, TOP_TEN_LIMIT),
   };
 }

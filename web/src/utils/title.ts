@@ -81,13 +81,25 @@ function mediaType(title: ImdbTitle): Movie['type'] {
   return 'movie';
 }
 
+// The largest landscape image for a title — what the hero banner displays.
+// Returns null when the title has no usable wide image.
+export function bestBackdrop(
+  title: ImdbTitle,
+): { url: string; width: number; height: number } | null {
+  let best: { url: string; width: number; height: number } | null = null;
+  for (const e of title.images?.edges ?? []) {
+    const n = e?.node;
+    const w = n?.width ?? 0;
+    const h = n?.height ?? 0;
+    if (!n?.url || w <= h) continue; // landscape only
+    if (!best || w * h > best.width * best.height) best = { url: n.url, width: w, height: h };
+  }
+  return best;
+}
+
 function pickBackdrop(title: ImdbTitle): string {
   const edges = title.images?.edges ?? [];
-  const landscape = edges.find((e) => {
-    const node = e?.node;
-    return !!node?.url && (node.width ?? 0) > (node.height ?? 0);
-  });
-  return landscape?.node?.url ?? edges[0]?.node?.url ?? title.primaryImage?.url ?? '';
+  return bestBackdrop(title)?.url ?? edges[0]?.node?.url ?? title.primaryImage?.url ?? '';
 }
 
 function mapCast(title: ImdbTitle): CastMember[] {
@@ -149,23 +161,34 @@ export function topRated(titles: ImdbTitle[], limit = 10): Movie[] {
 
 const HERO_GENRES = new Set(['Action', 'Adventure', 'Sci-Fi', 'Thriller', 'Crime', 'Animation']);
 
-function imageArea(title: ImdbTitle): number {
-  return (title.primaryImage?.width ?? 0) * (title.primaryImage?.height ?? 0);
+// True when the title is tagged with at least one marquee genre — the shared
+// gate for the hero banner and the Top 10 row.
+export function matchesHeroGenres(title: ImdbTitle): boolean {
+  return (title.genres?.genres ?? []).some((g) => g.text && HERO_GENRES.has(g.text));
 }
 
-// Picks the strongest hero candidates: those in a marquee genre with a primary
-// image, ranked by image resolution first (sharp banners) then user rating.
+// A hero banner needs a wide, sharp backdrop — smaller images look soft when
+// stretched full-bleed. Titles whose best landscape image is narrower than this
+// are skipped.
+const MIN_BACKDROP_WIDTH = 1024;
+
+// Picks the strongest hero candidates: marquee-genre titles that have a
+// good-quality landscape backdrop, ranked by user rating (tie-broken by backdrop
+// resolution so the sharper banner wins).
 export function heroTitles(titles: ImdbTitle[], limit = 8): Movie[] {
-  const candidates = titles.filter((t) => {
-    if (!t.id || !t.primaryImage?.url) return false;
-    return (t.genres?.genres ?? []).some((g) => g.text && HERO_GENRES.has(g.text));
-  });
+  const candidates = titles
+    .map((t) => ({ title: t, backdrop: bestBackdrop(t) }))
+    .filter(
+      ({ title, backdrop }) =>
+        title.id && matchesHeroGenres(title) && backdrop && backdrop.width >= MIN_BACKDROP_WIDTH,
+    );
 
   candidates.sort((a, b) => {
-    const byArea = imageArea(b) - imageArea(a);
-    if (byArea !== 0) return byArea;
-    return (b.ratingsSummary?.aggregateRating ?? 0) - (a.ratingsSummary?.aggregateRating ?? 0);
+    const byRating =
+      (b.title.ratingsSummary?.aggregateRating ?? 0) - (a.title.ratingsSummary?.aggregateRating ?? 0);
+    if (byRating !== 0) return byRating;
+    return (b.backdrop?.width ?? 0) - (a.backdrop?.width ?? 0);
   });
 
-  return toMovies(candidates.slice(0, limit));
+  return toMovies(candidates.slice(0, limit).map((c) => c.title));
 }
