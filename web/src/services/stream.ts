@@ -14,11 +14,19 @@ export async function getStreamUrls(
     throw new Error(`Stream API error: ${res.status}`);
   }
 
-  const json = (await res.json()) as {
+  // Read as text first so a non-JSON body (e.g. an upstream HTML error page)
+  // surfaces a readable message instead of a raw "Unexpected token '<'" error.
+  const text = await res.text();
+  let json: {
     status_code?: string | number;
     data?: StreamResponse;
     message?: string;
   };
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error('Stream is unavailable right now. Please try again later.');
+  }
 
   if (String(json.status_code) !== '200' || !json.data) {
     throw new Error(json.message ?? 'Stream request failed');

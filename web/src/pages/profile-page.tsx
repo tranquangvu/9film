@@ -7,7 +7,6 @@ import {
   Globe,
   CreditCard,
   Monitor,
-  ChevronDown,
   Check,
   Crown,
   Pencil,
@@ -24,6 +23,7 @@ import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
+import { SelectField } from '@/components/ui/select';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,21 +101,12 @@ interface SelectProps {
 
 function Select({ value, options, onChange, label }: SelectProps) {
   return (
-    <div className="space-y-1.5">
-      {label && <label className="text-xs text-zinc-400 font-medium">{label}</label>}
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-surface-2 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2.5 pr-9 focus:outline-none focus:border-orange-500 transition-colors cursor-pointer"
-        >
-          {options.map((opt) => (
-            <option key={opt} value={opt} className="bg-surface-2">{opt}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-      </div>
-    </div>
+    <SelectField
+      label={label}
+      value={value}
+      onValueChange={onChange}
+      options={options.map((opt) => ({ id: opt, label: opt }))}
+    />
   );
 }
 

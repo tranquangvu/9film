@@ -18,6 +18,26 @@ export function useWatchedEpisodes(imdbId: string): Set<string> {
   }, [data, imdbId]);
 }
 
+// The most-recently-played episode for a title (progress is ordered newest-first),
+// i.e. the one the user would resume — drives the "now playing" badge.
+export function useCurrentEpisode(imdbId: string): { season: number; episode: number } | null {
+  const { data } = useProgressQuery();
+  return useMemo(() => {
+    const p = (data ?? []).find((p) => p.imdbId === imdbId && p.season > 0);
+    return p ? { season: p.season, episode: p.episode } : null;
+  }, [data, imdbId]);
+}
+
+// The saved resume point for a movie (movies store season/episode as 0).
+// Returns null when the user has never played it. Drives the watch-info block
+// on the detail page, mirroring the per-episode markers used for series.
+export function useMovieProgress(imdbId: string): ProgressItem | null {
+  const { data } = useProgressQuery();
+  return useMemo(() => {
+    return (data ?? []).find((p) => p.imdbId === imdbId && p.season === 0) ?? null;
+  }, [data, imdbId]);
+}
+
 export function useProgressQuery() {
   const { isAuthenticated } = useAuth();
   return useQuery({

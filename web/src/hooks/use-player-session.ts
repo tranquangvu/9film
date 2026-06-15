@@ -251,7 +251,9 @@ export function usePlayerSession(
   const cues = useMemo(() => cuesQuery.data ?? [], [cuesQuery.data]);
 
   const poster = streamData?.backdrop ?? titleData?.primaryImage?.url;
-  const title = streamData?.title ?? titleData?.titleText?.text ?? null;
+  // Prefer the clean IMDb title (just the name) — the upstream stream title often
+  // bakes in the release year (e.g. "Silicon Valley 2014").
+  const title = titleData?.titleText?.text ?? streamData?.title ?? null;
 
   const loading = titleQuery.isLoading || streamQuery.isFetching;
   const error =

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -50,9 +51,37 @@ func ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 		ct = "application/json"
 	}
 
+	// The upstream PHP endpoint occasionally prepends HTML warnings/notices
+	// (e.g. "<br /> <b>Warning</b>: ... on line <b>123</b>") before the JSON
+	// payload, which makes the browser's JSON.parse choke on a leading '<'.
+	// Recover the JSON object so callers always receive parseable data.
+	if cleaned, ok := extractJSON(body); ok {
+		body = cleaned
+		ct = "application/json"
+	}
+
 	return &StreamResult{
 		Body:        body,
 		Status:      resp.StatusCode,
 		ContentType: ct,
 	}, nil
+}
+
+// extractJSON pulls the outermost JSON object out of a response body that may be
+// polluted with leading or trailing non-JSON content (such as PHP warnings). It
+// returns the cleaned slice and whether any cleaning was applied.
+func extractJSON(body []byte) ([]byte, bool) {
+	if len(bytes.TrimSpace(body)) == 0 {
+		return body, false
+	}
+	// Already clean JSON — leave it untouched.
+	if b := bytes.TrimSpace(body); b[0] == '{' || b[0] == '[' {
+		return body, false
+	}
+	start := bytes.IndexByte(body, '{')
+	end := bytes.LastIndexByte(body, '}')
+	if start < 0 || end <= start {
+		return body, false
+	}
+	return body[start : end+1], true
 }

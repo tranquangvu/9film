@@ -59,7 +59,7 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       {cue && !selection && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[92%] max-w-3xl text-center">
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[85%] text-center">
           <p className="pointer-events-auto inline text-balance text-white text-lg md:text-2xl font-semibold [text-shadow:0_2px_8px_rgba(0,0,0,0.9)] leading-relaxed">
             {tokens.map((t, i) =>
               t.isWord ? (

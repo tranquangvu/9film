@@ -11,6 +11,8 @@ import {
   Clock,
   MapPin,
   Layers,
+  Film,
+  CirclePlay,
 } from "lucide-react";
 import { useTitleQuery } from "@/hooks/queries/use-title-query";
 import { useSimilarQuery } from "@/hooks/queries/use-similar-query";
@@ -20,13 +22,18 @@ import { seasons, episodes, type EmbedParams } from "@/utils/stream";
 import { cn } from "@/utils/cn";
 import { formatDuration, formatRating, formatYear } from "@/utils/format";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SelectField } from "@/components/ui/select";
 import { Tag } from "@/components/ui/tag";
 import { MovieCard } from "@/components/system/movie/movie-card";
 import { GenreBadge } from "@/components/system/movie/genre-badge";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
 import { useListButton } from "@/hooks/queries/use-list-query";
-import { useWatchedEpisodes } from "@/hooks/queries/use-progress-query";
+import {
+  useWatchedEpisodes,
+  useCurrentEpisode,
+  useMovieProgress,
+  progressPercent,
+} from "@/hooks/queries/use-progress-query";
 
 export default function MovieDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -72,6 +79,8 @@ export default function MovieDetailPage() {
 
   const favorite = useListButton(id, movie?.type ?? "movie");
   const watchedEpisodes = useWatchedEpisodes(id);
+  const currentEpisode = useCurrentEpisode(id);
+  const movieProgress = useMovieProgress(id);
 
   useEffect(() => {
     if (galleryImages.length < 2) return;
@@ -123,6 +132,18 @@ export default function MovieDetailPage() {
     ? selectedSeason
     : (availableSeasons[0] ?? 1);
   const episodeList = eps ? episodes(eps, activeSeason) : [];
+
+  // Movie watch progress (series surface this per-episode in the Episodes grid).
+  const watchPercent = movieProgress ? progressPercent(movieProgress) : 0;
+  const isWatchingMovie = movie.type === "movie" && watchPercent > 0;
+  const remainingMinutes = movieProgress
+    ? Math.max(
+        0,
+        Math.round(
+          (movieProgress.durationSeconds - movieProgress.positionSeconds) / 60,
+        ),
+      )
+    : 0;
 
   return (
     <div className="min-h-screen bg-background text-white">
@@ -236,20 +257,58 @@ export default function MovieDetailPage() {
               </span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
+            {isWatchingMovie && (
+              <>
+                <span className="text-zinc-600">·</span>
+                <span className="flex items-center gap-1 font-medium text-orange-400">
+                  <Play className="w-3.5 h-3.5" />
+                  {watchPercent}% watched
+                  {remainingMinutes > 0 && (
+                    <span className="text-zinc-400 font-normal">
+                      · {formatDuration(remainingMinutes)} left
+                    </span>
+                  )}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-4">
-            {/* Play Now */}
+            {/* Play / Resume — circular, with a watched-progress ring for movies */}
             <button
               onClick={() => navigate(`/watch/${movie.id}`)}
-              className={cn(
-                buttonVariants({ variant: "primary", size: "lg" }),
-                "gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]",
-              )}
+              title={isWatchingMovie ? "Resume" : "Play"}
+              className="relative w-14 h-14 rounded-full flex items-center justify-center bg-orange-500 text-white shadow-lg shadow-orange-500/30 transition-transform hover:scale-110 active:scale-95"
             >
-              <Play className="w-5 h-5 fill-white" />
-              Play Now
+              <Play className="w-6 h-6 fill-white text-white ml-0.5" />
+              {isWatchingMovie && (
+                <svg
+                  viewBox="0 0 56 56"
+                  className="absolute inset-0 h-full w-full -rotate-90 pointer-events-none"
+                >
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="26"
+                    fill="none"
+                    stroke="white"
+                    strokeOpacity="0.3"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r="26"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 26}
+                    strokeDashoffset={2 * Math.PI * 26 * (1 - watchPercent / 100)}
+                  />
+                </svg>
+              )}
             </button>
 
             {/* Favorite */}
@@ -312,31 +371,43 @@ export default function MovieDetailPage() {
         <div className="space-y-10">
           {/* ── Episodes (series only) ── */}
           {eps && (
-            <section>
+            <section className="max-w-3xl xl:max-w-[65%]">
               <h2 className="text-xl font-bold text-white mb-4">Episodes</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {availableSeasons.length > 1 && (
-                  <Select
-                    icon={<Layers size={14} />}
+                  <SelectField
+                    icon={<Film size={14} />}
                     value={String(activeSeason)}
-                    onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                    onValueChange={(v) => setSelectedSeason(Number(v))}
                     options={availableSeasons.map((s) => ({
                       id: String(s),
-                      label: `S${s}`,
+                      label: `S${String(s).padStart(2, "0")}`,
                     }))}
                   />
                 )}
-                {episodeList.map((ep) => (
-                  <Tag
-                    key={ep}
-                    watched={watchedEpisodes.has(`${activeSeason}:${ep}`)}
-                    onClick={() =>
-                      navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
-                    }
-                  >
-                    E{ep}
-                  </Tag>
-                ))}
+                {episodeList.map((ep) => {
+                  const isPlaying =
+                    currentEpisode?.season === activeSeason &&
+                    currentEpisode?.episode === ep;
+                  const isWatched = watchedEpisodes.has(
+                    `${activeSeason}:${ep}`,
+                  );
+                  return (
+                    <Tag
+                      key={ep}
+                      onClick={() =>
+                        navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
+                      }
+                    >
+                      {isPlaying ? (
+                        <CirclePlay className="w-3.5 h-3.5 text-orange-400" />
+                      ) : isWatched ? (
+                        <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
+                      ) : null}
+                      E{String(ep).padStart(2, "0")}
+                    </Tag>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -344,14 +415,14 @@ export default function MovieDetailPage() {
           {/* ── About ── */}
           <section>
             <h2 className="text-xl font-bold text-white mb-4">About</h2>
-            <p className="text-zinc-300 leading-relaxed text-base max-w-3xl">
+            <p className="text-zinc-300 leading-relaxed text-base max-w-3xl xl:max-w-[65%]">
               {movie.description}
             </p>
           </section>
 
           {/* ── Cast ── */}
           {movie.cast && movie.cast.length > 0 && (
-            <section>
+            <section className="max-w-3xl xl:max-w-[65%]">
               <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
               <div className="flex flex-wrap gap-x-6 gap-y-5">
                 {movie.cast.map((member, i) => (
