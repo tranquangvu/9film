@@ -45,6 +45,19 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
     };
   }, [media, cues]);
 
+  // Esc closes the popup (and resumes playback).
+  useEffect(() => {
+    if (!selection) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setSelection(null);
+      if (media?.paused) void media.play().catch(() => {});
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selection, media]);
+
   const cue = activeIdx >= 0 ? cues[activeIdx] : null;
   const tokens = useMemo(() => (cue ? tokenize(cue.text) : []), [cue]);
 
@@ -56,9 +69,15 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
     setSelection({ word, sentence: cue.text, timestamp: cue.start });
   };
 
+  // Close the popup and resume playback (clicking a word paused it).
+  const closePopup = () => {
+    setSelection(null);
+    if (media?.paused) void media.play().catch(() => {});
+  };
+
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      {cue && !selection && (
+      {cue && (
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[85%] text-center">
           <p className="pointer-events-auto inline text-balance text-white text-lg md:text-2xl font-semibold [text-shadow:0_2px_8px_rgba(0,0,0,0.9)] leading-relaxed">
             {tokens.map((t, i) =>
@@ -79,13 +98,17 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
       )}
 
       {selection && (
-        <WordPopup
-          word={selection.word}
-          sentence={selection.sentence}
-          timestamp={selection.timestamp}
-          context={context}
-          onClose={() => setSelection(null)}
-        />
+        <>
+          {/* Click-catcher: tapping outside the popup closes it and resumes play. */}
+          <div className="pointer-events-auto absolute inset-0" onClick={closePopup} />
+          <WordPopup
+            word={selection.word}
+            sentence={selection.sentence}
+            timestamp={selection.timestamp}
+            context={context}
+            onClose={closePopup}
+          />
+        </>
       )}
     </div>
   );

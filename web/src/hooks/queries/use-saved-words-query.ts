@@ -3,7 +3,7 @@ import {
   getSavedWords,
   addSavedWord,
   removeSavedWord,
-  reviewSavedWord,
+  completeSavedWord,
   type SavedWord,
 } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
@@ -26,7 +26,7 @@ export function useIsWordSaved(word: string): boolean {
   return (data ?? []).some((w) => w.word === word.toLowerCase());
 }
 
-type AddVars = Omit<SavedWord, 'box' | 'dueAt' | 'createdAt'>;
+type AddVars = Omit<SavedWord, 'createdAt' | 'completedAt'>;
 
 export function useAddSavedWord() {
   const qc = useQueryClient();
@@ -36,7 +36,7 @@ export function useAddSavedWord() {
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: SAVED_WORDS_KEY });
       const prev = qc.getQueryData<SavedWord[]>(SAVED_WORDS_KEY);
-      const optimistic: SavedWord = { ...vars, word: vars.word.toLowerCase(), box: 0 };
+      const optimistic: SavedWord = { ...vars, word: vars.word.toLowerCase() };
       qc.setQueryData<SavedWord[]>(SAVED_WORDS_KEY, (old = []) => [
         optimistic,
         ...old.filter((w) => w.word !== optimistic.word),
@@ -74,10 +74,26 @@ export function useRemoveSavedWord() {
   });
 }
 
-export function useReviewSavedWord() {
+// Marks a word learned. Optimistically stamps completedAt so the word moves
+// from the added groups to the completed list without waiting on the refetch.
+export function useCompleteSavedWord() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: reviewSavedWord,
+    mutationFn: (word: string) => completeSavedWord(word.toLowerCase()),
+    onMutate: async (word) => {
+      await qc.cancelQueries({ queryKey: SAVED_WORDS_KEY });
+      const prev = qc.getQueryData<SavedWord[]>(SAVED_WORDS_KEY);
+      const now = new Date().toISOString();
+      qc.setQueryData<SavedWord[]>(SAVED_WORDS_KEY, (old = []) =>
+        old.map((w) => (w.word === word.toLowerCase() ? { ...w, completedAt: now } : w)),
+      );
+      return { prev };
+    },
+    onError: (_err, _word, ctx) => {
+      if (ctx?.prev) qc.setQueryData(SAVED_WORDS_KEY, ctx.prev);
+      toast({ title: 'Could not complete word', description: 'Please try again.', variant: 'destructive' });
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: SAVED_WORDS_KEY });
     },

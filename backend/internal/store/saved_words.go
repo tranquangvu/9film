@@ -1,7 +1,5 @@
 package store
 
-import "strconv"
-
 type SavedWord struct {
 	Word        string  `json:"word"`
 	Sentence    string  `json:"sentence"`
@@ -10,18 +8,17 @@ type SavedWord struct {
 	Season      int     `json:"season"`
 	Episode     int     `json:"episode"`
 	Timestamp   float64 `json:"timestamp"`
-	Box         int     `json:"box"`
-	DueAt       string  `json:"dueAt"`
 	CreatedAt   string  `json:"createdAt"`
+	CompletedAt string  `json:"completedAt"`
 }
 
-// GetSavedWords returns all of a user's saved words, soonest-due first so the
-// review page can drill them in order.
+// GetSavedWords returns all of a user's saved words, most-recently-added first
+// so the learning page can group them by added date.
 func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
 	rows, err := s.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, box, due_at, created_at
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at
 		   FROM saved_words WHERE user_id = ?
-		   ORDER BY due_at ASC`,
+		   ORDER BY created_at DESC`,
 		userID,
 	)
 	if err != nil {
@@ -34,7 +31,7 @@ func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
 		var w SavedWord
 		if err := rows.Scan(
 			&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
-			&w.Season, &w.Episode, &w.Timestamp, &w.Box, &w.DueAt, &w.CreatedAt,
+			&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -44,13 +41,12 @@ func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
 }
 
 // AddSavedWord upserts a word (idempotent on the user_id+word PK). Re-saving a
-// word refreshes its context/scene but preserves nothing of its SRS schedule —
-// it resets to a freshly-learned card due now.
+// word refreshes its context/scene but leaves its completed state untouched.
 func (s *Store) AddSavedWord(userID int64, w SavedWord) error {
 	_, err := s.db.Exec(
 		`INSERT INTO saved_words
-		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp, box, due_at)
-		   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))
+		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp)
+		   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		   ON CONFLICT(user_id, word) DO UPDATE SET
 		     sentence = excluded.sentence,
 		     translation = excluded.translation,
@@ -71,14 +67,12 @@ func (s *Store) RemoveSavedWord(userID int64, word string) error {
 	return err
 }
 
-// ReviewWord updates the spaced-repetition schedule for a word after a review.
-// The next due date is computed as now + intervalDays so it stays consistent
-// with SQLite's clock regardless of the client's timezone.
-func (s *Store) ReviewWord(userID int64, word string, box, intervalDays int) error {
-	modifier := "+" + strconv.Itoa(intervalDays) + " days"
+// CompleteWord marks a word as learned, moving it out of the "added" list and
+// into the completed list. Stamps the moment of completion for the progress chart.
+func (s *Store) CompleteWord(userID int64, word string) error {
 	_, err := s.db.Exec(
-		`UPDATE saved_words SET box = ?, due_at = datetime('now', ?) WHERE user_id = ? AND word = ?`,
-		box, modifier, userID, word,
+		`UPDATE saved_words SET completed_at = datetime('now') WHERE user_id = ? AND word = ?`,
+		userID, word,
 	)
 	return err
 }

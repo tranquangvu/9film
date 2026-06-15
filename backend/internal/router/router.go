@@ -76,7 +76,7 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 			me.GET("/saved-words", handler.GetSavedWords(st))
 			me.POST("/saved-words", handler.AddSavedWord(st))
 			me.DELETE("/saved-words", handler.RemoveSavedWord(st))
-			me.PUT("/saved-words/review", handler.ReviewWord(st))
+			me.PUT("/saved-words/complete", handler.CompleteWord(st))
 		}
 	}
 

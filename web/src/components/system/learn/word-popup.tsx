@@ -58,7 +58,7 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
   };
 
   return (
-    <div className="pointer-events-auto absolute bottom-24 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,420px)] max-h-[60vh] overflow-y-auto glass border border-white/15 rounded-2xl p-4 shadow-2xl text-white">
+    <div className="pointer-events-auto absolute bottom-28 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,420px)] max-h-[60vh] overflow-y-auto glass border border-white/15 rounded-2xl p-4 shadow-2xl text-white">
       {/* Header: word + phonetics + close */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -126,7 +126,7 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
       )}
 
       {/* Save */}
-      <div className="mt-3 flex justify-end">
+      <div className="mt-5 flex justify-start">
         {isAuthenticated ? (
           <button
             onClick={onSave}
@@ -134,7 +134,7 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
             className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/50 transition-colors"
           >
             {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
-            {saved ? 'Saved' : 'Save word'}
+            {saved ? 'Saved' : 'Save'}
           </button>
         ) : (
           <span className="text-xs text-white/40">Sign in to save words</span>

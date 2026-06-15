@@ -218,15 +218,13 @@ func RemoveSavedWord(st *store.Store) gin.HandlerFunc {
 	}
 }
 
-type reviewWordRequest struct {
-	Word         string `json:"word"`
-	Box          int    `json:"box"`
-	IntervalDays int    `json:"intervalDays"`
+type completeWordRequest struct {
+	Word string `json:"word"`
 }
 
-func ReviewWord(st *store.Store) gin.HandlerFunc {
+func CompleteWord(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req reviewWordRequest
+		var req completeWordRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 			return
@@ -236,11 +234,8 @@ func ReviewWord(st *store.Store) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
 			return
 		}
-		if req.IntervalDays < 0 {
-			req.IntervalDays = 0
-		}
-		if err := st.ReviewWord(middleware.UserID(c), req.Word, req.Box, req.IntervalDays); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update review"})
+		if err := st.CompleteWord(middleware.UserID(c), req.Word); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not complete word"})
 			return
 		}
 		c.Status(http.StatusNoContent)

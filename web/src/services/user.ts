@@ -32,9 +32,9 @@ export interface SavedWord {
   season: number;
   episode: number;
   timestamp: number;
-  box: number;
-  dueAt?: string;
   createdAt?: string;
+  /** Set once the word has been learned; empty string while still in the added list. */
+  completedAt?: string;
 }
 
 export function getMe(): Promise<AuthUser> {
@@ -92,7 +92,7 @@ export async function getSavedWords(): Promise<SavedWord[]> {
   return res.items ?? [];
 }
 
-export function addSavedWord(body: Omit<SavedWord, 'box' | 'dueAt' | 'createdAt'>): Promise<SavedWord> {
+export function addSavedWord(body: Omit<SavedWord, 'createdAt' | 'completedAt'>): Promise<SavedWord> {
   return apiFetch<SavedWord>('/api/me/saved-words', { method: 'POST', body });
 }
 
@@ -100,6 +100,6 @@ export function removeSavedWord(word: string): Promise<void> {
   return apiFetch<void>(`/api/me/saved-words?word=${encodeURIComponent(word)}`, { method: 'DELETE' });
 }
 
-export function reviewSavedWord(body: { word: string; box: number; intervalDays: number }): Promise<void> {
-  return apiFetch<void>('/api/me/saved-words/review', { method: 'PUT', body });
+export function completeSavedWord(word: string): Promise<void> {
+  return apiFetch<void>('/api/me/saved-words/complete', { method: 'PUT', body: { word } });
 }

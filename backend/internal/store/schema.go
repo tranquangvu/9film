@@ -55,10 +55,9 @@ func (s *Store) migrate() error {
 			imdb_id     TEXT NOT NULL DEFAULT '',
 			season      INTEGER NOT NULL DEFAULT 0,
 			episode     INTEGER NOT NULL DEFAULT 0,
-			timestamp   REAL NOT NULL DEFAULT 0,
-			box         INTEGER NOT NULL DEFAULT 0,
-			due_at      TEXT NOT NULL DEFAULT (datetime('now')),
-			created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+			timestamp    REAL NOT NULL DEFAULT 0,
+			created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+			completed_at TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (user_id, word)
 		)`,
 	}
@@ -75,6 +74,7 @@ func (s *Store) migrate() error {
 	alters := []string{
 		`ALTER TABLE settings ADD COLUMN learning_mode INTEGER NOT NULL DEFAULT 1`,
 		`ALTER TABLE settings ADD COLUMN learning_lang TEXT NOT NULL DEFAULT 'vi'`,
+		`ALTER TABLE saved_words ADD COLUMN completed_at TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, stmt := range alters {
 		_, _ = s.db.Exec(stmt)
@@ -85,6 +85,70 @@ func (s *Store) migrate() error {
 	}
 	if err := s.migrateListItemsDropKind(); err != nil {
 		return err
+	}
+	if err := s.migrateSavedWordsDropSRS(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateSavedWordsDropSRS rebuilds saved_words to drop the legacy Leitner
+// spaced-repetition columns (box, due_at). The learning page now tracks an
+// added → completed lifecycle instead, so these columns are dead. completed_at
+// is added by the idempotent ALTER above before this runs, so it survives.
+func (s *Store) migrateSavedWordsDropSRS() error {
+	rows, err := s.db.Query(`PRAGMA table_info(saved_words)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	hasSRS := false
+	for rows.Next() {
+		var (
+			cid, notNull, pk int
+			name, ctype      string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "box" || name == "due_at" {
+			hasSRS = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !hasSRS {
+		return nil // already on the SRS-less schema
+	}
+
+	stmts := []string{
+		`CREATE TABLE saved_words_new (
+			user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			word         TEXT NOT NULL,
+			sentence     TEXT NOT NULL DEFAULT '',
+			translation  TEXT NOT NULL DEFAULT '',
+			imdb_id      TEXT NOT NULL DEFAULT '',
+			season       INTEGER NOT NULL DEFAULT 0,
+			episode      INTEGER NOT NULL DEFAULT 0,
+			timestamp    REAL NOT NULL DEFAULT 0,
+			created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+			completed_at TEXT NOT NULL DEFAULT '',
+			PRIMARY KEY (user_id, word)
+		)`,
+		`INSERT OR IGNORE INTO saved_words_new
+			(user_id, word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at)
+			SELECT user_id, word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at
+			FROM saved_words`,
+		`DROP TABLE saved_words`,
+		`ALTER TABLE saved_words_new RENAME TO saved_words`,
+	}
+	for _, stmt := range stmts {
+		if _, err := s.db.Exec(stmt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
