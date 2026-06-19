@@ -54,7 +54,7 @@ export function useTitleListing(opts: {
     searching,
     movies,
     isLoading: source.isLoading,
-    isError: !!source.isError,
+    isError: byId ? false : !!source.isError,
     hasNextPage: !searching && browse.hasNextPage,
     isFetchingNextPage: browse.isFetchingNextPage,
     fetchNextPage: browse.fetchNextPage,

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -30,6 +31,12 @@ func GetTitle(c *gin.Context) {
 
 	title, err := service.GetTitle(imdbID)
 	if err != nil {
+		// An unknown/invalid id is a client-side miss, not an upstream failure —
+		// return 404 so callers can show an empty result without a noisy error.
+		if errors.Is(err, service.ErrTitleNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "title not found"})
+			return
+		}
 		logger.Get().Warn("imdb fetch failed", zap.String("id", imdbID), zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return

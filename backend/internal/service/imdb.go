@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,18 @@ import (
 )
 
 const imdbGraphQLURL = "https://api.graphql.imdb.com/"
+
+// ErrTitleNotFound means the requested IMDb id doesn't resolve to a title —
+// either it doesn't exist or it's malformed (e.g. "tt12"). Callers should treat
+// this as a 404 / empty result rather than an upstream failure.
+var ErrTitleNotFound = errors.New("title not found on IMDb")
+
+// graphQLError is returned by imdbRequest when IMDb's GraphQL responds with a
+// top-level `errors` array. For a single-title lookup this almost always means
+// the id was rejected, so GetTitle maps it to ErrTitleNotFound.
+type graphQLError struct{ msg string }
+
+func (e *graphQLError) Error() string { return e.msg }
 
 const titleCardFields = `
   id
@@ -225,7 +238,7 @@ func imdbRequest(query string, variables map[string]any, dataTarget any) error {
 		return fmt.Errorf("decode IMDb response: %w", err)
 	}
 	if len(raw.Errors) > 0 {
-		return fmt.Errorf("IMDb GraphQL error: %s", raw.Errors[0].Message)
+		return &graphQLError{fmt.Sprintf("IMDb GraphQL error: %s", raw.Errors[0].Message)}
 	}
 	if len(raw.Data) == 0 {
 		return fmt.Errorf("empty IMDb response")
@@ -247,10 +260,16 @@ func GetTitle(imdbID string) (*ImdbTitle, error) {
 		Title *ImdbTitle `json:"title"`
 	}
 	if err := imdbRequest(query, map[string]any{"id": id}, &data); err != nil {
+		// A GraphQL error on a title lookup means the id was rejected — treat it
+		// as "not found" rather than an upstream failure.
+		var gqlErr *graphQLError
+		if errors.As(err, &gqlErr) {
+			return nil, ErrTitleNotFound
+		}
 		return nil, err
 	}
 	if data.Title == nil || data.Title.ID == "" {
-		return nil, fmt.Errorf("title not found on IMDb: %s", id)
+		return nil, ErrTitleNotFound
 	}
 	return data.Title, nil
 }

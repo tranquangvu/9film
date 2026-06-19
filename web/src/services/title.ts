@@ -1,16 +1,28 @@
 import type { BrowseResult, ImdbTitle } from '@/utils/title';
 import { normId, origLang } from '@/utils/title';
 
+/** Thrown when an IMDb id doesn't resolve to a title (unknown or malformed). */
+export class TitleNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Title not found: ${id}`);
+    this.name = 'TitleNotFoundError';
+  }
+}
+
 export async function getTitle(imdbId: string, signal?: AbortSignal): Promise<ImdbTitle> {
   const id = encodeURIComponent(normId(imdbId));
   const res = await fetch(`/api/title/${id}`, { signal });
-  const json = (await res.json()) as ImdbTitle & { error?: string };
 
+  if (res.status === 404) {
+    throw new TitleNotFoundError(imdbId);
+  }
+
+  const json = (await res.json()) as ImdbTitle & { error?: string };
   if (!res.ok) {
     throw new Error(json.error ?? `Title details failed (${res.status})`);
   }
   if (!json.id) {
-    throw new Error('No title details returned');
+    throw new TitleNotFoundError(imdbId);
   }
   return json;
 }
