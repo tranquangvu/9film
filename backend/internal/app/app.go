@@ -1,20 +1,21 @@
-package bootstrap
+// Package app is the composition root: it loads config, opens the database,
+// wires every module (repository → service → handler), builds the HTTP engine
+// via the router, and exposes Run/Close for main.
+package app
 
 import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
+	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/bentran/nicefilm/backend/internal/learn"
 	"github.com/bentran/nicefilm/backend/internal/media"
-	"github.com/bentran/nicefilm/backend/internal/shared/config"
+	"github.com/bentran/nicefilm/backend/internal/router"
 	"github.com/bentran/nicefilm/backend/internal/shared/database"
 	"github.com/bentran/nicefilm/backend/internal/shared/logger"
-	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
 	"github.com/bentran/nicefilm/backend/internal/title"
 	"github.com/bentran/nicefilm/backend/internal/user"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -70,8 +71,8 @@ func (e titleEnricher) SubtitlePref(userID int64, imdbID string) *title.TitleSub
 }
 
 // NewApp loads config, opens the database, wires every module (repository →
-// service → handler → routes), and returns a ready-to-serve App. Fatal on
-// unrecoverable setup errors.
+// service → handler), builds the router, and returns a ready-to-serve App.
+// Fatal on unrecoverable setup errors.
 func NewApp() *App {
 	cfg := config.Load()
 	logger.Init(os.Getenv("GIN_MODE") != "release")
@@ -85,9 +86,6 @@ func NewApp() *App {
 	if err != nil {
 		log.Fatal("failed to open database", zap.Error(err))
 	}
-
-	router := gin.New()
-	router.Use(requestLogger(), recovery(), cors.New(corsConfig()))
 
 	// Repositories own data access (DB-backed or the upstream IMDb GraphQL).
 	userRepo := user.NewRepository(db)
@@ -109,17 +107,12 @@ func NewApp() *App {
 	learnH := learn.NewHandler(learnSvc)
 	mediaH := media.NewHandler(streamSvc, hlsSvc, subsSvc)
 
-	// Routes — each module registers its own onto a (middleware-scoped) group.
-	api := router.Group("/api")
-	titleH.RegisterRoutes(api.Group("/title", middleware.AuthOptional(cfg))) // signed-in → isFavorite
-	mediaH.RegisterSubtitleRoutes(api.Group("/subtitle"))
-	mediaH.RegisterStreamRoutes(api)
-	learnH.RegisterRoutes(api.Group("/learn"))
-	userH.RegisterAuthRoutes(api.Group("/auth"))
-	me := api.Group("/me", middleware.AuthRequired(cfg))
-	userH.RegisterRoutes(me)
-	learnH.RegisterWordRoutes(me)
-	mediaH.RegisterHLSRoutes(router)
+	engine := router.New(cfg, router.Handlers{
+		User:  userH,
+		Title: titleH,
+		Media: mediaH,
+		Learn: learnH,
+	})
 
 	log.Info("starting 9film backend",
 		zap.Int("port", cfg.Port),
@@ -128,7 +121,7 @@ func NewApp() *App {
 		zap.Bool("subtitles_configured", cfg.OpenSubtitles != nil),
 	)
 
-	return &App{Config: cfg, Router: router, DB: db}
+	return &App{Config: cfg, Router: engine, DB: db}
 }
 
 // Run starts the HTTP server (blocks until it stops).
@@ -142,17 +135,6 @@ func (a *App) Close() {
 		a.DB.Close()
 	}
 	logger.Sync()
-}
-
-func corsConfig() cors.Config {
-	return cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: false,
-		MaxAge:           12 * time.Hour,
-	}
 }
 
 // subtitleConfig maps the app config's OpenSubtitles block into the media

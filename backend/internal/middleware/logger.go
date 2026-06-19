@@ -1,4 +1,4 @@
-package bootstrap
+package middleware
 
 import (
 	"bytes"
@@ -32,10 +32,10 @@ func (w *errorBodyWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// recovery catches panics from coding errors and logs the panic value together
+// Recovery catches panics from coding errors and logs the panic value together
 // with a full stack trace through zap (so the trace lands in the structured logs
 // alongside the request line, not just on stderr), then returns a clean 500.
-func recovery() gin.HandlerFunc {
+func Recovery() gin.HandlerFunc {
 	// We attach the stack explicitly below, so raise this logger's auto-stacktrace
 	// threshold past Error to avoid logging the trace twice. io.Discard suppresses
 	// gin's own (unstructured, stderr) dump so the only trace is the zap one.
@@ -51,9 +51,9 @@ func recovery() gin.HandlerFunc {
 	})
 }
 
-// requestLogger logs every request as a single structured line, with status-based
+// Logger logs every request as a single structured line, with status-based
 // level and the error reason on 4xx/5xx.
-func requestLogger() gin.HandlerFunc {
+func Logger() gin.HandlerFunc {
 	log := logger.Get()
 	return func(c *gin.Context) {
 		start := time.Now()

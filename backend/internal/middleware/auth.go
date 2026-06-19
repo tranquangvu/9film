@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/bentran/nicefilm/backend/internal/shared/auth"
-	"github.com/bentran/nicefilm/backend/internal/shared/config"
 	"github.com/gin-gonic/gin"
 )
 

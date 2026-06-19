@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bentran/nicefilm/backend/internal/middleware"
 	"github.com/bentran/nicefilm/backend/internal/shared/logger"
-	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 // Enricher supplies per-user state (favorites, progress, subtitle preference)
 // used to enrich title responses for signed-in requests. It is implemented in
-// the bootstrap package (backed by the user repository) so the title module
-// never imports user — keeping the dependency direction one-way.
+// the app package (backed by the user repository) so the title module never
+// imports user — keeping the dependency direction one-way.
 type Enricher interface {
 	FavoritedSet(userID int64) map[string]struct{}
 	Progress(userID int64, imdbID string) []TitleProgress
@@ -31,16 +31,6 @@ type Handler struct {
 
 func NewHandler(svc *Service, enricher Enricher) *Handler {
 	return &Handler{svc: svc, enricher: enricher}
-}
-
-// RegisterRoutes mounts the title routes on the given group (expected to carry
-// AuthOptional so signed-in users get the isFavorite flag).
-func (h *Handler) RegisterRoutes(r gin.IRoutes) {
-	r.GET("/search", h.SearchTitles)
-	r.GET("/trending", h.GetTrendingTitles)
-	r.GET("/browse", h.BrowseTitles)
-	r.GET("/:imdb/similar", h.GetSimilarTitles)
-	r.GET("/:imdb", h.GetTitle)
 }
 
 func parseLimit(c *gin.Context, fallback int) int {
