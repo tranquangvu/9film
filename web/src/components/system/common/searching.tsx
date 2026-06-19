@@ -1,15 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, TrendingUp, Star, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, X, Flame } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
 import { toMovie } from '@/utils/title';
 import { cn } from '@/utils/cn';
-import { formatYear } from '@/utils/format';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tag } from '@/components/ui/tag';
+import { MovieCard } from '@/components/system/movie/movie-card';
 import { PosterTileSkeleton } from '@/components/system/movie/skeletons';
 
 interface SearchOverlayProps {
@@ -17,21 +16,10 @@ interface SearchOverlayProps {
   onClose: () => void
 }
 
-const trendingSearches = [
-  'Christopher Nolan',
-  'Marvel',
-  'Sci-Fi',
-  'Denis Villeneuve',
-  'Action Thriller',
-  'Academy Award',
-  'Tom Holland',
-  'Animated',
-];
-
 export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
+  const location = useLocation();
 
   const search = useSearchQuery(query, 12);
   const trending = useBrowseTitleQuery({ sort: 'popular', first: 8 });
@@ -40,7 +28,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     ? (search.data ?? []).map(toMovie)
     : [];
 
-  const popular = (trending.data?.titles ?? []).map(toMovie).slice(0, 4);
+  const popular = (trending.data?.titles ?? []).map(toMovie).slice(0, 8);
 
   const handleClose = useCallback(() => {
     setQuery('');
@@ -53,6 +41,16 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     return () => clearTimeout(timer);
   }, [isOpen]);
 
+  // Lock the page behind the overlay so scrolling stays inside the popup.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
@@ -61,15 +59,13 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [handleClose]);
 
-  const handleMovieClick = (imdbId: string) => {
-    navigate(`/movie/${imdbId}`);
-    handleClose();
-  };
-
-  const handleTrendingClick = (term: string) => {
-    setQuery(term);
-    inputRef.current?.focus();
-  };
+  // MovieCard navigates on click; close the overlay whenever the route changes.
+  // Syncing the modal's open-state to the router is a deliberate state update.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isOpen) handleClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <AnimatePresence>
@@ -79,7 +75,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[60] flex flex-col"
+          className="fixed inset-0 z-[60] flex flex-col overflow-y-auto overscroll-contain"
           style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(24px)' }}
           onClick={handleClose}
         >
@@ -146,35 +142,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 ) : results.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {results.map(movie => (
-                      <motion.button
-                        key={movie.id}
-                        onClick={() => handleMovieClick(movie.id)}
-                        className="group flex flex-col rounded-xl overflow-hidden text-left transition-all duration-200 hover:ring-2 hover:ring-orange-500/50"
-                        style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="aspect-[2/3] overflow-hidden bg-zinc-900">
-                          <img
-                            src={movie.poster}
-                            alt={movie.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="p-2.5">
-                          <p className="text-xs font-semibold text-white leading-tight line-clamp-2 mb-1">
-                            {movie.title}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-zinc-500">{formatYear(movie.year)}</span>
-                            <div className="flex items-center gap-0.5">
-                              <Star size={9} className="text-orange-500 fill-orange-500" />
-                              <span className="text-xs text-zinc-400">{movie.rating.toFixed(1)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.button>
+                      <MovieCard key={movie.id} movie={movie} className="w-full" />
                     ))}
                   </div>
                 ) : (
@@ -190,56 +158,16 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             ) : (
               /* Trending section */
               <div>
+                {/* Popular right now */}
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp size={14} className="text-orange-500" />
-                  <span className="text-sm font-semibold text-zinc-300">Recommended Searches</span>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-8">
-                  {trendingSearches.map(term => (
-                    <Tag
-                      key={term}
-                      active={false}
-                      onClick={() => handleTrendingClick(term)}
-                      className="px-3.5 py-1.5 text-zinc-300 hover:border-orange-500/50 font-normal"
-                      style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      {term}
-                    </Tag>
-                  ))}
-                </div>
-
-                {/* Recent movies preview */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock size={14} className="text-zinc-500" />
-                  <span className="text-sm font-semibold text-zinc-300">Popular Right Now</span>
+                  <Flame size={14} className="text-orange-500" />
+                  <span className="text-sm font-semibold text-zinc-300">Popular Now</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {trending.isLoading
-                    ? Array.from({ length: 4 }).map((_, i) => <PosterTileSkeleton key={i} />)
+                    ? Array.from({ length: 8 }).map((_, i) => <PosterTileSkeleton key={i} />)
                     : popular.map(movie => (
-                    <motion.button
-                      key={movie.id}
-                      onClick={() => handleMovieClick(movie.id)}
-                      className="group flex flex-col rounded-xl overflow-hidden text-left"
-                      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="aspect-[2/3] overflow-hidden bg-zinc-900">
-                        <img
-                          src={movie.poster}
-                          alt={movie.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="p-2.5">
-                        <p className="text-xs font-semibold text-white leading-tight line-clamp-2 mb-1">
-                          {movie.title}
-                        </p>
-                        <span className="text-xs text-zinc-500">{formatYear(movie.year)}</span>
-                      </div>
-                    </motion.button>
+                      <MovieCard key={movie.id} movie={movie} className="w-full" />
                   ))}
                 </div>
               </div>
