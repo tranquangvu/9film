@@ -90,8 +90,12 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
 
             <div className="flex items-center gap-1.5 text-zinc-400 text-xs">
               <span>{formatYear(movie.year)}</span>
-              <span className="w-1 h-1 bg-zinc-400 rounded-full inline-block" />
-              <span>{formatDuration(movie.duration)}</span>
+              {movie.duration > 0 && (
+                <>
+                  <span className="w-1 h-1 bg-zinc-400 rounded-full inline-block" />
+                  <span>{formatDuration(movie.duration)}</span>
+                </>
+              )}
             </div>
 
             {/* Genre badges row */}

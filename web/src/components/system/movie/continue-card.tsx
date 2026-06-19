@@ -61,7 +61,7 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
           <p className="text-zinc-400 text-xs mt-0.5"
             style={{ textShadow: '0 1px 4px rgba(0,0,0,1)' }}>
             {movie.resumeSeason ? `S${movie.resumeSeason} · E${movie.resumeEpisode} · ` : ''}
-            {progress}% watched · {formatDuration(remaining)} left
+            {progress}% watched{movie.duration > 0 ? ` · ${formatDuration(remaining)} left` : ''}
           </p>
         </div>
 

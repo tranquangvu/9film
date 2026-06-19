@@ -231,11 +231,15 @@ export default function MovieDetailPage() {
             <span className="font-semibold text-white">
               {formatYear(movie.year)}
             </span>
-            <span className="text-zinc-600">·</span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-zinc-500" />
-              {formatDuration(movie.duration)}
-            </span>
+            {movie.duration > 0 && (
+              <>
+                <span className="text-zinc-600">·</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                  {formatDuration(movie.duration)}
+                </span>
+              </>
+            )}
             <span className="text-zinc-600">·</span>
             <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-zinc-500" />

@@ -85,13 +85,17 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
           </span>
           <span>·</span>
           <span>{formatYear(movie.year)}</span>
-          <span>·</span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {movie.type === 'series'
-              ? `${movie.totalSeasons ?? 1} Season${(movie.totalSeasons ?? 1) > 1 ? 's' : ''}`
-              : formatDuration(movie.duration)}
-          </span>
+          {(movie.type === 'series' || movie.duration > 0) && (
+            <>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {movie.type === 'series'
+                  ? `${movie.totalSeasons ?? 1} Season${(movie.totalSeasons ?? 1) > 1 ? 's' : ''}`
+                  : formatDuration(movie.duration)}
+              </span>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1 mt-1.5">

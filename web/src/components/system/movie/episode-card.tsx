@@ -90,7 +90,9 @@ export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardPr
 
         <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">{episode.description}</p>
 
-        <p className="text-xs text-zinc-600 mt-0.5">{formatDuration(episode.duration)}</p>
+        {episode.duration > 0 && (
+          <p className="text-xs text-zinc-600 mt-0.5">{formatDuration(episode.duration)}</p>
+        )}
       </div>
     </motion.div>
   );

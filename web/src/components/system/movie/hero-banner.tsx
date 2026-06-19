@@ -216,11 +216,15 @@ export function HeroBanner({ movies }: HeroBannerProps) {
                 <Calendar className="w-3.5 h-3.5 text-zinc-500" />
                 {formatYear(activeMovie.year)}
               </span>
-              <span className="w-px h-4 bg-zinc-700" />
-              <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
-                <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                {formatDuration(activeMovie.duration)}
-              </span>
+              {activeMovie.duration > 0 && (
+                <>
+                  <span className="w-px h-4 bg-zinc-700" />
+                  <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                    {formatDuration(activeMovie.duration)}
+                  </span>
+                </>
+              )}
               <span className="w-px h-4 bg-zinc-700" />
               <span className="flex items-center gap-1.5 text-orange-400 font-semibold">
                 <Star className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
