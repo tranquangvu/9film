@@ -254,9 +254,42 @@ func PutSubtitle(st *store.Store) gin.HandlerFunc {
 
 func GetWords(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		items, err := st.GetWords(middleware.UserID(c))
+		limit := 30
+		if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
+			limit = v
+		}
+		if limit > 100 {
+			limit = 100
+		}
+		offset := 0
+		if v, err := strconv.Atoi(c.Query("offset")); err == nil && v > 0 {
+			offset = v
+		}
+
+		// Fetch one extra row to detect whether another page exists.
+		rows, err := st.GetWords(middleware.UserID(c), c.Query("status"), limit+1, offset)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load saved words"})
+			return
+		}
+		hasMore := len(rows) > limit
+		if hasMore {
+			rows = rows[:limit]
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"items":      rows,
+			"hasMore":    hasMore,
+			"nextOffset": offset + len(rows),
+		})
+	}
+}
+
+func GetWordStats(st *store.Store) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		items, err := st.GetWordStats(middleware.UserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load word stats"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"items": items})

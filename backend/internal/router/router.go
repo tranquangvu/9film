@@ -76,6 +76,7 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 			me.GET("/subtitles", handler.GetSubtitles(st))
 			me.PUT("/subtitles", handler.PutSubtitle(st))
 			me.GET("/words", handler.GetWords(st))
+			me.GET("/words/stats", handler.GetWordStats(st))
 			me.POST("/words", handler.AddWord(st))
 			me.DELETE("/words", handler.RemoveWord(st))
 			me.PUT("/words/complete", handler.CompleteWord(st))

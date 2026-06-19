@@ -107,8 +107,37 @@ export function putSubtitle(body: SubtitleItem): Promise<SubtitleItem> {
   return apiFetch<SubtitleItem>('/api/me/subtitles', { method: 'PUT', body });
 }
 
-export async function getWords(): Promise<Word[]> {
-  const res = await apiFetch<{ items: Word[] }>('/api/me/words');
+export type WordStatus = 'learn' | 'completed';
+
+export interface WordsPage {
+  items: Word[];
+  hasMore: boolean;
+  nextOffset: number;
+}
+
+// One paginated page of saved words for a tab. Mirrors the continue-watching
+// pagination shape so the learning lists can infinite-scroll.
+export async function getWords(
+  status: WordStatus,
+  offset = 0,
+  limit = 30,
+): Promise<WordsPage> {
+  const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+  const res = await apiFetch<WordsPage>(`/api/me/words?${params}`);
+  return { items: res.items ?? [], hasMore: res.hasMore ?? false, nextOffset: res.nextOffset ?? offset };
+}
+
+// Lightweight full vocabulary (word + dates only) for the progress chart, the
+// to-learn/completed counts, and the saved-word lookup — none of which can rely
+// on the paginated list.
+export interface WordStat {
+  word: string;
+  createdAt?: string;
+  completedAt?: string;
+}
+
+export async function getWordStats(): Promise<WordStat[]> {
+  const res = await apiFetch<{ items: WordStat[] }>('/api/me/words/stats');
   return res.items ?? [];
 }
 

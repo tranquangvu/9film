@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -22,13 +22,15 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/context/auth-context';
 import {
-  useWordsQuery,
+  useWordStatsQuery,
+  useInfiniteWordsQuery,
   useCompleteWord,
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
-import type { Word } from '@/services/user';
+import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
+import type { Word, WordStat } from '@/services/user';
 
 // To "complete" a word the user must spell it correctly in every practice box.
 const INPUT_COUNT = 8;
@@ -73,7 +75,7 @@ function sceneLink(w: Word): string {
 const TO_LEARN_COLOR = '#3b82f6'; // blue-500
 const COMPLETED_COLOR = '#22c55e'; // green-500
 
-function ProgressChart({ words }: { words: Word[] }) {
+function ProgressChart({ words }: { words: WordStat[] }) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
@@ -481,22 +483,48 @@ function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function MyLearningPage() {
   const { isAuthenticated } = useAuth();
-  const { data: words, isLoading } = useWordsQuery();
+  // Lightweight full vocabulary powers the chart and the header counts; the
+  // visible per-tab lists are paginated separately and infinite-scroll.
+  const stats = useWordStatsQuery();
   const [selected, setSelected] = useState<Word | null>(null);
   const [tab, setTab] = useState<'learn' | 'completed'>('learn');
 
-  const all = useMemo(() => words ?? [], [words]);
-  const added = useMemo(() => all.filter((w) => !w.completedAt), [all]);
-  const completed = useMemo(() => all.filter((w) => w.completedAt), [all]);
+  const all = useMemo(() => stats.data ?? [], [stats.data]);
+  const addedCount = useMemo(() => all.filter((w) => !w.completedAt).length, [all]);
+  const completedCount = useMemo(() => all.filter((w) => w.completedAt).length, [all]);
 
-  // Added words grouped by their added day, completed words by their completed day.
-  const addedGroups = useMemo(() => groupByDay(added, (w) => w.createdAt), [added]);
-  const completedGroups = useMemo(() => groupByDay(completed, (w) => w.completedAt), [completed]);
+  // The active tab's saved words, flattened across loaded pages and grouped by
+  // day (added day for "to learn", completed day for "completed").
+  const list = useInfiniteWordsQuery(tab);
+  const words = useMemo(
+    () => list.data?.pages.flatMap((p) => p.items) ?? [],
+    [list.data],
+  );
+  const groups = useMemo(
+    () => groupByDay(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt)),
+    [words, tab],
+  );
 
-  // Keep the open dialog's data fresh after completion (it reorders the list).
+  // Keep the open dialog's data fresh from whatever page it lives on.
   const selectedLive = selected
-    ? (all.find((w) => w.word === selected.word) ?? selected)
+    ? (words.find((w) => w.word === selected.word) ?? selected)
     : null;
+
+  // Infinite scroll: pull the next page when the sentinel nears the viewport.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = list;
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasNextPage) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: '600px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (!isAuthenticated) {
     return (
@@ -515,11 +543,11 @@ export default function MyLearningPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white tracking-tight">My Learning</h1>
           <p className="text-sm text-zinc-400">
-            {added.length} to learn · {completed.length} completed
+            {addedCount} to learn · {completedCount} completed
           </p>
         </div>
 
-        {isLoading ? (
+        {stats.isLoading ? (
           <p className="text-zinc-500 text-sm">Loading…</p>
         ) : all.length === 0 ? (
           <div className="bg-surface border border-zinc-800 rounded-2xl p-10 text-center text-zinc-400">
@@ -546,24 +574,24 @@ export default function MyLearningPage() {
             </div>
 
             {/* Tab content */}
-            {tab === 'learn' ? (
-              addedGroups.length === 0 ? (
-                <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
-                  <Trophy className="w-9 h-9 text-orange-400 mx-auto mb-2" />
-                  <p className="text-white font-medium">All caught up!</p>
-                  <p className="text-sm text-zinc-500 mt-1">Every saved word has been completed.</p>
-                </div>
-              ) : (
-                <WordGroupList groups={addedGroups} onSelect={setSelected} />
-              )
-            ) : completed.length === 0 ? (
+            {tab === 'learn' && addedCount === 0 ? (
+              <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
+                <Trophy className="w-9 h-9 text-orange-400 mx-auto mb-2" />
+                <p className="text-white font-medium">All caught up!</p>
+                <p className="text-sm text-zinc-500 mt-1">Every saved word has been completed.</p>
+              </div>
+            ) : tab === 'completed' && completedCount === 0 ? (
               <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
                 <BookOpen className="w-9 h-9 text-zinc-600 mx-auto mb-2" />
                 <p className="text-white font-medium">Nothing completed yet</p>
                 <p className="text-sm text-zinc-500 mt-1">Finish a word's practice to move it here.</p>
               </div>
             ) : (
-              <WordGroupList groups={completedGroups} onSelect={setSelected} />
+              <>
+                {groups.length > 0 && <WordGroupList groups={groups} onSelect={setSelected} />}
+                {(list.isLoading || isFetchingNextPage) && <LoadMoreIndicator className="mt-2" />}
+                <div ref={sentinelRef} className="h-1" />
+              </>
             )}
           </div>
         )}
