@@ -113,17 +113,6 @@ func RemoveFavorite(st *store.Store) gin.HandlerFunc {
 	}
 }
 
-func GetProgress(st *store.Store) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		items, err := st.GetProgress(middleware.UserID(c))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load progress"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"items": items})
-	}
-}
-
 // continueWatchingItem is a resume point with its IMDb title detail embedded, so
 // the client can render the Continue Watching list without a per-title lookup.
 type continueWatchingItem struct {
@@ -134,9 +123,9 @@ type continueWatchingItem struct {
 // Bound concurrent IMDb lookups per request so a page doesn't fan out 50 calls.
 const continueDetailConcurrency = 8
 
-// GetContinueWatching returns the paginated, deduped-per-title resume list —
+// GetWatching returns the paginated, deduped-per-title resume list —
 // with each title's detail embedded — that drives the Continue Watching list.
-func GetContinueWatching(st *store.Store) gin.HandlerFunc {
+func GetWatching(st *store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		limit := 20
 		if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
@@ -218,17 +207,6 @@ func PutProgress(st *store.Store) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, p)
-	}
-}
-
-func GetSubtitles(st *store.Store) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		items, err := st.GetSubtitles(middleware.UserID(c))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load subtitle preferences"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"items": items})
 	}
 }
 

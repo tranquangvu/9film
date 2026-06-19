@@ -17,8 +17,8 @@ import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
 import { useSubtitleCues } from './queries/use-subtitle-cues';
-import { useProgressQuery, useSaveProgress } from './queries/use-progress-query';
-import { useSavedSubtitlesQuery, useSaveSubtitle } from './queries/use-subtitle-query';
+import { useSaveProgress } from './queries/use-progress-query';
+import { useSaveSubtitle } from './queries/use-subtitle-query';
 import { useSettings } from './queries/use-settings-query';
 
 export function usePlayerSession(
@@ -66,7 +66,8 @@ export function usePlayerSession(
   // ── Watch progress (resume + save) ──────────────────────────────────────────
   const { isAuthenticated } = useAuth();
   const settings = useSettings();
-  const { data: progressItems } = useProgressQuery();
+  // Per-title resume points ride along in the title detail response.
+  const progressItems = titleData?.progress ?? [];
   const saveProgressMut = useSaveProgress();
 
   // Reliable "is this a series?" signal derived from title metadata — available
@@ -76,10 +77,7 @@ export function usePlayerSession(
 
   // Most-recently-watched row for this title (the API orders progress
   // newest-first), used to seed which episode a series resumes into.
-  const lastWatched = useMemo(
-    () => (progressItems ?? []).find((p) => p.imdbId === titleId) ?? null,
-    [progressItems, titleId],
-  );
+  const lastWatched = useMemo(() => progressItems[0] ?? null, [progressItems]);
 
   // For a series opened without a deep link, resume on the last-watched episode.
   const seriesResume = useMemo(() => {
@@ -134,11 +132,10 @@ export function usePlayerSession(
   // keyed by season+episode so each episode keeps its own resume point; movies
   // have a single row per title (season/episode 0).
   const currentProgress = useMemo(() => {
-    const items = progressItems ?? [];
     return isTv
-      ? items.find((p) => p.imdbId === titleId && p.season === season && p.episode === episode) ?? null
-      : items.find((p) => p.imdbId === titleId) ?? null;
-  }, [progressItems, titleId, isTv, season, episode]);
+      ? progressItems.find((p) => p.season === season && p.episode === episode) ?? null
+      : progressItems.find((p) => p.season === 0) ?? null;
+  }, [progressItems, isTv, season, episode]);
 
   const resumeAt =
     isAuthenticated &&
@@ -200,14 +197,14 @@ export function usePlayerSession(
 
   const autoSubId = resolvedSubs?.fileId ?? null;
 
-  // Saved selection for this title. For signed-in users it lives in the DB and
-  // follows them across devices; otherwise we fall back to localStorage.
-  const { data: savedSubtitles } = useSavedSubtitlesQuery();
+  // Saved selection for this title. For signed-in users it rides along in the
+  // title detail (DB-backed, follows them across devices); otherwise we fall back
+  // to localStorage.
   const saveSubtitleMut = useSaveSubtitle();
-  const savedSubPref = useMemo(() => {
-    const dbPref = (savedSubtitles ?? []).find((p) => p.imdbId === titleId);
-    return dbPref ?? getSubtitlePref(titleId);
-  }, [savedSubtitles, titleId]);
+  const savedSubPref = useMemo(
+    () => titleData?.subtitlePref ?? getSubtitlePref(titleId),
+    [titleData?.subtitlePref, titleId],
+  );
 
   // Prefer the exact release (fileId), else any track in the same language.
   const prefSubId = useMemo(() => {

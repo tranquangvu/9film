@@ -7,6 +7,16 @@ export interface TitleImage {
   height?: number;
 }
 
+// A resume point embedded in a title's detail (movies: one row with season/
+// episode 0; series: one per watched episode). Title-scoped, so no imdbId.
+export interface TitleProgress {
+  season: number;
+  episode: number;
+  positionSeconds: number;
+  durationSeconds: number;
+  updatedAt?: string;
+}
+
 // Flattened, client-ready title — the exact shape the backend now returns (it
 // does the GraphQL flattening server-side). `Movie` remains the render model;
 // `toMovie` adapts a Title into it.
@@ -36,6 +46,11 @@ export interface Title {
   images?: TitleImage[];
   // Set by the backend when the signed-in user has favorited this title.
   isFavorite?: boolean;
+  // The signed-in user's resume points for this title (absent when anonymous).
+  progress?: TitleProgress[];
+  // The signed-in user's saved subtitle selection for this title (absent when
+  // anonymous or unset).
+  subtitlePref?: { fileId: number; language: string };
 }
 
 export interface OriginalLanguage {

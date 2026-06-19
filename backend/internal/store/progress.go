@@ -9,14 +9,16 @@ type Progress struct {
 	UpdatedAt       string  `json:"updatedAt"`
 }
 
-// GetProgress returns all of a user's resume points, most recently updated first
-// (this ordering drives the "Continue Watching" row).
-func (s *Store) GetProgress(userID int64) ([]Progress, error) {
+// GetTitleProgress returns a user's resume points for a single title, most
+// recently updated first. Embedded in the title detail response so the client
+// gets per-title progress (watched episodes, resume point) without a separate
+// /progress call for every title.
+func (s *Store) GetTitleProgress(userID int64, imdbID string) ([]Progress, error) {
 	rows, err := s.db.Query(
 		`SELECT imdb_id, season, episode, position_seconds, duration_seconds, updated_at
-		   FROM progress WHERE user_id = ?
+		   FROM progress WHERE user_id = ? AND imdb_id = ?
 		   ORDER BY updated_at DESC`,
-		userID,
+		userID, imdbID,
 	)
 	if err != nil {
 		return nil, err

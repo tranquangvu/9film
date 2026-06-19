@@ -30,7 +30,7 @@ func main() {
 	}
 	defer st.Close()
 
-	log.Info("starting NiceFilm backend",
+	log.Info("starting 9film backend",
 		zap.Int("port", cfg.Port),
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),

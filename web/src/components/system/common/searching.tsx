@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Flame } from 'lucide-react';
+import { Search, X, TrendingUp } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
@@ -160,7 +160,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               <div>
                 {/* Popular right now */}
                 <div className="flex items-center gap-2 mb-4">
-                  <Flame size={14} className="text-orange-500" />
+                  <TrendingUp size={14} className="text-orange-500" />
                   <span className="text-sm font-semibold text-zinc-300">Popular Now</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

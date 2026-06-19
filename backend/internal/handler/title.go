@@ -73,9 +73,29 @@ func GetTitle(st *store.Store) gin.HandlerFunc {
 			return
 		}
 
-		if set := favoritedSet(c, st); set != nil {
-			if _, ok := set[title.ID]; ok {
-				title.IsFavorite = true
+		// For signed-in users, fold in their favorite flag and per-title resume
+		// points so the detail/watch pages don't need separate /favorites or
+		// /progress calls.
+		if uid := middleware.UserID(c); uid != 0 {
+			if set, err := st.FavoritedSet(uid); err == nil {
+				if _, ok := set[title.ID]; ok {
+					title.IsFavorite = true
+				}
+			}
+			if rows, err := st.GetTitleProgress(uid, title.ID); err == nil {
+				title.Progress = make([]service.TitleProgress, len(rows))
+				for i, r := range rows {
+					title.Progress[i] = service.TitleProgress{
+						Season:          r.Season,
+						Episode:         r.Episode,
+						PositionSeconds: r.PositionSeconds,
+						DurationSeconds: r.DurationSeconds,
+						UpdatedAt:       r.UpdatedAt,
+					}
+				}
+			}
+			if sub, err := st.GetTitleSubtitle(uid, title.ID); err == nil && sub != nil {
+				title.SubtitlePref = &service.TitleSubtitle{FileID: sub.FileID, Language: sub.Language}
 			}
 		}
 		c.JSON(http.StatusOK, title)

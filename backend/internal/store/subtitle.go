@@ -1,31 +1,29 @@
 package store
 
+import "database/sql"
+
 type Subtitle struct {
 	ImdbID   string `json:"imdbId"`
 	FileID   int64  `json:"fileId"`
 	Language string `json:"language"`
 }
 
-// GetSubtitles returns a user's saved subtitle selections (one per title).
-func (s *Store) GetSubtitles(userID int64) ([]Subtitle, error) {
-	rows, err := s.db.Query(
-		`SELECT imdb_id, file_id, language FROM subtitles WHERE user_id = ?`,
-		userID,
-	)
+// GetTitleSubtitle returns a user's saved subtitle selection for one title, or
+// nil when none is set. Embedded in the title detail response so the player gets
+// the preference without a separate /subtitles call per title.
+func (s *Store) GetTitleSubtitle(userID int64, imdbID string) (*Subtitle, error) {
+	var p Subtitle
+	err := s.db.QueryRow(
+		`SELECT imdb_id, file_id, language FROM subtitles WHERE user_id = ? AND imdb_id = ?`,
+		userID, imdbID,
+	).Scan(&p.ImdbID, &p.FileID, &p.Language)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	items := make([]Subtitle, 0)
-	for rows.Next() {
-		var p Subtitle
-		if err := rows.Scan(&p.ImdbID, &p.FileID, &p.Language); err != nil {
-			return nil, err
-		}
-		items = append(items, p)
-	}
-	return items, rows.Err()
+	return &p, nil
 }
 
 // UpsertSubtitle saves the subtitle a user picked for a title (one row per
