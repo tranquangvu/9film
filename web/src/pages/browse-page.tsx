@@ -27,18 +27,43 @@ const TYPE_OPTIONS: { id: ContentType; label: string; icon: string }[] = [
   { id: "series", label: "TV Series", icon: "📺" },
 ];
 
+// Applied filters live entirely in the URL so a reload (or shared link)
+// restores the exact same search. `q` = free-text, `type` = movie|series,
+// `genre` = comma-separated genre ids.
+function isContentType(v: string | null): v is ContentType {
+  return v === "movie" || v === "series";
+}
+
 export default function BrowsePage() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const genreParam = searchParams.get("genre");
+
   // Free-text title search (e.g. arriving from the home search box: /browse?q=…).
   const searchTerm = (searchParams.get("q") ?? "").trim();
+  const typeParam = searchParams.get("type");
+  const contentType: ContentType | null = isContentType(typeParam)
+    ? typeParam
+    : null;
+  const selectedGenres = useMemo(() => {
+    const valid = new Set(genres.map((g) => g.id));
+    return new Set(
+      (searchParams.get("genre") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((id) => valid.has(id)),
+    );
+  }, [searchParams]);
 
-  const [contentType, setContentType] = useState<ContentType | null>(null);
-  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(
-    genreParam && genres.some((g) => g.id === genreParam)
-      ? new Set([genreParam])
-      : new Set(),
+  // Write applied filters back to the URL, omitting empty values.
+  const applyFilters = useCallback(
+    (type: ContentType | null, genreSet: Set<string>, term: string) => {
+      const next: Record<string, string> = {};
+      if (term) next.q = term;
+      if (type) next.type = type;
+      if (genreSet.size) next.genre = [...genreSet].join(",");
+      setSearchParams(next);
+    },
+    [setSearchParams],
   );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -81,16 +106,11 @@ export default function BrowsePage() {
   };
 
   const handleSearch = () => {
-    setContentType(draftType);
-    setSelectedGenres(new Set(draftGenres));
-    const term = draftSearch.trim();
-    setSearchParams(term ? { q: term } : {});
+    applyFilters(draftType, draftGenres, draftSearch.trim());
     setDrawerOpen(false);
   };
 
   const clearAll = useCallback(() => {
-    setContentType(null);
-    setSelectedGenres(new Set());
     setDraftType(null);
     setDraftGenres(new Set());
     setDraftSearch("");
