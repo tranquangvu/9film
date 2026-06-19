@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

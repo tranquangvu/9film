@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
-	"github.com/bentran/nicefilm/backend/internal/middleware"
 	"github.com/bentran/nicefilm/backend/internal/service"
+	"github.com/bentran/nicefilm/backend/internal/shared/logger"
+	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
 	"github.com/bentran/nicefilm/backend/internal/store"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

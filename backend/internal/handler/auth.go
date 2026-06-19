@@ -6,9 +6,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/auth"
-	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/nicefilm/backend/internal/shared/auth"
+	"github.com/bentran/nicefilm/backend/internal/shared/config"
+	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/bentran/nicefilm/backend/internal/store"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

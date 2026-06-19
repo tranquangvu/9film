@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/service"
+	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

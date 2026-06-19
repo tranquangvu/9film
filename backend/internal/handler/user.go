@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bentran/nicefilm/backend/internal/middleware"
 	"github.com/bentran/nicefilm/backend/internal/service"
+	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
 	"github.com/bentran/nicefilm/backend/internal/store"
 	"github.com/gin-gonic/gin"
 )
