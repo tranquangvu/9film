@@ -145,6 +145,19 @@ export default function MovieDetailPage() {
       )
     : 0;
 
+  // Whether the user has any progress to resume (movies: a saved position;
+  // series: a most-recently-played episode). Drives the Play/Resume label.
+  const isResumable =
+    movie.type === "movie" ? isWatchingMovie : currentEpisode != null;
+
+  const handlePlay = () => {
+    if (movie.type !== "movie" && currentEpisode) {
+      navigate(`/watch/${movie.id}?s=${currentEpisode.season}&e=${currentEpisode.episode}`);
+    } else {
+      navigate(`/watch/${movie.id}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
@@ -275,40 +288,16 @@ export default function MovieDetailPage() {
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-4">
-            {/* Play / Resume — circular, with a watched-progress ring for movies */}
+            {/* Play / Resume */}
             <button
-              onClick={() => navigate(`/watch/${movie.id}`)}
-              title={isWatchingMovie ? "Resume" : "Play"}
-              className="relative w-14 h-14 rounded-full flex items-center justify-center bg-orange-500 text-white shadow-lg shadow-orange-500/30 transition-transform hover:scale-110 active:scale-95"
-            >
-              <Play className="w-6 h-6 fill-white text-white ml-0.5" />
-              {isWatchingMovie && (
-                <svg
-                  viewBox="0 0 56 56"
-                  className="absolute inset-0 h-full w-full -rotate-90 pointer-events-none"
-                >
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="26"
-                    fill="none"
-                    stroke="white"
-                    strokeOpacity="0.3"
-                    strokeWidth="3"
-                  />
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="26"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 26}
-                    strokeDashoffset={2 * Math.PI * 26 * (1 - watchPercent / 100)}
-                  />
-                </svg>
+              onClick={handlePlay}
+              className={cn(
+                buttonVariants({ variant: "primary", size: "lg" }),
+                "gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]",
               )}
+            >
+              <Play className="w-5 h-5 fill-white" />
+              {isResumable ? "Resume" : "Play Now"}
             </button>
 
             {/* Favorite */}

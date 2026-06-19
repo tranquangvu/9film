@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  GraduationCap,
   Play,
   Volume2,
   Check,
   CheckCircle2,
   BookOpen,
   Trophy,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
+import { Tag } from '@/components/ui/tag';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ import {
 } from '@/hooks/queries/use-saved-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
+import { wordColor } from '@/utils/word-color';
 import type { SavedWord } from '@/services/user';
 
 // To "complete" a word the user must spell it correctly in every practice box.
@@ -65,50 +68,143 @@ function sceneLink(w: SavedWord): string {
 }
 
 // ── Progress chart ─────────────────────────────────────────────────────────────
-// One bar per added-date (most recent ~12 days), height ∝ words added that day,
-// with the completed share filled orange and the still-pending share muted.
-interface DayStat {
-  key: string;
-  date: Date;
-  total: number;
-  completed: number;
-}
+// Two lines across every day of the selected month: words added that day
+// ("to learn", blue) and words completed that day ("completed", green).
+const TO_LEARN_COLOR = '#3b82f6'; // blue-500
+const COMPLETED_COLOR = '#22c55e'; // green-500
 
-function ProgressChart({ stats }: { stats: DayStat[] }) {
-  const max = Math.max(1, ...stats.map((s) => s.total));
+function ProgressChart({ words }: { words: SavedWord[] }) {
+  const now = new Date();
+  const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
+
+  const { added, completed, daysInMonth } = useMemo(() => {
+    const days = new Date(view.year, view.month + 1, 0).getDate();
+    const a = new Array(days).fill(0);
+    const c = new Array(days).fill(0);
+    for (const w of words) {
+      const cr = parseDate(w.createdAt);
+      if (cr && cr.getFullYear() === view.year && cr.getMonth() === view.month) a[cr.getDate() - 1]++;
+      const cp = parseDate(w.completedAt);
+      if (cp && cp.getFullYear() === view.year && cp.getMonth() === view.month) c[cp.getDate() - 1]++;
+    }
+    return { added: a, completed: c, daysInMonth: days };
+  }, [words, view]);
+
+  const max = Math.max(1, ...added, ...completed);
+  const xAt = (i: number) => (daysInMonth <= 1 ? 50 : (i / (daysInMonth - 1)) * 100);
+  const yAt = (v: number) => 95 - (v / max) * 90; // 0 = top; padded 5% top/bottom
+  const points = (series: number[]) => series.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ');
+
+  const monthLabel = new Date(view.year, view.month, 1).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+  const isCurrentMonth = view.year === now.getFullYear() && view.month === now.getMonth();
+  const step = (delta: number) =>
+    setView((v) => {
+      const d = new Date(v.year, v.month + delta, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+
   return (
     <div className="bg-surface border border-zinc-800 rounded-2xl p-5">
-      <div className="flex items-end gap-2 sm:gap-3 h-36">
-        {stats.map((s) => {
-          const totalPct = (s.total / max) * 100;
-          const donePct = s.total > 0 ? (s.completed / s.total) * 100 : 0;
-          return (
-            <div key={s.key} className="flex-1 flex flex-col items-center gap-2 min-w-0">
-              <div className="relative w-full flex-1 flex items-end">
-                <div
-                  className="w-full rounded-md bg-white/8 overflow-hidden flex flex-col justify-end transition-all"
-                  style={{ height: `${Math.max(totalPct, 6)}%` }}
-                  title={`${s.completed} completed / ${s.total} added`}
-                >
-                  <div
-                    className="w-full bg-orange-500 transition-all duration-500"
-                    style={{ height: `${donePct}%` }}
-                  />
-                </div>
-              </div>
-              <span className="text-[10px] text-zinc-500 truncate w-full text-center">
-                {s.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </span>
-            </div>
-          );
-        })}
+      {/* Month navigation */}
+      <div className="mb-4 flex items-center justify-between">
+        <button
+          onClick={() => step(-1)}
+          aria-label="Previous month"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-semibold text-white">{monthLabel}</span>
+        <button
+          onClick={() => step(1)}
+          disabled={isCurrentMonth}
+          aria-label="Next month"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
-      <div className="flex items-center justify-center gap-5 mt-4 text-xs text-zinc-400">
+
+      <div className="relative h-28">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          {/* Per-day vertical grid lines */}
+          {added.map((_, i) => (
+            <line
+              key={i}
+              x1={xAt(i)}
+              y1={0}
+              x2={xAt(i)}
+              y2={100}
+              stroke="#ffffff"
+              strokeOpacity={0.06}
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          <polyline
+            points={points(added)}
+            fill="none"
+            stroke={TO_LEARN_COLOR}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+          <polyline
+            points={points(completed)}
+            fill="none"
+            stroke={COMPLETED_COLOR}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        {/* Dots on days that have activity (kept circular outside the SVG). */}
+        {added.map((v, i) => (
+          <Fragment key={i}>
+            {v > 0 && (
+              <span
+                className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ left: `${xAt(i)}%`, top: `${yAt(v)}%`, background: TO_LEARN_COLOR }}
+              />
+            )}
+            {completed[i] > 0 && (
+              <span
+                className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ left: `${xAt(i)}%`, top: `${yAt(completed[i])}%`, background: COMPLETED_COLOR }}
+              />
+            )}
+          </Fragment>
+        ))}
+      </div>
+
+      {/* X-axis day labels (every day of the month). */}
+      <div className="relative mt-1 h-4">
+        {added.map((_, i) => (
+          <span
+            key={i}
+            className="absolute -translate-x-1/2 whitespace-nowrap text-[10px] text-zinc-500"
+            style={{ left: `${xAt(i)}%` }}
+          >
+            {i + 1}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center justify-center gap-5 text-xs text-zinc-400">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-orange-500" /> Completed
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: TO_LEARN_COLOR }} /> To learn
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-white/15" /> Pending
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: COMPLETED_COLOR }} /> Completed
         </span>
       </div>
     </div>
@@ -181,7 +277,7 @@ function SpellingDrill({
         onClick={onComplete}
       >
         <CheckCircle2 className="w-4 h-4" />
-        {completing ? 'Completing…' : 'Complete word'}
+        {completing ? 'Completing…' : 'Complete'}
       </Button>
     </div>
   );
@@ -213,7 +309,9 @@ function WordDialog({
         {word && (
           <div>
             <div className="flex items-center gap-3 pr-8">
-              <DialogTitle className="capitalize">{word.word}</DialogTitle>
+              <DialogTitle className="capitalize" style={{ color: wordColor(word.word).color }}>
+                {word.word}
+              </DialogTitle>
               {canSpeak() && (
                 <button
                   onClick={() => speak(word.word)}
@@ -310,21 +408,18 @@ function WordDialog({
 }
 
 // ── Word badge ───────────────────────────────────────────────────────────────
+// Each word carries its own stable, translucent color (derived from the word
+// text) so the "To Learn" and "Completed" lists read as soft, colorful chips.
 function WordBadge({ word, onClick }: { word: SavedWord; onClick: () => void }) {
-  const done = !!word.completedAt;
+  const c = wordColor(word.word);
   return (
-    <button
+    <Tag
       onClick={onClick}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium capitalize transition-all',
-        done
-          ? 'border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20'
-          : 'border-white/10 bg-white/5 text-zinc-200 hover:border-white/25 hover:text-white',
-      )}
+      style={c}
+      className="capitalize cursor-pointer hover:brightness-125"
     >
-      {done && <CheckCircle2 className="w-3.5 h-3.5 text-orange-400" />}
       {word.word}
-    </button>
+    </Tag>
   );
 }
 
@@ -333,6 +428,7 @@ export default function MyLearningPage() {
   const { isAuthenticated } = useAuth();
   const { data: words, isLoading } = useSavedWordsQuery();
   const [selected, setSelected] = useState<SavedWord | null>(null);
+  const [tab, setTab] = useState<'learn' | 'completed'>('learn');
 
   const all = useMemo(() => words ?? [], [words]);
   const added = useMemo(() => all.filter((w) => !w.completedAt), [all]);
@@ -351,20 +447,6 @@ export default function MyLearningPage() {
     return [...map.entries()].map(([key, v]) => ({ key, ...v }));
   }, [added]);
 
-  // Chart: words added per day with their completed share, oldest→newest, last 12.
-  const chartStats = useMemo<DayStat[]>(() => {
-    const map = new Map<string, DayStat>();
-    for (const w of all) {
-      const d = parseDate(w.createdAt) ?? new Date(0);
-      const key = dayKey(d);
-      const entry = map.get(key) ?? { key, date: d, total: 0, completed: 0 };
-      entry.total += 1;
-      if (w.completedAt) entry.completed += 1;
-      map.set(key, entry);
-    }
-    return [...map.values()].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(-12);
-  }, [all]);
-
   // Keep the open dialog's data fresh after completion (it reorders the list).
   const selectedLive = selected
     ? (all.find((w) => w.word === selected.word) ?? selected)
@@ -381,19 +463,14 @@ export default function MyLearningPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-20 pb-16">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+    <div className="min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
+      <div>
         {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
-            <GraduationCap className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">My Vocabulary</h1>
-            <p className="text-sm text-zinc-400">
-              {added.length} to learn · {completed.length} completed
-            </p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-white tracking-tight">My Learning</h1>
+          <p className="text-sm text-zinc-400">
+            {added.length} to learn · {completed.length} completed
+          </p>
         </div>
 
         {isLoading ? (
@@ -405,16 +482,26 @@ export default function MyLearningPage() {
             <p className="text-sm mt-1">Click a word in the subtitles while watching to save it here.</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Chart */}
-            <ProgressChart stats={chartStats} />
+            <ProgressChart words={all} />
 
-            {/* Added — grouped by date */}
-            <section>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 mb-3">
-                To learn
-              </h2>
-              {addedGroups.length === 0 ? (
+            {/* Tabs */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {([
+                { id: 'learn', label: 'To Learn', icon: <BookOpen className="w-3.5 h-3.5" /> },
+                { id: 'completed', label: 'Completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+              ] as const).map((t) => (
+                <Tag key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
+                  {t.icon}
+                  {t.label}
+                </Tag>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            {tab === 'learn' ? (
+              addedGroups.length === 0 ? (
                 <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
                   <Trophy className="w-9 h-9 text-orange-400 mx-auto mb-2" />
                   <p className="text-white font-medium">All caught up!</p>
@@ -428,12 +515,12 @@ export default function MyLearningPage() {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
-                      <div className="flex items-center gap-3 mb-2.5">
+                      <div className="flex items-center gap-2 mb-3">
                         <span className="text-sm font-medium text-zinc-300">{friendlyDay(g.date)}</span>
                         <span className="text-xs text-zinc-600">
+                          <span className="mr-2">|</span>
                           {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
                         </span>
-                        <div className="flex-1 h-px bg-zinc-800" />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {g.words.map((w) => (
@@ -443,21 +530,19 @@ export default function MyLearningPage() {
                     </motion.div>
                   ))}
                 </div>
-              )}
-            </section>
-
-            {/* Completed */}
-            {completed.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 mb-3">
-                  Completed · {completed.length}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {completed.map((w) => (
-                    <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
-                  ))}
-                </div>
-              </section>
+              )
+            ) : completed.length === 0 ? (
+              <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
+                <BookOpen className="w-9 h-9 text-zinc-600 mx-auto mb-2" />
+                <p className="text-white font-medium">Nothing completed yet</p>
+                <p className="text-sm text-zinc-500 mt-1">Finish a word's practice to move it here.</p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {completed.map((w) => (
+                  <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
+                ))}
+              </div>
             )}
           </div>
         )}
