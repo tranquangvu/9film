@@ -171,21 +171,13 @@ type ImdbTitle struct {
 	Episodes          *EpisodesConnection    `json:"episodes,omitempty"`
 }
 
-// hasImage reports whether the title carries a usable poster or any gallery
-// image. Imageless titles render as blank cards, so every listing filters them
-// out (search, trending, browse, and — via browse — similar).
+// hasImage reports whether the title has a usable primary poster — the exact
+// field the UI cards render (toMovie: poster = primaryImage.url). Titles with
+// only gallery images (common for podcasts) still render as blank cards, so we
+// require the primary image specifically. Every listing filters on this
+// (search, trending, browse, and — via browse — similar).
 func (t ImdbTitle) hasImage() bool {
-	if t.PrimaryImage != nil && t.PrimaryImage.URL != "" {
-		return true
-	}
-	if t.Images != nil {
-		for _, e := range t.Images.Edges {
-			if e.Node.URL != "" {
-				return true
-			}
-		}
-	}
-	return false
+	return t.PrimaryImage != nil && t.PrimaryImage.URL != ""
 }
 
 type BrowseParams struct {
