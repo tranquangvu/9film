@@ -17,7 +17,10 @@ func Init(isDev bool) {
 	} else {
 		cfg = zap.NewProductionConfig()
 	}
-	l, err := cfg.Build()
+	// Development config attaches a full stacktrace to every Warn+; for an HTTP
+	// access log that's pure noise (the frame is always this middleware). Only
+	// trace genuine errors so routine 4xx warns stay to a concise one-liner.
+	l, err := cfg.Build(zap.AddStacktrace(zapcore.ErrorLevel))
 	if err != nil {
 		panic(err)
 	}
