@@ -1,7 +1,8 @@
 import { apiFetch } from '@/lib/api-fetch';
 import type { AuthUser } from '@/types';
+import type { ImdbTitle } from '@/utils/title';
 
-export interface ListItem {
+export interface FavoriteItem {
   imdbId: string;
   mediaType: 'movie' | 'series';
   createdAt?: string;
@@ -24,7 +25,7 @@ export interface UserSettings {
   learningLang: string;
 }
 
-export interface SavedWord {
+export interface Word {
   word: string;
   sentence: string;
   translation: string;
@@ -49,18 +50,18 @@ export function putSettings(body: Partial<UserSettings>): Promise<UserSettings> 
   return apiFetch<UserSettings>('/api/me/settings', { method: 'PUT', body });
 }
 
-export async function getList(): Promise<ListItem[]> {
-  const res = await apiFetch<{ items: ListItem[] }>('/api/me/list');
+export async function getFavorites(): Promise<FavoriteItem[]> {
+  const res = await apiFetch<{ items: FavoriteItem[] }>('/api/me/favorites');
   return res.items ?? [];
 }
 
-export function addListItem(body: { imdbId: string; mediaType: 'movie' | 'series' }): Promise<ListItem> {
-  return apiFetch<ListItem>('/api/me/list', { method: 'POST', body });
+export function addFavorite(body: { imdbId: string; mediaType: 'movie' | 'series' }): Promise<FavoriteItem> {
+  return apiFetch<FavoriteItem>('/api/me/favorites', { method: 'POST', body });
 }
 
-export function removeListItem(imdbId: string): Promise<void> {
+export function removeFavorite(imdbId: string): Promise<void> {
   const params = new URLSearchParams({ imdbId });
-  return apiFetch<void>(`/api/me/list?${params}`, { method: 'DELETE' });
+  return apiFetch<void>(`/api/me/favorites?${params}`, { method: 'DELETE' });
 }
 
 export async function getProgress(): Promise<ProgressItem[]> {
@@ -72,34 +73,53 @@ export function putProgress(body: ProgressItem): Promise<ProgressItem> {
   return apiFetch<ProgressItem>('/api/me/progress', { method: 'PUT', body });
 }
 
-export interface SubtitlePrefItem {
+// A resume point with its IMDb title detail embedded, so the client renders the
+// Continue Watching list without a separate /api/title/:id call per title.
+export interface ContinueWatchingItem extends ProgressItem {
+  title?: ImdbTitle;
+}
+
+export interface ContinueWatchingPage {
+  items: ContinueWatchingItem[];
+  hasMore: boolean;
+  nextOffset: number;
+}
+
+// Paginated, deduped-per-title resume list backing the Continue Watching grid.
+export async function getContinueWatching(offset = 0, limit = 20): Promise<ContinueWatchingPage> {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+  const res = await apiFetch<Partial<ContinueWatchingPage>>(`/api/me/continue-watching?${params}`);
+  return { items: res.items ?? [], hasMore: res.hasMore ?? false, nextOffset: res.nextOffset ?? offset };
+}
+
+export interface SubtitleItem {
   imdbId: string;
   fileId: number;
   language: string;
 }
 
-export async function getSubtitlePrefs(): Promise<SubtitlePrefItem[]> {
-  const res = await apiFetch<{ items: SubtitlePrefItem[] }>('/api/me/subtitle-prefs');
+export async function getSubtitles(): Promise<SubtitleItem[]> {
+  const res = await apiFetch<{ items: SubtitleItem[] }>('/api/me/subtitles');
   return res.items ?? [];
 }
 
-export function putSubtitlePref(body: SubtitlePrefItem): Promise<SubtitlePrefItem> {
-  return apiFetch<SubtitlePrefItem>('/api/me/subtitle-prefs', { method: 'PUT', body });
+export function putSubtitle(body: SubtitleItem): Promise<SubtitleItem> {
+  return apiFetch<SubtitleItem>('/api/me/subtitles', { method: 'PUT', body });
 }
 
-export async function getSavedWords(): Promise<SavedWord[]> {
-  const res = await apiFetch<{ items: SavedWord[] }>('/api/me/saved-words');
+export async function getWords(): Promise<Word[]> {
+  const res = await apiFetch<{ items: Word[] }>('/api/me/words');
   return res.items ?? [];
 }
 
-export function addSavedWord(body: Omit<SavedWord, 'createdAt' | 'completedAt'>): Promise<SavedWord> {
-  return apiFetch<SavedWord>('/api/me/saved-words', { method: 'POST', body });
+export function addWord(body: Omit<Word, 'createdAt' | 'completedAt'>): Promise<Word> {
+  return apiFetch<Word>('/api/me/words', { method: 'POST', body });
 }
 
-export function removeSavedWord(word: string): Promise<void> {
-  return apiFetch<void>(`/api/me/saved-words?word=${encodeURIComponent(word)}`, { method: 'DELETE' });
+export function removeWord(word: string): Promise<void> {
+  return apiFetch<void>(`/api/me/words?word=${encodeURIComponent(word)}`, { method: 'DELETE' });
 }
 
-export function completeSavedWord(word: string): Promise<void> {
-  return apiFetch<void>('/api/me/saved-words/complete', { method: 'PUT', body: { word } });
+export function completeWord(word: string): Promise<void> {
+  return apiFetch<void>('/api/me/words/complete', { method: 'PUT', body: { word } });
 }

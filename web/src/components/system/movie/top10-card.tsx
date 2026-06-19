@@ -4,7 +4,7 @@ import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import type { Movie } from '@/types';
-import { useListButton } from '@/hooks/queries/use-list-query';
+import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
 interface Top10CardProps {
   movie: Movie
@@ -15,7 +15,7 @@ interface Top10CardProps {
 export function Top10Card({ movie, rank, className }: Top10CardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useListButton(movie.id, movie.type);
+  const favorite = useFavoriteButton(movie.id, movie.type, movie.isFavorite);
 
   const rankStr = rank.toString();
 

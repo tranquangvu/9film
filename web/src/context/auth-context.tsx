@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const tokenRef = useRef<string | null>(localStorage.getItem(TOKEN_KEY));
+  const bootstrapped = useRef(false);
   const queryClient = useQueryClient();
 
   const logout = useCallback(() => {
@@ -44,6 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // stored token. Registration happens before getMe so apiFetch sees the token.
   useEffect(() => {
     registerAuth(() => tokenRef.current, logout);
+    // Rehydrate the session once per app load. Guarded so React StrictMode's
+    // double-invoked effect (dev) doesn't fire a second /api/me.
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
     if (!tokenRef.current) {
       setIsLoading(false);
       return;

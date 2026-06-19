@@ -21,6 +21,8 @@ interface VirtualMovieGridProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  // Show each card's watch-progress bar (Continue Watching grid).
+  showProgress?: boolean;
 }
 
 // Rows from the end at which to prefetch the next page (so new items are ready
@@ -36,6 +38,7 @@ export function VirtualMovieGrid({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  showProgress = false,
 }: VirtualMovieGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
@@ -116,7 +119,13 @@ export function VirtualMovieGrid({
             }}
           >
             {rowItems.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} size="lg" className="w-full" />
+              <MovieCard
+                key={movie.id}
+                movie={movie}
+                size="lg"
+                className="w-full"
+                showProgress={showProgress}
+              />
             ))}
           </div>
         );

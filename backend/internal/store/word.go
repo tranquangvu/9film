@@ -1,6 +1,6 @@
 package store
 
-type SavedWord struct {
+type Word struct {
 	Word        string  `json:"word"`
 	Sentence    string  `json:"sentence"`
 	Translation string  `json:"translation"`
@@ -12,12 +12,12 @@ type SavedWord struct {
 	CompletedAt string  `json:"completedAt"`
 }
 
-// GetSavedWords returns all of a user's saved words, most-recently-added first
-// so the learning page can group them by added date.
-func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
+// GetWords returns all of a user's saved words, most-recently-added first so the
+// learning page can group them by added date.
+func (s *Store) GetWords(userID int64) ([]Word, error) {
 	rows, err := s.db.Query(
 		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at
-		   FROM saved_words WHERE user_id = ?
+		   FROM words WHERE user_id = ?
 		   ORDER BY created_at DESC`,
 		userID,
 	)
@@ -26,9 +26,9 @@ func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
 	}
 	defer rows.Close()
 
-	items := make([]SavedWord, 0)
+	items := make([]Word, 0)
 	for rows.Next() {
-		var w SavedWord
+		var w Word
 		if err := rows.Scan(
 			&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 			&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
@@ -40,11 +40,11 @@ func (s *Store) GetSavedWords(userID int64) ([]SavedWord, error) {
 	return items, rows.Err()
 }
 
-// AddSavedWord upserts a word (idempotent on the user_id+word PK). Re-saving a
-// word refreshes its context/scene but leaves its completed state untouched.
-func (s *Store) AddSavedWord(userID int64, w SavedWord) error {
+// AddWord upserts a word (idempotent on the user_id+word PK). Re-saving a word
+// refreshes its context/scene but leaves its completed state untouched.
+func (s *Store) AddWord(userID int64, w Word) error {
 	_, err := s.db.Exec(
-		`INSERT INTO saved_words
+		`INSERT INTO words
 		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp)
 		   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		   ON CONFLICT(user_id, word) DO UPDATE SET
@@ -59,9 +59,9 @@ func (s *Store) AddSavedWord(userID int64, w SavedWord) error {
 	return err
 }
 
-func (s *Store) RemoveSavedWord(userID int64, word string) error {
+func (s *Store) RemoveWord(userID int64, word string) error {
 	_, err := s.db.Exec(
-		`DELETE FROM saved_words WHERE user_id = ? AND word = ?`,
+		`DELETE FROM words WHERE user_id = ? AND word = ?`,
 		userID, word,
 	)
 	return err
@@ -71,7 +71,7 @@ func (s *Store) RemoveSavedWord(userID int64, word string) error {
 // into the completed list. Stamps the moment of completion for the progress chart.
 func (s *Store) CompleteWord(userID int64, word string) error {
 	_, err := s.db.Exec(
-		`UPDATE saved_words SET completed_at = datetime('now') WHERE user_id = ? AND word = ?`,
+		`UPDATE words SET completed_at = datetime('now') WHERE user_id = ? AND word = ?`,
 		userID, word,
 	)
 	return err

@@ -27,7 +27,7 @@ import { Tag } from "@/components/ui/tag";
 import { MovieCard } from "@/components/system/movie/movie-card";
 import { GenreBadge } from "@/components/system/movie/genre-badge";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
-import { useListButton } from "@/hooks/queries/use-list-query";
+import { useFavoriteButton } from "@/hooks/queries/use-favorites-query";
 import {
   useWatchedEpisodes,
   useCurrentEpisode,
@@ -77,7 +77,7 @@ export default function MovieDetailPage() {
   // fully-opaque layer underneath avoids the mid-crossfade darkening dip.
   const [baseImageIndex, setBaseImageIndex] = useState(0);
 
-  const favorite = useListButton(id, movie?.type ?? "movie");
+  const favorite = useFavoriteButton(id, movie?.type ?? "movie", movie?.isFavorite);
   const watchedEpisodes = useWatchedEpisodes(id);
   const currentEpisode = useCurrentEpisode(id);
   const movieProgress = useMovieProgress(id);

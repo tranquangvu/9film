@@ -34,6 +34,37 @@ func (s *Store) GetProgress(userID int64) ([]Progress, error) {
 	return items, rows.Err()
 }
 
+// ContinueWatching returns the most recent resume point per title (one row per
+// imdb_id, picking the latest episode/movie), most recently updated first and
+// paginated. This backs the paginated, infinite-scrolling "Continue Watching"
+// list — unlike GetProgress, which returns every per-episode row.
+func (s *Store) ContinueWatching(userID int64, limit, offset int) ([]Progress, error) {
+	rows, err := s.db.Query(
+		`SELECT imdb_id, season, episode, position_seconds, duration_seconds, updated_at FROM (
+		   SELECT imdb_id, season, episode, position_seconds, duration_seconds, updated_at,
+		          ROW_NUMBER() OVER (PARTITION BY imdb_id ORDER BY updated_at DESC, rowid DESC) AS rn
+		     FROM progress WHERE user_id = ?
+		 ) WHERE rn = 1
+		 ORDER BY updated_at DESC
+		 LIMIT ? OFFSET ?`,
+		userID, limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]Progress, 0)
+	for rows.Next() {
+		var p Progress
+		if err := rows.Scan(&p.ImdbID, &p.Season, &p.Episode, &p.PositionSeconds, &p.DurationSeconds, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, p)
+	}
+	return items, rows.Err()
+}
+
 // UpsertProgress writes a resume point keyed by user+imdb_id+season+episode, so
 // each TV episode keeps its own position (movies use season/episode 0). It
 // refreshes updated_at so the title bubbles to the top of the list.

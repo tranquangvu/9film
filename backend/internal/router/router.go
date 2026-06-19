@@ -19,7 +19,7 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 	r.Use(zapLogger())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5174", "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -29,13 +29,14 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		title := api.Group("/title")
+		// Public, but AuthOptional lets signed-in users get the `isFavorite` flag.
+		title := api.Group("/title", middleware.AuthOptional(cfg))
 		{
-			title.GET("/search", handler.SearchTitles)
-			title.GET("/trending", handler.GetTrendingTitles)
-			title.GET("/browse", handler.BrowseTitles)
-			title.GET("/:imdb/similar", handler.GetSimilarTitles)
-			title.GET("/:imdb", handler.GetTitle)
+			title.GET("/search", handler.SearchTitles(st))
+			title.GET("/trending", handler.GetTrendingTitles(st))
+			title.GET("/browse", handler.BrowseTitles(st))
+			title.GET("/:imdb/similar", handler.GetSimilarTitles(st))
+			title.GET("/:imdb", handler.GetTitle(st))
 		}
 
 		subs := api.Group("/subtitle")
@@ -66,17 +67,18 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 			me.GET("", handler.GetMe(st))
 			me.GET("/settings", handler.GetSettings(st))
 			me.PUT("/settings", handler.PutSettings(st))
-			me.GET("/list", handler.GetList(st))
-			me.POST("/list", handler.AddList(st))
-			me.DELETE("/list", handler.RemoveList(st))
+			me.GET("/favorites", handler.GetFavorites(st))
+			me.POST("/favorites", handler.AddFavorite(st))
+			me.DELETE("/favorites", handler.RemoveFavorite(st))
 			me.GET("/progress", handler.GetProgress(st))
+			me.GET("/continue-watching", handler.GetContinueWatching(st))
 			me.PUT("/progress", handler.PutProgress(st))
-			me.GET("/subtitle-prefs", handler.GetSubtitlePrefs(st))
-			me.PUT("/subtitle-prefs", handler.PutSubtitlePref(st))
-			me.GET("/saved-words", handler.GetSavedWords(st))
-			me.POST("/saved-words", handler.AddSavedWord(st))
-			me.DELETE("/saved-words", handler.RemoveSavedWord(st))
-			me.PUT("/saved-words/complete", handler.CompleteWord(st))
+			me.GET("/subtitles", handler.GetSubtitles(st))
+			me.PUT("/subtitles", handler.PutSubtitle(st))
+			me.GET("/words", handler.GetWords(st))
+			me.POST("/words", handler.AddWord(st))
+			me.DELETE("/words", handler.RemoveWord(st))
+			me.PUT("/words/complete", handler.CompleteWord(st))
 		}
 	}
 

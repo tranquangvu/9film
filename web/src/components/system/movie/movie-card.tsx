@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Heart, Info } from 'lucide-react';
+import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import { formatDuration, formatYear } from '@/utils/format';
 import type { Movie } from '@/types';
 import { RatingBadge } from '@/components/system/movie/rating-badge';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
-import { useListButton } from '@/hooks/queries/use-list-query';
+import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
 interface MovieCardProps {
   movie: Movie
@@ -25,7 +25,7 @@ const sizeClasses = {
 export function MovieCard({ movie, className, showProgress = false, size = 'md' }: MovieCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useListButton(movie.id, movie.type);
+  const favorite = useFavoriteButton(movie.id, movie.type, movie.isFavorite);
 
   const handleClick = () => navigate(`/movie/${movie.id}`);
 
@@ -61,13 +61,24 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
           <RatingBadge rating={movie.rating} />
         </div>
 
-        {movie.isNew && (
-          <div className="absolute top-2 right-2">
+        {/* Top-right: New badge + favorite indicator (only shown when favorited) */}
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+          {movie.isNew && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
               New
             </span>
-          </div>
-        )}
+          )}
+          {favorite.active && (
+            <button
+              onClick={favorite.onToggle}
+              aria-label="Remove from favorites"
+              title="Remove from favorites"
+              className="w-6 h-6 rounded-full flex items-center justify-center bg-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
+            >
+              <Heart className="w-3 h-3 fill-orange-500 text-orange-500" />
+            </button>
+          )}
+        </div>
 
         {/* Hover overlay (CSS-only) */}
         <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover/card:opacity-100 transition-opacity duration-200 pointer-events-none group-hover/card:pointer-events-auto">
@@ -103,29 +114,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
               {movie.genres.slice(0, 2).map((g) => (
                 <GenreBadge key={g} genre={g} className="text-[10px] px-1.5 py-0" />
               ))}
-            </div>
-
-            {/* Action icons */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                className={cn(
-                  'w-7 h-7 rounded-full border flex items-center justify-center transition-colors',
-                  favorite.active
-                    ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
-                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-white',
-                )}
-                onClick={favorite.onToggle}
-                title={favorite.active ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                <Heart className={cn('w-3.5 h-3.5', favorite.active && 'fill-orange-400')} />
-              </button>
-              <button
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
-                onClick={(e) => { e.stopPropagation(); handleClick(); }}
-                title="More info"
-              >
-                <Info className="w-3.5 h-3.5 text-white" />
-              </button>
             </div>
           </div>
         </div>

@@ -22,13 +22,13 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/context/auth-context';
 import {
-  useSavedWordsQuery,
-  useCompleteSavedWord,
-} from '@/hooks/queries/use-saved-words-query';
+  useWordsQuery,
+  useCompleteWord,
+} from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
-import type { SavedWord } from '@/services/user';
+import type { Word } from '@/services/user';
 
 // To "complete" a word the user must spell it correctly in every practice box.
 const INPUT_COUNT = 8;
@@ -58,7 +58,7 @@ function friendlyDay(d: Date): string {
 }
 
 // Build a deep link back to the exact scene the word was saved from.
-function sceneLink(w: SavedWord): string {
+function sceneLink(w: Word): string {
   const params = new URLSearchParams();
   if (w.season > 0) params.set('s', String(w.season));
   if (w.episode > 0) params.set('e', String(w.episode));
@@ -73,7 +73,7 @@ function sceneLink(w: SavedWord): string {
 const TO_LEARN_COLOR = '#3b82f6'; // blue-500
 const COMPLETED_COLOR = '#22c55e'; // green-500
 
-function ProgressChart({ words }: { words: SavedWord[] }) {
+function ProgressChart({ words }: { words: Word[] }) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
 
@@ -288,10 +288,10 @@ function WordDialog({
   word,
   onOpenChange,
 }: {
-  word: SavedWord | null;
+  word: Word | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const complete = useCompleteSavedWord();
+  const complete = useCompleteWord();
   const dict = useDictionaryQuery(word?.word);
 
   // Pronounce automatically when a new word is opened (keyed on the word string
@@ -411,13 +411,13 @@ function WordDialog({
 interface DayGroup {
   key: string;
   date: Date;
-  words: SavedWord[];
+  words: Word[];
 }
 
 // Bucket words by the local calendar day of `dateOf`, newest day first and
 // newest word first within each day. Used for both the added and completed
 // lists so they share an identical day-grouped layout.
-function groupByDay(words: SavedWord[], dateOf: (w: SavedWord) => string | undefined): DayGroup[] {
+function groupByDay(words: Word[], dateOf: (w: Word) => string | undefined): DayGroup[] {
   const map = new Map<string, DayGroup>();
   for (const w of words) {
     const d = parseDate(dateOf(w)) ?? new Date(0);
@@ -426,7 +426,7 @@ function groupByDay(words: SavedWord[], dateOf: (w: SavedWord) => string | undef
     if (entry) entry.words.push(w);
     else map.set(key, { key, date: d, words: [w] });
   }
-  const ts = (w: SavedWord) => parseDate(dateOf(w))?.getTime() ?? 0;
+  const ts = (w: Word) => parseDate(dateOf(w))?.getTime() ?? 0;
   const groups = [...map.values()];
   for (const g of groups) g.words.sort((a, b) => ts(b) - ts(a));
   return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -438,7 +438,7 @@ function WordGroupList({
   onSelect,
 }: {
   groups: DayGroup[];
-  onSelect: (w: SavedWord) => void;
+  onSelect: (w: Word) => void;
 }) {
   return (
     <div className="space-y-5">
@@ -465,7 +465,7 @@ function WordGroupList({
 // ── Word badge ───────────────────────────────────────────────────────────────
 // Each word carries its own stable, translucent color (derived from the word
 // text) so the "To Learn" and "Completed" lists read as soft, colorful chips.
-function WordBadge({ word, onClick }: { word: SavedWord; onClick: () => void }) {
+function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
   const c = wordColor(word.word);
   return (
     <Tag
@@ -481,8 +481,8 @@ function WordBadge({ word, onClick }: { word: SavedWord; onClick: () => void }) 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function MyLearningPage() {
   const { isAuthenticated } = useAuth();
-  const { data: words, isLoading } = useSavedWordsQuery();
-  const [selected, setSelected] = useState<SavedWord | null>(null);
+  const { data: words, isLoading } = useWordsQuery();
+  const [selected, setSelected] = useState<Word | null>(null);
   const [tab, setTab] = useState<'learn' | 'completed'>('learn');
 
   const all = useMemo(() => words ?? [], [words]);

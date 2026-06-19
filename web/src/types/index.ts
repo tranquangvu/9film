@@ -20,6 +20,8 @@ export interface Movie {
   isNew?: boolean
   isFeatured?: boolean
   progress?: number
+  // Whether the signed-in user has favorited this title (seeded by the backend).
+  isFavorite?: boolean
   // Resume point for the Continue Watching row (series only; 0 for movies).
   resumeSeason?: number
   resumeEpisode?: number

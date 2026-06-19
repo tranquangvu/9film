@@ -1,15 +1,15 @@
 package store
 
-type SubtitlePref struct {
+type Subtitle struct {
 	ImdbID   string `json:"imdbId"`
 	FileID   int64  `json:"fileId"`
 	Language string `json:"language"`
 }
 
-// GetSubtitlePrefs returns a user's saved subtitle selections (one per title).
-func (s *Store) GetSubtitlePrefs(userID int64) ([]SubtitlePref, error) {
+// GetSubtitles returns a user's saved subtitle selections (one per title).
+func (s *Store) GetSubtitles(userID int64) ([]Subtitle, error) {
 	rows, err := s.db.Query(
-		`SELECT imdb_id, file_id, language FROM subtitle_prefs WHERE user_id = ?`,
+		`SELECT imdb_id, file_id, language FROM subtitles WHERE user_id = ?`,
 		userID,
 	)
 	if err != nil {
@@ -17,9 +17,9 @@ func (s *Store) GetSubtitlePrefs(userID int64) ([]SubtitlePref, error) {
 	}
 	defer rows.Close()
 
-	items := make([]SubtitlePref, 0)
+	items := make([]Subtitle, 0)
 	for rows.Next() {
-		var p SubtitlePref
+		var p Subtitle
 		if err := rows.Scan(&p.ImdbID, &p.FileID, &p.Language); err != nil {
 			return nil, err
 		}
@@ -28,11 +28,11 @@ func (s *Store) GetSubtitlePrefs(userID int64) ([]SubtitlePref, error) {
 	return items, rows.Err()
 }
 
-// UpsertSubtitlePref saves the subtitle a user picked for a title (one row per
+// UpsertSubtitle saves the subtitle a user picked for a title (one row per
 // user+imdb_id).
-func (s *Store) UpsertSubtitlePref(userID int64, p SubtitlePref) error {
+func (s *Store) UpsertSubtitle(userID int64, p Subtitle) error {
 	_, err := s.db.Exec(
-		`INSERT INTO subtitle_prefs (user_id, imdb_id, file_id, language, updated_at)
+		`INSERT INTO subtitles (user_id, imdb_id, file_id, language, updated_at)
 		   VALUES (?, ?, ?, ?, datetime('now'))
 		   ON CONFLICT(user_id, imdb_id) DO UPDATE SET
 		     file_id = excluded.file_id,

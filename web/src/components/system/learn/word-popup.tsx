@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Volume2, X, BookmarkPlus, BookmarkCheck, Languages, Loader2 } from 'lucide-react';
 import { useDefineQuery } from '@/hooks/queries/use-define-query';
-import { useAddSavedWord, useIsWordSaved } from '@/hooks/queries/use-saved-words-query';
+import { useAddWord, useIsWordSaved } from '@/hooks/queries/use-words-query';
 import { useAuth } from '@/context/auth-context';
 import { translate } from '@/services/learn';
 
@@ -24,7 +24,7 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
   const { isAuthenticated } = useAuth();
   const { data, isLoading, isError } = useDefineQuery(word, context.learningLang);
   const saved = useIsWordSaved(word);
-  const addWord = useAddSavedWord();
+  const addWord = useAddWord();
   const [sentenceVi, setSentenceVi] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
 

@@ -34,6 +34,9 @@ export interface ImdbTitle {
     episodes?: { total?: number };
     seasons?: Array<{ number?: number }>;
   };
+  // Set by the backend (not IMDb) when the signed-in user has favorited this
+  // title — seeds the card's heart state without a separate /api/me/favorites call.
+  isFavorite?: boolean;
 }
 
 export interface OriginalLanguage {
@@ -142,6 +145,7 @@ export function toMovie(title: ImdbTitle): Movie {
     type,
     totalSeasons: type === 'series' ? title.episodes?.seasons?.length || undefined : undefined,
     totalEpisodes: type === 'series' ? title.episodes?.episodes?.total || undefined : undefined,
+    isFavorite: title.isFavorite ?? false,
   };
 }
 

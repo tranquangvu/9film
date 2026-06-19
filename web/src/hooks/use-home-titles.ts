@@ -1,8 +1,7 @@
 import { heroTitles, matchesHeroGenres, toMovies, type ImdbTitle } from '@/utils/title';
 import type { Movie } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
-import { useTitlesQuery } from './queries/use-titles-query';
-import { useProgressQuery, progressPercent } from './queries/use-progress-query';
+import { useContinueWatching } from './queries/use-progress-query';
 
 const HERO_LIMIT = 8;
 const TOP_TEN_LIMIT = 10;
@@ -27,31 +26,11 @@ export function usePopularTVSeriesTitles() {
   return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
 }
 
+// Continue Watching row. The backend returns one deduped row per title with the
+// detail embedded, so this maps straight to cards without per-title lookups.
 export function useResumeTitles() {
-  const { data: progressItems } = useProgressQuery();
-  const items = progressItems ?? [];
-  // Progress is per-episode, so a series has several rows. Collapse to one card
-  // per title, keeping the most-recent row (the list is ordered newest-first).
-  const seen = new Set<string>();
-  const latestPerTitle = items.filter((p) => {
-    if (seen.has(p.imdbId)) return false;
-    seen.add(p.imdbId);
-    return true;
-  });
-  return useTitlesQuery(latestPerTitle.map((p) => p.imdbId), {
-    select: (movies) =>
-      movies.map((movie) => {
-        const p = latestPerTitle.find((x) => x.imdbId === movie.id);
-        if (!p) return movie;
-        return {
-          ...movie,
-          progress: progressPercent(p),
-          // season > 0 only for series; movies stay undefined.
-          resumeSeason: p.season > 0 ? p.season : undefined,
-          resumeEpisode: p.season > 0 ? p.episode : undefined,
-        };
-      }),
-  });
+  const { movies, isLoading, isError } = useContinueWatching();
+  return { data: movies, loading: isLoading, isError };
 }
 
 // Carve the hero + Top 10 out of the popular feed, excluding every title already

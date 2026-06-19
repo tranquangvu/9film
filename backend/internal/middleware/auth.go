@@ -34,7 +34,26 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// UserID returns the authenticated user id set by AuthRequired.
+// AuthOptional stashes the user id when a valid bearer token is present but,
+// unlike AuthRequired, never rejects the request. Used by public title
+// endpoints that enrich responses for signed-in users (e.g. the `isFavorite` flag)
+// while staying open to anonymous callers.
+func AuthOptional(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if token, ok := strings.CutPrefix(header, "Bearer "); ok {
+			if token = strings.TrimSpace(token); token != "" {
+				if id, err := auth.Parse(token, cfg.JWTSecret); err == nil {
+					c.Set(userIDKey, id)
+				}
+			}
+		}
+		c.Next()
+	}
+}
+
+// UserID returns the authenticated user id set by AuthRequired/AuthOptional
+// (0 when the request is anonymous).
 func UserID(c *gin.Context) int64 {
 	v, _ := c.Get(userIDKey)
 	id, _ := v.(int64)

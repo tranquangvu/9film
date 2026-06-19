@@ -4,35 +4,25 @@ import { motion } from 'framer-motion';
 import { X, FolderHeart, BookmarkCheck, Play, Loader2 } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
-import { useFavorites, useToggleListItem } from '@/hooks/queries/use-list-query';
-import { useProgressQuery, progressPercent } from '@/hooks/queries/use-progress-query';
+import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
+import { useContinueWatching } from '@/hooks/queries/use-progress-query';
 import { MovieCard } from '@/components/system/movie/movie-card';
-import { ContinueWatchingCard } from '@/components/system/movie/continue-card';
 import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
+import { VirtualMovieGrid } from '@/components/system/movie/virtual-movie-grid';
 import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
 import { Tag } from '@/components/ui/tag';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/utils/cn';
 import { useToast } from '@/components/ui/toast';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from '@/components/ui/drawer';
 
 type TabId = 'all' | 'saved' | 'continue'
 
 const TAB_IDS: TabId[] = ['all', 'saved', 'continue'];
 const isTabId = (v: string | null): v is TabId => v !== null && (TAB_IDS as string[]).includes(v);
 
-// Continue Watching shows at most this many in the carousel; the rest live in
-// the "View all" drawer, which pages them in as you scroll.
+// The "All" tab previews this many Continue Watching titles in the carousel;
+// "View all" switches to the Continue Watching tab's full infinite grid.
 const CONTINUE_CAROUSEL_MAX = 20;
-const CONTINUE_DRAWER_PAGE = 20;
 // Favorites grid loads this many titles at a time as you scroll.
 const FAVORITES_PAGE = 20;
 
@@ -95,50 +85,24 @@ export default function MyListPage() {
       { replace: true },
     );
   };
-  const [continueDrawerOpen, setContinueDrawerOpen] = useState(false);
-  const [continueVisible, setContinueVisible] = useState(CONTINUE_DRAWER_PAGE);
   const [favVisible, setFavVisible] = useState(FAVORITES_PAGE);
 
   // Server-backed favorites, hydrated into Movie objects via the IMDb queries.
   const favoritesQ = useFavorites();
-  const progressQ = useProgressQuery();
 
   // Infinite scroll: only hydrate the first favVisible favorite ids; more are
   // fetched as the user scrolls near the bottom (each id is its own request).
   const favIds = useMemo(() => (favoritesQ.data ?? []).map((i) => i.imdbId), [favoritesQ.data]);
   const favTitles = useTitlesQuery(favIds.slice(0, favVisible));
 
-  // Progress is per-episode, so a series has several rows. Collapse to one card
-  // per title, keeping the most-recent row (the list is ordered newest-first).
-  const progressItems = useMemo(() => {
-    const seen = new Set<string>();
-    return (progressQ.data ?? []).filter((p) => {
-      if (seen.has(p.imdbId)) return false;
-      seen.add(p.imdbId);
-      return true;
-    });
-  }, [progressQ.data]);
-  const continueTitles = useTitlesQuery(progressItems.map((p) => p.imdbId));
-  const continueWatching = useMemo(
-    () =>
-      continueTitles.data.map((movie) => {
-        const p = progressItems.find((x) => x.imdbId === movie.id);
-        if (!p) return movie;
-        return {
-          ...movie,
-          progress: progressPercent(p),
-          resumeSeason: p.season > 0 ? p.season : undefined,
-          resumeEpisode: p.season > 0 ? p.episode : undefined,
-        };
-      }),
-    [continueTitles.data, progressItems],
-  );
+  // Continue Watching — backend-paginated (one deduped row per title, newest
+  // first) with title detail embedded, so no per-title lookup is needed.
+  const continueQ = useContinueWatching();
+  const continueWatching = continueQ.movies;
 
-  const toggleFavorite = useToggleListItem();
+  const toggleFavorite = useToggleFavorite();
 
-  const hasError =
-    favoritesQ.isError || progressQ.isError ||
-    favTitles.isError || continueTitles.isError;
+  const hasError = favoritesQ.isError || continueQ.isError || favTitles.isError;
 
   useEffect(() => {
     if (hasError) {
@@ -162,13 +126,18 @@ export default function MyListPage() {
     toggleFavorite.mutate({ imdbId: movie.id, mediaType: movie.type, active: true });
   };
 
-  const showContinueWatching = activeTab === 'all' || activeTab === 'continue';
-  const showGrid = activeTab !== 'continue';
-  const continueLoading = progressQ.isLoading || continueTitles.loading;
+  const showCarousel = activeTab === 'all'; // Continue Watching preview row
+  const showFavGrid = activeTab !== 'continue'; // All / Favorites grid
+  const showContinueGrid = activeTab === 'continue';
+
+  // Carousel (All tab) waits on the first page; the grid streams more in.
+  const continueInitialLoading = continueQ.isLoading;
+  const continueHasOverflow =
+    continueWatching.length > CONTINUE_CAROUSEL_MAX || !!continueQ.hasNextPage;
 
   // Reveal more favorites as the window nears the bottom.
   useEffect(() => {
-    if (!showGrid || !favHasMore) return;
+    if (!showFavGrid || !favHasMore) return;
     const onScroll = () => {
       const nearBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600;
@@ -177,19 +146,7 @@ export default function MyListPage() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll(); // top up if the page is shorter than the viewport
     return () => window.removeEventListener('scroll', onScroll);
-  }, [showGrid, favHasMore, favVisible, favIds.length]);
-
-  const continueHasOverflow = continueWatching.length > CONTINUE_CAROUSEL_MAX;
-  const openContinueDrawer = () => {
-    setContinueVisible(CONTINUE_DRAWER_PAGE);
-    setContinueDrawerOpen(true);
-  };
-  const onContinueDrawerScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 240) {
-      setContinueVisible((n) => Math.min(n + CONTINUE_DRAWER_PAGE, continueWatching.length));
-    }
-  };
+  }, [showFavGrid, favHasMore, favVisible, favIds.length]);
 
   const savedCount = favIds.length;
 
@@ -225,26 +182,26 @@ export default function MyListPage() {
         </div>
       </div>
 
-      {/* Continue Watching */}
-      {showContinueWatching && continueLoading && (
+      {/* Continue Watching preview (All tab) */}
+      {showCarousel && continueInitialLoading && (
         <div className="mt-6">
           <CarouselSkeleton cardType="backdrop" count={4} />
         </div>
       )}
-      {showContinueWatching && !continueLoading && continueWatching.length > 0 && (
+      {showCarousel && !continueInitialLoading && continueWatching.length > 0 && (
         <div className="mt-6">
           <HorizontalCarousel
             title="Continue Watching"
             movies={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
             cardType="backdrop"
             showSeeAll={continueHasOverflow}
-            onViewAll={openContinueDrawer}
+            onViewAll={() => setActiveTab('continue')}
           />
         </div>
       )}
 
-      {/* Favorites grid */}
-      {showGrid && (
+      {/* Favorites grid (All / Favorites tabs) */}
+      {showFavGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
           {gridInitialLoading ? (
             <>
@@ -277,37 +234,31 @@ export default function MyListPage() {
         </div>
       )}
 
-      {/* View-all drawer — full Continue Watching list, paged in on scroll */}
-      <Drawer open={continueDrawerOpen} onOpenChange={setContinueDrawerOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <div className="flex items-center gap-2">
-              <Play size={18} className="text-orange-500" />
-              <DrawerTitle>Continue Watching</DrawerTitle>
-            </div>
-            <DrawerClose asChild>
-              <button
-                aria-label="Close"
-                className={cn(
-                  buttonVariants({ variant: 'ghost' }),
-                  'p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 border-0 bg-transparent shadow-none',
-                )}
-              >
-                <X size={18} />
-              </button>
-            </DrawerClose>
-          </DrawerHeader>
-
-          <div
-            className="flex-1 overflow-y-auto px-5 pb-5 space-y-4"
-            onScroll={onContinueDrawerScroll}
-          >
-            {continueWatching.slice(0, continueVisible).map((movie) => (
-              <ContinueWatchingCard key={movie.id} movie={movie} className="w-full" />
-            ))}
-          </div>
-        </DrawerContent>
-      </Drawer>
+      {/* Continue Watching grid (Continue Watching tab) — backend-paginated,
+          infinite-scrolling, virtualized like the other lists. */}
+      {showContinueGrid && (
+        <div className="px-4 md:px-8 lg:px-12 mt-6">
+          {continueInitialLoading ? (
+            <MovieGridSkeleton />
+          ) : continueWatching.length > 0 ? (
+            <VirtualMovieGrid
+              items={continueWatching}
+              showProgress
+              hasMore={!!continueQ.hasNextPage}
+              isLoadingMore={continueQ.isFetchingNextPage}
+              onLoadMore={continueQ.fetchNextPage}
+            />
+          ) : (
+            <Empty
+              icon="📺"
+              title={emptyMessages.continue.title}
+              message={emptyMessages.continue.message}
+              actionLabel="Browse Content"
+              onAction={() => navigate('/browse')}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

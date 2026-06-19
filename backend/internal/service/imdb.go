@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -169,6 +170,9 @@ type ImdbTitle struct {
 	PrincipalCredits  []PrincipalCreditGroup `json:"principalCredits,omitempty"`
 	Images            *ImagesConnection      `json:"images,omitempty"`
 	Episodes          *EpisodesConnection    `json:"episodes,omitempty"`
+	// IsFavorite is set by handlers (not IMDb) when the requesting user has
+	// favorited this title, so cards can render the heart state server-side.
+	IsFavorite bool `json:"isFavorite,omitempty"`
 }
 
 // hasImage reports whether the title has a usable primary poster — the exact
@@ -255,8 +259,42 @@ func imdbRequest(query string, variables map[string]any, dataTarget any) error {
 	return json.Unmarshal(raw.Data, dataTarget)
 }
 
+// Title detail is public, user-independent, and rarely changes — cache it
+// briefly so hot paths (the Continue Watching list embeds detail per title)
+// don't re-query IMDb for every render.
+const titleCacheTTL = 10 * time.Minute
+
+type titleCacheEntry struct {
+	title *ImdbTitle
+	exp   time.Time
+}
+
+var (
+	titleCacheMu sync.RWMutex
+	titleCache   = map[string]titleCacheEntry{}
+)
+
+func cachedTitle(id string) *ImdbTitle {
+	titleCacheMu.RLock()
+	e, ok := titleCache[id]
+	titleCacheMu.RUnlock()
+	if ok && time.Now().Before(e.exp) {
+		return e.title
+	}
+	return nil
+}
+
+func storeTitle(id string, t *ImdbTitle) {
+	titleCacheMu.Lock()
+	titleCache[id] = titleCacheEntry{title: t, exp: time.Now().Add(titleCacheTTL)}
+	titleCacheMu.Unlock()
+}
+
 func GetTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
+	if t := cachedTitle(id); t != nil {
+		return t, nil
+	}
 	query := fmt.Sprintf(`
 	  query TitleDetails($id: ID!) {
 	    title(id: $id) {
@@ -280,6 +318,7 @@ func GetTitle(imdbID string) (*ImdbTitle, error) {
 	if data.Title == nil || data.Title.ID == "" {
 		return nil, ErrTitleNotFound
 	}
+	storeTitle(id, data.Title)
 	return data.Title, nil
 }
 

@@ -10,14 +10,26 @@ interface NavbarProps {
   onSidebarToggle: () => void
 }
 
+// Content browsing — centered. Personal links live on the right by the avatar.
 const navLinks = [
   { label: 'Home', to: '/' },
   { label: 'Browse', to: '/browse' },
   { label: 'Movies', to: '/movies' },
   { label: 'TV Series', to: '/tvs' },
+];
+
+const personalLinks = [
   { label: 'My List', to: '/my-list' },
   { label: 'My Learning', to: '/my-learning' },
 ];
+
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200',
+    isActive
+      ? 'text-orange-500 bg-orange-500/10'
+      : 'text-zinc-400 hover:text-white hover:bg-white/5',
+  );
 
 export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -36,7 +48,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
         scrolled ? 'glass shadow-2xl' : 'bg-gradient-to-b from-black/80 to-transparent'
       )}
     >
-      <div className="flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
+      <div className="relative flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
         {/* Logo */}
         <div className="flex items-center gap-4">
           <Button
@@ -53,21 +65,14 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
           </NavLink>
         </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Desktop nav — centered on the page regardless of side widths */}
+        <nav className="hidden md:flex items-center gap-1 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           {navLinks.map(link => (
             <NavLink
               key={link.to}
               to={link.to}
               end={link.to === '/'}
-              className={({ isActive }) =>
-                cn(
-                  'px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-200',
-                  isActive
-                    ? 'text-orange-500 bg-orange-500/10'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                )
-              }
+              className={navLinkClass}
             >
               {link.label}
             </NavLink>
@@ -84,6 +89,15 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
           >
             <Search size={18} />
           </Button>
+
+          {/* Personal links — next to the avatar */}
+          <nav className="hidden md:flex items-center gap-1 mr-1">
+            {personalLinks.map(link => (
+              <NavLink key={link.to} to={link.to} className={navLinkClass}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
 
           {isAuthenticated ? (
             <Link

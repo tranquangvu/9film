@@ -1,9 +1,47 @@
 import { useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProgress, putProgress, type ProgressItem } from '@/services/user';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getProgress, getContinueWatching, putProgress, type ProgressItem } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
+import { toMovie } from '@/utils/title';
+import type { Movie } from '@/types';
 
 const PROGRESS_KEY = ['progress'] as const;
+const CONTINUE_PAGE = 20;
+
+// Paginated Continue Watching list (one row per title), infinite-scrolled.
+// Backed by a dedicated endpoint so it doesn't pull every per-episode row.
+export function useContinueWatchingInfinite() {
+  const { isAuthenticated } = useAuth();
+  return useInfiniteQuery({
+    queryKey: ['continue-watching'],
+    queryFn: ({ pageParam }) => getContinueWatching(pageParam, CONTINUE_PAGE),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
+    enabled: isAuthenticated,
+    staleTime: 30 * 1000,
+  });
+}
+
+// Continue Watching as ready-to-render Movie cards. The backend embeds each
+// title's detail, so we map straight to Movies + resume progress here — no
+// per-title /api/title/:id lookup. Used by the home row and the My List grid.
+export function useContinueWatching() {
+  const q = useContinueWatchingInfinite();
+  const movies = useMemo<Movie[]>(() => {
+    const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+    return items.flatMap((it) => {
+      if (!it.title) return [];
+      return [{
+        ...toMovie(it.title),
+        progress: progressPercent(it),
+        // season > 0 only for series; movies stay undefined.
+        resumeSeason: it.season > 0 ? it.season : undefined,
+        resumeEpisode: it.season > 0 ? it.episode : undefined,
+      }];
+    });
+  }, [q.data]);
+  return { ...q, movies };
+}
 
 // Set of "season:episode" keys that have saved watch progress for a title.
 // Drives the "watched" highlight in episode selectors.

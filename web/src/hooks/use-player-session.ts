@@ -18,7 +18,7 @@ import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
 import { useSubtitleCues } from './queries/use-subtitle-cues';
 import { useProgressQuery, useSaveProgress } from './queries/use-progress-query';
-import { useSubtitlePrefsQuery, useSaveSubtitlePref } from './queries/use-subtitle-pref-query';
+import { useSavedSubtitlesQuery, useSaveSubtitle } from './queries/use-subtitle-query';
 import { useSettings } from './queries/use-settings-query';
 
 export function usePlayerSession(
@@ -202,12 +202,12 @@ export function usePlayerSession(
 
   // Saved selection for this title. For signed-in users it lives in the DB and
   // follows them across devices; otherwise we fall back to localStorage.
-  const { data: subPrefs } = useSubtitlePrefsQuery();
-  const saveSubPrefMut = useSaveSubtitlePref();
+  const { data: savedSubtitles } = useSavedSubtitlesQuery();
+  const saveSubtitleMut = useSaveSubtitle();
   const savedSubPref = useMemo(() => {
-    const dbPref = (subPrefs ?? []).find((p) => p.imdbId === titleId);
+    const dbPref = (savedSubtitles ?? []).find((p) => p.imdbId === titleId);
     return dbPref ?? getSubtitlePref(titleId);
-  }, [subPrefs, titleId]);
+  }, [savedSubtitles, titleId]);
 
   // Prefer the exact release (fileId), else any track in the same language.
   const prefSubId = useMemo(() => {
@@ -239,7 +239,7 @@ export function usePlayerSession(
     const pref = opt ? { fileId: opt.fileId, language: opt.language } : null;
     setSubtitlePref(titleId, pref); // localStorage (instant + offline fallback)
     if (isAuthenticated && pref) {
-      saveSubPrefMut.mutate({ imdbId: titleId, ...pref });
+      saveSubtitleMut.mutate({ imdbId: titleId, ...pref });
     }
   }
 

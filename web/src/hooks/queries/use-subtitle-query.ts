@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSubtitlePrefs, putSubtitlePref, type SubtitlePrefItem } from '@/services/user';
+import { getSubtitles, putSubtitle, type SubtitleItem } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
 
-const SUBTITLE_PREFS_KEY = ['subtitle-prefs'] as const;
+const SUBTITLES_KEY = ['subtitles'] as const;
 
-export function useSubtitlePrefsQuery() {
+export function useSavedSubtitlesQuery() {
   const { isAuthenticated } = useAuth();
   return useQuery({
-    queryKey: SUBTITLE_PREFS_KEY,
-    queryFn: getSubtitlePrefs,
+    queryKey: SUBTITLES_KEY,
+    queryFn: getSubtitles,
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000,
   });
@@ -16,12 +16,12 @@ export function useSubtitlePrefsQuery() {
 
 // Saves a per-title subtitle selection. Patches the cache directly (one row per
 // imdbId) rather than refetching.
-export function useSaveSubtitlePref() {
+export function useSaveSubtitle() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (item: SubtitlePrefItem) => putSubtitlePref(item),
+    mutationFn: (item: SubtitleItem) => putSubtitle(item),
     onSuccess: (saved) => {
-      qc.setQueryData<SubtitlePrefItem[]>(SUBTITLE_PREFS_KEY, (old = []) => {
+      qc.setQueryData<SubtitleItem[]>(SUBTITLES_KEY, (old = []) => {
         const next = old.filter((p) => p.imdbId !== saved.imdbId);
         return [saved, ...next];
       });
