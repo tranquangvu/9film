@@ -171,6 +171,23 @@ type ImdbTitle struct {
 	Episodes          *EpisodesConnection    `json:"episodes,omitempty"`
 }
 
+// hasImage reports whether the title carries a usable poster or any gallery
+// image. Imageless titles render as blank cards, so every listing filters them
+// out (search, trending, browse, and — via browse — similar).
+func (t ImdbTitle) hasImage() bool {
+	if t.PrimaryImage != nil && t.PrimaryImage.URL != "" {
+		return true
+	}
+	if t.Images != nil {
+		for _, e := range t.Images.Edges {
+			if e.Node.URL != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type BrowseParams struct {
 	Type      string
 	Genre     string
@@ -323,7 +340,7 @@ func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 
 	titles := make([]ImdbTitle, 0, len(data.AdvancedTitleSearch.Edges))
 	for _, edge := range data.AdvancedTitleSearch.Edges {
-		if edge.Node.Title.ID != "" {
+		if edge.Node.Title.ID != "" && edge.Node.Title.hasImage() {
 			titles = append(titles, edge.Node.Title)
 		}
 	}
@@ -354,7 +371,8 @@ func TrendingTitles(limit int) ([]ImdbTitle, error) {
 
 	titles := make([]ImdbTitle, 0, len(data.TrendingTitles.Titles))
 	for _, title := range data.TrendingTitles.Titles {
-		if title.ID != "" {
+		// Skip imageless titles — they render as empty cards in the UI.
+		if title.ID != "" && title.hasImage() {
 			titles = append(titles, title)
 		}
 	}
@@ -457,7 +475,8 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 		EndCursor:   data.AdvancedTitleSearch.PageInfo.EndCursor,
 	}
 	for _, edge := range data.AdvancedTitleSearch.Edges {
-		if edge.Node.Title.ID != "" {
+		// Skip imageless titles — they render as empty cards in the UI.
+		if edge.Node.Title.ID != "" && edge.Node.Title.hasImage() {
 			result.Titles = append(result.Titles, edge.Node.Title)
 		}
 	}
