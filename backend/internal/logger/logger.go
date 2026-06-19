@@ -2,14 +2,25 @@ package logger
 
 import (
 	"os"
+	"sync"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-var log *zap.Logger
+var (
+	log      *zap.Logger
+	initOnce sync.Once
+)
 
+// Init builds the global logger. Guarded by sync.Once so it's safe to call
+// concurrently and idempotent — the first call wins, so main's explicit
+// dev/release choice isn't clobbered by a later lazy Get().
 func Init(isDev bool) {
+	initOnce.Do(func() { build(isDev) })
+}
+
+func build(isDev bool) {
 	var cfg zap.Config
 	if isDev {
 		cfg = zap.NewDevelopmentConfig()
@@ -28,9 +39,9 @@ func Init(isDev bool) {
 }
 
 func Get() *zap.Logger {
-	if log == nil {
-		Init(os.Getenv("GIN_MODE") != "release")
-	}
+	// No-op once initialized (the common path); otherwise lazily build with the
+	// env-derived mode so callers before Init() still get a usable logger.
+	Init(os.Getenv("GIN_MODE") != "release")
 	return log
 }
 
