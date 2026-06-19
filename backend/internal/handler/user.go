@@ -24,6 +24,25 @@ func NewUserHandler(st *store.Store, imdb *service.IMDb) *UserHandler {
 	return &UserHandler{store: st, imdb: imdb}
 }
 
+// RegisterRoutes mounts the per-user routes on the given group (expected to
+// carry AuthRequired).
+func (h *UserHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("", h.GetMe)
+	r.GET("/settings", h.GetSettings)
+	r.PUT("/settings", h.PutSettings)
+	r.GET("/favorites", h.GetFavorites)
+	r.POST("/favorites", h.AddFavorite)
+	r.DELETE("/favorites", h.RemoveFavorite)
+	r.GET("/watching", h.GetWatching)
+	r.PUT("/watching", h.PutProgress)
+	r.PUT("/subtitles", h.PutSubtitle)
+	r.GET("/words", h.GetWords)
+	r.GET("/words/stats", h.GetWordStats)
+	r.POST("/words", h.AddWord)
+	r.DELETE("/words", h.RemoveWord)
+	r.PUT("/words/complete", h.CompleteWord)
+}
+
 // GetMe returns the authenticated user's profile.
 func (h *UserHandler) GetMe(c *gin.Context) {
 	u, err := h.store.GetUserByID(middleware.UserID(c))

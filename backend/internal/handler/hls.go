@@ -18,6 +18,11 @@ func NewHLSHandler(hls *service.HLS) *HLSHandler {
 	return &HLSHandler{hls: hls}
 }
 
+// RegisterRoutes mounts GET /proxy/hls (registered at the root, outside /api).
+func (h *HLSHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("/proxy/hls", h.ForwardHLS)
+}
+
 func (h *HLSHandler) ForwardHLS(c *gin.Context) {
 	targetURL := c.Query("url")
 	if targetURL == "" {

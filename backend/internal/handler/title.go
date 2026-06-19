@@ -25,6 +25,16 @@ func NewTitleHandler(st *store.Store, imdb *service.IMDb) *TitleHandler {
 	return &TitleHandler{store: st, imdb: imdb}
 }
 
+// RegisterRoutes mounts the title routes on the given group (expected to carry
+// AuthOptional so signed-in users get the isFavorite flag).
+func (h *TitleHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("/search", h.SearchTitles)
+	r.GET("/trending", h.GetTrendingTitles)
+	r.GET("/browse", h.BrowseTitles)
+	r.GET("/:imdb/similar", h.GetSimilarTitles)
+	r.GET("/:imdb", h.GetTitle)
+}
+
 func parseLimit(c *gin.Context, fallback int) int {
 	limit, err := strconv.Atoi(c.DefaultQuery("limit", strconv.Itoa(fallback)))
 	if err != nil || limit <= 0 {

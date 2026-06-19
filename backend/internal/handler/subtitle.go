@@ -20,6 +20,11 @@ func NewSubtitleHandler(subs *service.Subtitles) *SubtitleHandler {
 	return &SubtitleHandler{subs: subs}
 }
 
+func (h *SubtitleHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("/search", h.SearchSubtitles)
+	r.GET("/download", h.GetSubtitleVTT)
+}
+
 func (h *SubtitleHandler) SearchSubtitles(c *gin.Context) {
 	if !h.subs.Configured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{

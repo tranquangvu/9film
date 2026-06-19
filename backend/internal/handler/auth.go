@@ -25,6 +25,11 @@ func NewAuthHandler(st *store.Store, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{store: st, cfg: cfg}
 }
 
+func (h *AuthHandler) RegisterRoutes(r gin.IRoutes) {
+	r.POST("/signup", h.Signup)
+	r.POST("/login", h.Login)
+}
+
 type signupRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

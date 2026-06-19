@@ -18,6 +18,11 @@ func NewStreamHandler(stream *service.Stream) *StreamHandler {
 	return &StreamHandler{stream: stream}
 }
 
+// RegisterRoutes mounts GET /stream on the given group (the /api group).
+func (h *StreamHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("/stream", h.GetStream)
+}
+
 func (h *StreamHandler) GetStream(c *gin.Context) {
 	result, err := h.stream.ProxyStreamRequest(c.Request.URL.RawQuery)
 	if err != nil {

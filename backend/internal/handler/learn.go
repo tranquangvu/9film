@@ -19,6 +19,11 @@ func NewLearnHandler(learn *service.Learn) *LearnHandler {
 	return &LearnHandler{learn: learn}
 }
 
+func (h *LearnHandler) RegisterRoutes(r gin.IRoutes) {
+	r.GET("/define", h.Define)
+	r.GET("/translate", h.Translate)
+}
+
 // Define looks up an English word and its translation into the target language.
 // GET /api/learn/define?word=...&target=vi
 func (h *LearnHandler) Define(c *gin.Context) {
