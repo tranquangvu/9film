@@ -218,7 +218,7 @@ func releaseCutoff() time.Time {
 	return time.Now().UTC().AddDate(0, -6, 0)
 }
 
-func imdbRequest(query string, variables map[string]any, dataTarget any) error {
+func (s *IMDb) imdbRequest(query string, variables map[string]any, dataTarget any) error {
 	payload, err := json.Marshal(graphqlRequest{Query: query, Variables: variables})
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func imdbRequest(query string, variables map[string]any, dataTarget any) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "NiceFilm/1.0")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("IMDb GraphQL request failed: %w", err)
 	}
@@ -269,30 +269,38 @@ type titleCacheEntry struct {
 	exp   time.Time
 }
 
-var (
-	titleCacheMu sync.RWMutex
-	titleCache   = map[string]titleCacheEntry{}
-)
+// IMDb serves the IMDb GraphQL integration. It owns the HTTP client and the
+// short-lived per-title detail cache, so a single shared instance keeps the
+// cache coherent across all callers.
+type IMDb struct {
+	client  *http.Client
+	cacheMu sync.RWMutex
+	cache   map[string]titleCacheEntry
+}
 
-func cachedTitle(id string) *ImdbTitle {
-	titleCacheMu.RLock()
-	e, ok := titleCache[id]
-	titleCacheMu.RUnlock()
+func NewIMDb() *IMDb {
+	return &IMDb{client: http.DefaultClient, cache: make(map[string]titleCacheEntry)}
+}
+
+func (s *IMDb) cachedTitle(id string) *ImdbTitle {
+	s.cacheMu.RLock()
+	e, ok := s.cache[id]
+	s.cacheMu.RUnlock()
 	if ok && time.Now().Before(e.exp) {
 		return e.title
 	}
 	return nil
 }
 
-func storeTitle(id string, t *ImdbTitle) {
-	titleCacheMu.Lock()
-	titleCache[id] = titleCacheEntry{title: t, exp: time.Now().Add(titleCacheTTL)}
-	titleCacheMu.Unlock()
+func (s *IMDb) storeTitle(id string, t *ImdbTitle) {
+	s.cacheMu.Lock()
+	s.cache[id] = titleCacheEntry{title: t, exp: time.Now().Add(titleCacheTTL)}
+	s.cacheMu.Unlock()
 }
 
 // GetTitle returns the flattened, client-ready detail for an IMDb id.
-func GetTitle(imdbID string) (*Title, error) {
-	raw, err := fetchTitle(imdbID)
+func (s *IMDb) GetTitle(imdbID string) (*Title, error) {
+	raw, err := s.fetchTitle(imdbID)
 	if err != nil {
 		return nil, err
 	}
@@ -302,9 +310,9 @@ func GetTitle(imdbID string) (*Title, error) {
 
 // fetchTitle returns the raw IMDb title (cached), for internal callers that need
 // the unflattened shape (e.g. SimilarTitles' genre/type lookup).
-func fetchTitle(imdbID string) (*ImdbTitle, error) {
+func (s *IMDb) fetchTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
-	if t := cachedTitle(id); t != nil {
+	if t := s.cachedTitle(id); t != nil {
 		return t, nil
 	}
 	query := fmt.Sprintf(`
@@ -318,7 +326,7 @@ func fetchTitle(imdbID string) (*ImdbTitle, error) {
 	var data struct {
 		Title *ImdbTitle `json:"title"`
 	}
-	if err := imdbRequest(query, map[string]any{"id": id}, &data); err != nil {
+	if err := s.imdbRequest(query, map[string]any{"id": id}, &data); err != nil {
 		// A GraphQL error on a title lookup means the id was rejected — treat it
 		// as "not found" rather than an upstream failure.
 		var gqlErr *graphQLError
@@ -330,11 +338,11 @@ func fetchTitle(imdbID string) (*ImdbTitle, error) {
 	if data.Title == nil || data.Title.ID == "" {
 		return nil, ErrTitleNotFound
 	}
-	storeTitle(id, data.Title)
+	s.storeTitle(id, data.Title)
 	return data.Title, nil
 }
 
-func SearchTitles(term string, limit int) ([]Title, error) {
+func (s *IMDb) SearchTitles(term string, limit int) ([]Title, error) {
 	term = strings.TrimSpace(term)
 	if term == "" {
 		return nil, nil
@@ -377,7 +385,7 @@ func SearchTitles(term string, limit int) ([]Title, error) {
 			} `json:"edges"`
 		} `json:"advancedTitleSearch"`
 	}
-	if err := imdbRequest(query, map[string]any{"first": limit, "constraints": constraints}, &data); err != nil {
+	if err := s.imdbRequest(query, map[string]any{"first": limit, "constraints": constraints}, &data); err != nil {
 		return nil, err
 	}
 
@@ -390,7 +398,7 @@ func SearchTitles(term string, limit int) ([]Title, error) {
 	return titles, nil
 }
 
-func TrendingTitles(limit int) ([]Title, error) {
+func (s *IMDb) TrendingTitles(limit int) ([]Title, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -408,7 +416,7 @@ func TrendingTitles(limit int) ([]Title, error) {
 			Titles []ImdbTitle `json:"titles"`
 		} `json:"trendingTitles"`
 	}
-	if err := imdbRequest(query, map[string]any{"limit": limit}, &data); err != nil {
+	if err := s.imdbRequest(query, map[string]any{"limit": limit}, &data); err != nil {
 		return nil, err
 	}
 
@@ -422,7 +430,7 @@ func TrendingTitles(limit int) ([]Title, error) {
 	return titles, nil
 }
 
-func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
+func (s *IMDb) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	first := params.First
 	if first <= 0 {
 		first = 20
@@ -509,7 +517,7 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 			} `json:"pageInfo"`
 		} `json:"advancedTitleSearch"`
 	}
-	if err := imdbRequest(query, variables, &data); err != nil {
+	if err := s.imdbRequest(query, variables, &data); err != nil {
 		return nil, err
 	}
 
@@ -526,8 +534,8 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	return result, nil
 }
 
-func SimilarTitles(imdbID string, limit int) ([]Title, error) {
-	title, err := fetchTitle(imdbID)
+func (s *IMDb) SimilarTitles(imdbID string, limit int) ([]Title, error) {
+	title, err := s.fetchTitle(imdbID)
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +555,7 @@ func SimilarTitles(imdbID string, limit int) ([]Title, error) {
 		}
 	}
 
-	result, err := BrowseTitles(BrowseParams{
+	result, err := s.BrowseTitles(BrowseParams{
 		Type:  mediaType,
 		Genre: genre,
 		First: limit + 5,

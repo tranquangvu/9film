@@ -74,14 +74,24 @@ func rewriteURIAttributes(line, sourceURL string) string {
 
 const embedReferer = "https://nextgencloudfabric.com/"
 
-func ProxyHLS(targetURL string) (*HLSResult, error) {
+// HLS proxies HLS manifests and segments, rewriting manifest URIs back through
+// the local /proxy/hls route so the CDN only ever sees the server's Referer.
+type HLS struct {
+	client *http.Client
+}
+
+func NewHLS() *HLS {
+	return &HLS{client: http.DefaultClient}
+}
+
+func (s *HLS) ProxyHLS(targetURL string) (*HLSResult, error) {
 	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Referer", embedReferer)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HLS upstream failed: %w", err)
 	}

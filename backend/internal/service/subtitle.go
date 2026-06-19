@@ -46,10 +46,21 @@ type tokenEntry struct {
 	expiresAt time.Time
 }
 
-var (
-	tokenMu    sync.Mutex
-	cachedTok  *tokenEntry
-)
+// Subtitles proxies the OpenSubtitles API. It holds the configured credentials
+// (nil when OpenSubtitles isn't configured) and caches the auth token.
+type Subtitles struct {
+	cfg     *SubtitleConfig
+	client  *http.Client
+	tokenMu sync.Mutex
+	token   *tokenEntry
+}
+
+func NewSubtitles(cfg *SubtitleConfig) *Subtitles {
+	return &Subtitles{cfg: cfg, client: http.DefaultClient}
+}
+
+// Configured reports whether OpenSubtitles credentials are present.
+func (s *Subtitles) Configured() bool { return s.cfg != nil }
 
 func baseSubsHeaders(apiKey string) map[string]string {
 	return map[string]string{
@@ -65,23 +76,23 @@ func applyHeaders(req *http.Request, headers map[string]string) {
 	}
 }
 
-func getAuthToken(apiKey, username, password string) (string, error) {
-	tokenMu.Lock()
-	defer tokenMu.Unlock()
+func (s *Subtitles) getAuthToken() (string, error) {
+	s.tokenMu.Lock()
+	defer s.tokenMu.Unlock()
 
-	if cachedTok != nil && time.Now().Before(cachedTok.expiresAt) {
-		return cachedTok.token, nil
+	if s.token != nil && time.Now().Before(s.token.expiresAt) {
+		return s.token.token, nil
 	}
 
 	payload, _ := json.Marshal(map[string]string{
-		"username": username,
-		"password": password,
+		"username": s.cfg.Username,
+		"password": s.cfg.Password,
 	})
 	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/login", bytes.NewReader(payload))
-	applyHeaders(req, baseSubsHeaders(apiKey))
+	applyHeaders(req, baseSubsHeaders(s.cfg.APIKey))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("OpenSubtitles login: %w", err)
 	}
@@ -98,7 +109,7 @@ func getAuthToken(apiKey, username, password string) (string, error) {
 		return "", fmt.Errorf("OpenSubtitles: no token in login response")
 	}
 
-	cachedTok = &tokenEntry{
+	s.token = &tokenEntry{
 		token:     result.Token,
 		expiresAt: time.Now().Add(23 * time.Hour),
 	}
@@ -112,8 +123,8 @@ func imdbToNumeric(imdb string) int {
 	return n
 }
 
-func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]SubtitleOption, error) {
-	if cfg == nil {
+func (s *Subtitles) SearchSubtitles(params SubtitleSearchParams) ([]SubtitleOption, error) {
+	if s.cfg == nil {
 		return nil, nil
 	}
 
@@ -148,9 +159,9 @@ func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]Subtit
 	}
 
 	req, _ := http.NewRequest(http.MethodGet, openSubsAPIBase+"/subtitles?"+q.Encode(), nil)
-	applyHeaders(req, baseSubsHeaders(cfg.APIKey))
+	applyHeaders(req, baseSubsHeaders(s.cfg.APIKey))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("OpenSubtitles search: %w", err)
 	}
@@ -163,11 +174,11 @@ func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]Subtit
 	var result struct {
 		Data []struct {
 			Attributes struct {
-				Language        string  `json:"language"`
-				Release         string  `json:"release"`
-				DownloadCount   int     `json:"download_count"`
+				Language         string `json:"language"`
+				Release          string `json:"release"`
+				DownloadCount    int    `json:"download_count"`
 				NewDownloadCount int    `json:"new_download_count"`
-				Files           []struct {
+				Files            []struct {
 					FileID   int    `json:"file_id"`
 					FileName string `json:"file_name"`
 				} `json:"files"`
@@ -210,27 +221,27 @@ func SearchSubtitles(cfg *SubtitleConfig, params SubtitleSearchParams) ([]Subtit
 	return options, nil
 }
 
-func DownloadSubtitleVTT(cfg *SubtitleConfig, fileID int) (string, error) {
-	if cfg == nil {
+func (s *Subtitles) DownloadSubtitleVTT(fileID int) (string, error) {
+	if s.cfg == nil {
 		return "", fmt.Errorf("OpenSubtitles not configured")
 	}
-	if cfg.Username == "" || cfg.Password == "" {
+	if s.cfg.Username == "" || s.cfg.Password == "" {
 		return "", fmt.Errorf("OpenSubtitles download requires OPENSUBTITLES_USERNAME and OPENSUBTITLES_PASSWORD")
 	}
 
-	token, err := getAuthToken(cfg.APIKey, cfg.Username, cfg.Password)
+	token, err := s.getAuthToken()
 	if err != nil {
 		return "", err
 	}
 
 	payload, _ := json.Marshal(map[string]int{"file_id": fileID})
 	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/download", bytes.NewReader(payload))
-	headers := baseSubsHeaders(cfg.APIKey)
+	headers := baseSubsHeaders(s.cfg.APIKey)
 	applyHeaders(req, headers)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("OpenSubtitles download: %w", err)
 	}
@@ -247,7 +258,7 @@ func DownloadSubtitleVTT(cfg *SubtitleConfig, fileID int) (string, error) {
 		return "", fmt.Errorf("OpenSubtitles: no link in download response")
 	}
 
-	text, err := fetchSubtitleText(dlResult.Link)
+	text, err := s.fetchSubtitleText(dlResult.Link)
 	if err != nil {
 		return "", err
 	}
@@ -262,11 +273,11 @@ func DownloadSubtitleVTT(cfg *SubtitleConfig, fileID int) (string, error) {
 	return srtToVTT(text), nil
 }
 
-func fetchSubtitleText(downloadURL string) (string, error) {
+func (s *Subtitles) fetchSubtitleText(downloadURL string) (string, error) {
 	req, _ := http.NewRequest(http.MethodGet, downloadURL, nil)
 	req.Header.Set("User-Agent", openSubsUserAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("subtitle file fetch: %w", err)
 	}

@@ -16,7 +16,16 @@ type StreamResult struct {
 	ContentType string
 }
 
-func ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
+// Stream proxies the upstream stream-resolution API.
+type Stream struct {
+	client *http.Client
+}
+
+func NewStream() *Stream {
+	return &Stream{client: http.DefaultClient}
+}
+
+func (s *Stream) ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 	target, err := url.Parse(streamAPIURL)
 	if err != nil {
 		return nil, err
@@ -35,7 +44,7 @@ func ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 	req.Header.Set("Referer", embedReferer)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("stream API request failed: %w", err)
 	}

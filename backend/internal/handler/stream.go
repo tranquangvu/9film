@@ -9,15 +9,22 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetStream() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		result, err := service.ProxyStreamRequest(c.Request.URL.RawQuery)
-		if err != nil {
-			logger.Get().Error("stream proxy failed", zap.Error(err))
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-			return
-		}
+// StreamHandler proxies the upstream stream-resolution request.
+type StreamHandler struct {
+	stream *service.Stream
+}
 
-		c.Data(result.Status, result.ContentType, result.Body)
+func NewStreamHandler(stream *service.Stream) *StreamHandler {
+	return &StreamHandler{stream: stream}
+}
+
+func (h *StreamHandler) GetStream(c *gin.Context) {
+	result, err := h.stream.ProxyStreamRequest(c.Request.URL.RawQuery)
+	if err != nil {
+		logger.Get().Error("stream proxy failed", zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
 	}
+
+	c.Data(result.Status, result.ContentType, result.Body)
 }

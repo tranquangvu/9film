@@ -46,18 +46,30 @@ type dictAPIResponse struct {
 	} `json:"meanings"`
 }
 
-var dictClient = &http.Client{Timeout: 8 * time.Second}
+// Learn serves the language-learning helpers (dictionary lookups + machine
+// translation), each over its own timeout-bounded HTTP client.
+type Learn struct {
+	dictClient      *http.Client
+	translateClient *http.Client
+}
+
+func NewLearn() *Learn {
+	return &Learn{
+		dictClient:      &http.Client{Timeout: 8 * time.Second},
+		translateClient: &http.Client{Timeout: 8 * time.Second},
+	}
+}
 
 // Define looks up an English word on dictionaryapi.dev and flattens the result.
 // Returns (nil, nil) when the word has no entry (upstream 404) so callers can
 // still return a translation-only response.
-func Define(word string) (*Definition, error) {
+func (l *Learn) Define(word string) (*Definition, error) {
 	endpoint := dictAPIBase + "/" + url.PathEscape(word)
 	req, _ := http.NewRequest(http.MethodGet, endpoint, nil)
 	req.Header.Set("User-Agent", openSubsUserAgent)
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := dictClient.Do(req)
+	resp, err := l.dictClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("dictionary lookup: %w", err)
 	}

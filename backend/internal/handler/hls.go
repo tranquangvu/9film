@@ -9,21 +9,28 @@ import (
 	"go.uber.org/zap"
 )
 
-func ForwardHLS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		targetURL := c.Query("url")
-		if targetURL == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "url query param required"})
-			return
-		}
+// HLSHandler proxies HLS manifests/segments, rewriting URIs back through itself.
+type HLSHandler struct {
+	hls *service.HLS
+}
 
-		result, err := service.ProxyHLS(targetURL)
-		if err != nil {
-			logger.Get().Error("HLS proxy failed", zap.String("url", targetURL), zap.Error(err))
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-			return
-		}
+func NewHLSHandler(hls *service.HLS) *HLSHandler {
+	return &HLSHandler{hls: hls}
+}
 
-		c.Data(result.Status, result.ContentType, result.Body)
+func (h *HLSHandler) ForwardHLS(c *gin.Context) {
+	targetURL := c.Query("url")
+	if targetURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url query param required"})
+		return
 	}
+
+	result, err := h.hls.ProxyHLS(targetURL)
+	if err != nil {
+		logger.Get().Error("HLS proxy failed", zap.String("url", targetURL), zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(result.Status, result.ContentType, result.Body)
 }

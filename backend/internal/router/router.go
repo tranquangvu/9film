@@ -12,6 +12,7 @@ import (
 	"github.com/bentran/nicefilm/backend/internal/handler"
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
+	"github.com/bentran/nicefilm/backend/internal/service"
 	"github.com/bentran/nicefilm/backend/internal/store"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -51,61 +52,86 @@ func New(cfg *config.Config, st *store.Store) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Services own the upstream integrations + their caches/credentials; a single
+	// IMDb instance is shared so its title cache stays coherent across handlers.
+	imdbSvc := service.NewIMDb()
+	streamSvc := service.NewStream()
+	hlsSvc := service.NewHLS()
+	learnSvc := service.NewLearn()
+
+	var subCfg *service.SubtitleConfig
+	if cfg.OpenSubtitles != nil {
+		subCfg = &service.SubtitleConfig{
+			APIKey:   cfg.OpenSubtitles.APIKey,
+			Username: cfg.OpenSubtitles.Username,
+			Password: cfg.OpenSubtitles.Password,
+		}
+	}
+	subsSvc := service.NewSubtitles(subCfg)
+
+	titleH := handler.NewTitleHandler(st, imdbSvc)
+	subtitleH := handler.NewSubtitleHandler(subsSvc)
+	streamH := handler.NewStreamHandler(streamSvc)
+	learnH := handler.NewLearnHandler(learnSvc)
+	authH := handler.NewAuthHandler(st, cfg)
+	userH := handler.NewUserHandler(st, imdbSvc)
+	hlsH := handler.NewHLSHandler(hlsSvc)
+
 	api := r.Group("/api")
 	{
 		// Public, but AuthOptional lets signed-in users get the `isFavorite` flag.
 		title := api.Group("/title", middleware.AuthOptional(cfg))
 		{
-			title.GET("/search", handler.SearchTitles(st))
-			title.GET("/trending", handler.GetTrendingTitles(st))
-			title.GET("/browse", handler.BrowseTitles(st))
-			title.GET("/:imdb/similar", handler.GetSimilarTitles(st))
-			title.GET("/:imdb", handler.GetTitle(st))
+			title.GET("/search", titleH.SearchTitles)
+			title.GET("/trending", titleH.GetTrendingTitles)
+			title.GET("/browse", titleH.BrowseTitles)
+			title.GET("/:imdb/similar", titleH.GetSimilarTitles)
+			title.GET("/:imdb", titleH.GetTitle)
 		}
 
 		subs := api.Group("/subtitle")
 		{
-			subs.GET("/search", handler.SearchSubtitles(cfg))
-			subs.GET("/download", handler.GetSubtitleVTT(cfg))
+			subs.GET("/search", subtitleH.SearchSubtitles)
+			subs.GET("/download", subtitleH.GetSubtitleVTT)
 		}
 
-		api.GET("/stream", handler.GetStream())
+		api.GET("/stream", streamH.GetStream)
 
 		// Language-learning helpers (public)
 		learn := api.Group("/learn")
 		{
-			learn.GET("/define", handler.Define())
-			learn.GET("/translate", handler.Translate())
+			learn.GET("/define", learnH.Define)
+			learn.GET("/translate", learnH.Translate)
 		}
 
 		// Auth (public)
 		authGrp := api.Group("/auth")
 		{
-			authGrp.POST("/signup", handler.Signup(st, cfg))
-			authGrp.POST("/login", handler.Login(st, cfg))
+			authGrp.POST("/signup", authH.Signup)
+			authGrp.POST("/login", authH.Login)
 		}
 
 		// Per-user data (protected)
 		me := api.Group("/me", middleware.AuthRequired(cfg))
 		{
-			me.GET("", handler.GetMe(st))
-			me.GET("/settings", handler.GetSettings(st))
-			me.PUT("/settings", handler.PutSettings(st))
-			me.GET("/favorites", handler.GetFavorites(st))
-			me.POST("/favorites", handler.AddFavorite(st))
-			me.DELETE("/favorites", handler.RemoveFavorite(st))
-			me.GET("/watching", handler.GetWatching(st))
-			me.PUT("/watching", handler.PutProgress(st))
-			me.PUT("/subtitles", handler.PutSubtitle(st))
-			me.GET("/words", handler.GetWords(st))
-			me.GET("/words/stats", handler.GetWordStats(st))
-			me.POST("/words", handler.AddWord(st))
-			me.DELETE("/words", handler.RemoveWord(st))
-			me.PUT("/words/complete", handler.CompleteWord(st))
+			me.GET("", userH.GetMe)
+			me.GET("/settings", userH.GetSettings)
+			me.PUT("/settings", userH.PutSettings)
+			me.GET("/favorites", userH.GetFavorites)
+			me.POST("/favorites", userH.AddFavorite)
+			me.DELETE("/favorites", userH.RemoveFavorite)
+			me.GET("/watching", userH.GetWatching)
+			me.PUT("/watching", userH.PutProgress)
+			me.PUT("/subtitles", userH.PutSubtitle)
+			me.GET("/words", userH.GetWords)
+			me.GET("/words/stats", userH.GetWordStats)
+			me.POST("/words", userH.AddWord)
+			me.DELETE("/words", userH.RemoveWord)
+			me.PUT("/words/complete", userH.CompleteWord)
 		}
 	}
 
-	r.GET("/proxy/hls", handler.ForwardHLS())
+	r.GET("/proxy/hls", hlsH.ForwardHLS)
 
 	return r
 }
