@@ -1,7 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ToastProvider } from "@/components/ui/toast";
-import { Toaster } from "@/components/ui/toaster";
+import { ToastProvider, Toaster } from "@/components/ui/toast";
 import { AuthProvider } from "@/context/auth-context";
 import { RequireAuth } from "@/components/system/common/require-auth";
 

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
-import { Tag } from '@/components/ui/tag';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -468,13 +468,13 @@ function WordGroupList({
 function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
   const c = wordColor(word.word);
   return (
-    <Tag
+    <Badge variant="tag"
       onClick={onClick}
       style={{ background: c.background, borderColor: c.borderColor, color: c.color }}
       className="capitalize cursor-pointer hover:brightness-125"
     >
       {word.word}
-    </Tag>
+    </Badge>
   );
 }
 
@@ -538,10 +538,10 @@ export default function MyLearningPage() {
                 { id: 'learn', label: 'To Learn', icon: <BookOpen className="w-3.5 h-3.5" /> },
                 { id: 'completed', label: 'Completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
               ] as const).map((t) => (
-                <Tag key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
+                <Badge variant="tag" key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
                   {t.icon}
                   {t.label}
-                </Tag>
+                </Badge>
               ))}
             </div>
 

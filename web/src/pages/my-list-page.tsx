@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { X, FolderHeart, BookmarkCheck, Play, Loader2 } from 'lucide-react';
+import { FolderHeart, HeartPlus, Play, Loader2 } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
@@ -12,7 +12,7 @@ import { VirtualMovieGrid } from '@/components/system/movie/virtual-movie-grid';
 import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
-import { Tag } from '@/components/ui/tag';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
 
 type TabId = 'all' | 'saved' | 'continue'
@@ -34,7 +34,7 @@ interface Tab {
 
 const tabs: Tab[] = [
   { id: 'all', label: 'All', icon: <FolderHeart className="w-3.5 h-3.5" /> },
-  { id: 'saved', label: 'Favorites', icon: <BookmarkCheck className="w-3.5 h-3.5" /> },
+  { id: 'saved', label: 'Favorites', icon: <HeartPlus className="w-3.5 h-3.5" /> },
   { id: 'continue', label: 'Continue Watching', icon: <Play className="w-3.5 h-3.5" /> },
 ];
 
@@ -45,20 +45,7 @@ interface RemovableCardProps {
 
 function RemovableCard({ movie, onRemove }: RemovableCardProps) {
   return (
-    <div className="relative group/removable">
-      <MovieCard movie={movie} size="lg" className="w-full" />
-
-      <button
-        className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/70 border border-zinc-600 hover:bg-red-600 hover:border-red-500 flex items-center justify-center transition-all opacity-0 scale-90 group-hover/removable:opacity-100 group-hover/removable:scale-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(movie);
-        }}
-        aria-label="Remove from list"
-      >
-        <X className="w-3.5 h-3.5 text-white" />
-      </button>
-    </div>
+    <MovieCard movie={movie} size="lg" className="w-full" onRemove={() => onRemove(movie)} />
   );
 }
 
@@ -148,8 +135,6 @@ export default function MyListPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, [showFavGrid, favHasMore, favVisible, favIds.length]);
 
-  const savedCount = favIds.length;
-
   return (
     <div className="min-h-screen bg-background pb-16">
       {/* Page header */}
@@ -161,7 +146,7 @@ export default function MyListPage() {
         >
           <h1 className="text-3xl md:text-4xl font-bold text-white">My List</h1>
           <p className="text-zinc-500 mt-1 text-sm">
-            {savedCount} title{savedCount !== 1 ? 's' : ''} saved
+            Your favorite titles and watch history
           </p>
         </motion.div>
       </div>
@@ -170,14 +155,14 @@ export default function MyListPage() {
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-8 lg:px-12 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {tabs.map((tab) => (
-            <Tag
+            <Badge variant="tag"
               key={tab.id}
               active={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.icon}
               {tab.label}
-            </Tag>
+            </Badge>
           ))}
         </div>
       </div>

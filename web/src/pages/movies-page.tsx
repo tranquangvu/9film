@@ -5,7 +5,7 @@ import { X, ListFilter } from "lucide-react";
 import { genres, genreName } from "@/data/genres";
 import { useTitleListing } from "@/hooks/use-title-listing";
 import { cn } from "@/utils/cn";
-import { Tag } from "@/components/ui/tag";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -246,7 +246,7 @@ export default function MoviesPage() {
                 {genres.map((g) => {
                   const active = draftGenres.has(g.id);
                   return (
-                    <Tag
+                    <Badge variant="tag"
                       key={g.id}
                       active={false}
                       onClick={() => toggleDraftGenre(g.id)}
@@ -263,7 +263,7 @@ export default function MoviesPage() {
                     >
                       <span className="text-base leading-none">{g.icon}</span>
                       {g.name}
-                    </Tag>
+                    </Badge>
                   );
                 })}
               </div>

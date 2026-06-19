@@ -4,6 +4,7 @@ import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import type { Movie } from '@/types';
+import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
 interface Top10CardProps {
@@ -79,7 +80,11 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
               )}
               title={favorite.active ? 'Remove from favorites' : 'Add to favorites'}
             >
-              <Heart className={cn('w-3.5 h-3.5', favorite.active && 'fill-orange-400')} />
+              <OrangeGradientDefs />
+              <Heart
+                className="w-3.5 h-3.5"
+                style={favorite.active ? { fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL } : undefined}
+              />
             </button>
           </div>
         </div>

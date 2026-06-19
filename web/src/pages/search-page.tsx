@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SearchResultsSkeleton } from '@/components/system/movie/skeletons';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
-import { Tag } from '@/components/ui/tag';
+import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Movie } from '@/types';
@@ -223,14 +223,14 @@ export default function SearchPage() {
 
               <div className="flex flex-wrap gap-2.5">
                 {TRENDING_TAGS.map((tag) => (
-                  <Tag
+                  <Badge variant="tag"
                     key={tag}
                     active={false}
                     onClick={() => handleQueryChange(tag)}
                     className="bg-surface-2 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10 px-4 py-2 transition-transform hover:scale-105 active:scale-95"
                   >
                     {tag}
-                  </Tag>
+                  </Badge>
                 ))}
               </div>
 

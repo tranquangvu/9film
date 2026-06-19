@@ -8,9 +8,9 @@ import {
   Share2,
   ArrowLeft,
   Star,
+  Calendar,
   Clock,
   MapPin,
-  Layers,
   Film,
   CirclePlay,
 } from "lucide-react";
@@ -23,9 +23,10 @@ import { cn } from "@/utils/cn";
 import { formatDuration, formatRating, formatYear } from "@/utils/format";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select";
-import { Tag } from "@/components/ui/tag";
+import { Badge } from "@/components/ui/badge";
 import { MovieCard } from "@/components/system/movie/movie-card";
 import { GenreBadge } from "@/components/system/movie/genre-badge";
+import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from "@/components/system/common/orange-gradient";
 import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
 import { useFavoriteButton } from "@/hooks/queries/use-favorites-query";
 import {
@@ -228,19 +229,20 @@ export default function MovieDetailPage() {
 
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-7 text-sm text-zinc-300">
-            <span className="font-semibold text-white">
+            <span className="flex items-center gap-1 font-semibold text-white">
+              <Calendar className="w-3.5 h-3.5 text-zinc-500" />
               {formatYear(movie.year)}
             </span>
             {movie.duration > 0 && (
               <>
-                <span className="text-zinc-600">·</span>
+                <span className="w-px h-4 bg-zinc-700" />
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-zinc-500" />
                   {formatDuration(movie.duration)}
                 </span>
               </>
             )}
-            <span className="text-zinc-600">·</span>
+            <span className="w-px h-4 bg-zinc-700" />
             <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-zinc-500" />
               {movie.country}
@@ -248,9 +250,9 @@ export default function MovieDetailPage() {
             {movie.type === "series" &&
               (movie.totalSeasons || movie.totalEpisodes) && (
                 <>
-                  <span className="text-zinc-600">·</span>
+                  <span className="w-px h-4 bg-zinc-700" />
                   <span className="flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                    <Film className="w-3.5 h-3.5 text-zinc-500" />
                     {movie.totalSeasons != null && (
                       <>
                         {movie.totalSeasons}{" "}
@@ -266,9 +268,10 @@ export default function MovieDetailPage() {
                   </span>
                 </>
               )}
-            <span className="text-zinc-600">·</span>
+            <span className="w-px h-4 bg-zinc-700" />
             <span className="flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+              <OrangeGradientDefs />
+              <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
               <span className="font-bold text-white">
                 {formatRating(movie.rating)}
               </span>
@@ -276,7 +279,7 @@ export default function MovieDetailPage() {
             </span>
             {isWatchingMovie && (
               <>
-                <span className="text-zinc-600">·</span>
+                <span className="w-px h-4 bg-zinc-700" />
                 <span className="flex items-center gap-1 font-medium text-orange-400">
                   <Play className="w-3.5 h-3.5" />
                   {watchPercent}% watched
@@ -315,8 +318,10 @@ export default function MovieDetailPage() {
               )}
               title={favorite.active ? "Remove from favorites" : "Add to favorites"}
             >
+              <OrangeGradientDefs />
               <Heart
-                className={cn("w-5 h-5", favorite.active && "fill-orange-500")}
+                className="w-5 h-5"
+                style={favorite.active ? { fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL } : undefined}
               />
             </button>
 
@@ -386,7 +391,7 @@ export default function MovieDetailPage() {
                     `${activeSeason}:${ep}`,
                   );
                   return (
-                    <Tag
+                    <Badge variant="tag"
                       key={ep}
                       onClick={() =>
                         navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
@@ -398,7 +403,7 @@ export default function MovieDetailPage() {
                         <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
                       ) : null}
                       E{String(ep).padStart(2, "0")}
-                    </Tag>
+                    </Badge>
                   );
                 })}
               </div>

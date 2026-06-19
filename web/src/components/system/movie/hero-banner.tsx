@@ -5,6 +5,7 @@ import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import type { Movie } from '@/types';
@@ -226,9 +227,11 @@ export function HeroBanner({ movies }: HeroBannerProps) {
                 </>
               )}
               <span className="w-px h-4 bg-zinc-700" />
-              <span className="flex items-center gap-1.5 text-orange-400 font-semibold">
-                <Star className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
-                {formatRating(activeMovie.rating)}
+              <span className="flex items-center gap-1.5">
+                <OrangeGradientDefs />
+                <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
+                <span className="font-bold text-white">{formatRating(activeMovie.rating)}</span>
+                <span className="text-zinc-500 text-xs">IMDb</span>
               </span>
               {activeMovie.type === 'series' && activeMovie.totalSeasons && (
                 <>

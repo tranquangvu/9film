@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Heart } from 'lucide-react';
+import { Play, Heart, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import { formatDuration, formatYear } from '@/utils/format';
 import type { Movie } from '@/types';
 import { RatingBadge } from '@/components/system/movie/rating-badge';
 import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
 interface MovieCardProps {
@@ -14,6 +15,7 @@ interface MovieCardProps {
   className?: string
   showProgress?: boolean
   size?: 'sm' | 'md' | 'lg'
+  onRemove?: () => void
 }
 
 const sizeClasses = {
@@ -22,7 +24,7 @@ const sizeClasses = {
   lg: 'w-56',
 };
 
-export function MovieCard({ movie, className, showProgress = false, size = 'md' }: MovieCardProps) {
+export function MovieCard({ movie, className, showProgress = false, size = 'md', onRemove }: MovieCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const favorite = useFavoriteButton(movie.id, movie.type, movie.isFavorite);
@@ -73,12 +75,25 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
               onClick={favorite.onToggle}
               aria-label="Remove from favorites"
               title="Remove from favorites"
-              className="w-6 h-6 rounded-full flex items-center justify-center bg-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
+              className="w-6 h-6 rounded-full flex items-center justify-center bg-white/15 border border-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
             >
-              <Heart className="w-3 h-3 fill-orange-500 text-orange-500" />
+              <OrangeGradientDefs />
+              <Heart className="w-3 h-3" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
             </button>
           )}
         </div>
+
+        {/* Remove button — centered below the play button, revealed on card hover */}
+        {onRemove && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            aria-label="Remove from list"
+            title="Remove from list"
+            className="absolute left-1/2 -translate-x-1/2 top-[calc(50%+16px)] z-20 w-9 h-9 rounded-full bg-white text-black shadow-lg flex items-center justify-center transition-all opacity-0 group-hover/card:opacity-100 hover:bg-red-50 hover:scale-110 active:scale-95"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Hover overlay (CSS-only) */}
         <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover/card:opacity-100 transition-opacity duration-200 pointer-events-none group-hover/card:pointer-events-auto">
@@ -103,7 +118,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md' 
               <span>{formatYear(movie.year)}</span>
               {movie.duration > 0 && (
                 <>
-                  <span className="w-1 h-1 bg-zinc-400 rounded-full inline-block" />
+                  <span className="w-px h-3 bg-zinc-600 inline-block" />
                   <span>{formatDuration(movie.duration)}</span>
                 </>
               )}

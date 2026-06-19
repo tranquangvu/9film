@@ -5,7 +5,7 @@ import { X, ListFilter } from "lucide-react";
 import { genres, genreName } from "@/data/genres";
 import { useTitleListing } from "@/hooks/use-title-listing";
 import { cn } from "@/utils/cn";
-import { Tag } from "@/components/ui/tag";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -284,14 +284,14 @@ export default function BrowsePage() {
               </h3>
               <div className="flex flex-wrap gap-3">
                 {TYPE_OPTIONS.map((type) => (
-                  <Tag
+                  <Badge variant="tag"
                     key={type.id}
                     active={draftType === type.id}
                     onClick={() => toggleDraftType(type.id)}
                   >
                     <span className="text-base leading-none">{type.icon}</span>
                     {type.label}
-                  </Tag>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -305,7 +305,7 @@ export default function BrowsePage() {
                 {genres.map((g) => {
                   const active = draftGenres.has(g.id);
                   return (
-                    <Tag
+                    <Badge variant="tag"
                       key={g.id}
                       active={false}
                       onClick={() => toggleDraftGenre(g.id)}
@@ -322,7 +322,7 @@ export default function BrowsePage() {
                     >
                       <span className="text-base leading-none">{g.icon}</span>
                       {g.name}
-                    </Tag>
+                    </Badge>
                   );
                 })}
               </div>
