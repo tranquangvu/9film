@@ -407,6 +407,61 @@ function WordDialog({
   );
 }
 
+// ── Day grouping ───────────────────────────────────────────────────────────────
+interface DayGroup {
+  key: string;
+  date: Date;
+  words: SavedWord[];
+}
+
+// Bucket words by the local calendar day of `dateOf`, newest day first and
+// newest word first within each day. Used for both the added and completed
+// lists so they share an identical day-grouped layout.
+function groupByDay(words: SavedWord[], dateOf: (w: SavedWord) => string | undefined): DayGroup[] {
+  const map = new Map<string, DayGroup>();
+  for (const w of words) {
+    const d = parseDate(dateOf(w)) ?? new Date(0);
+    const key = dayKey(d);
+    const entry = map.get(key);
+    if (entry) entry.words.push(w);
+    else map.set(key, { key, date: d, words: [w] });
+  }
+  const ts = (w: SavedWord) => parseDate(dateOf(w))?.getTime() ?? 0;
+  const groups = [...map.values()];
+  for (const g of groups) g.words.sort((a, b) => ts(b) - ts(a));
+  return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
+// Day-grouped chips, shared by the To Learn and Completed tabs.
+function WordGroupList({
+  groups,
+  onSelect,
+}: {
+  groups: DayGroup[];
+  onSelect: (w: SavedWord) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      {groups.map((g) => (
+        <motion.div key={g.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-medium text-zinc-300">{friendlyDay(g.date)}</span>
+            <span className="text-xs text-zinc-600">
+              <span className="mr-2">|</span>
+              {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {g.words.map((w) => (
+              <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
+            ))}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 // ── Word badge ───────────────────────────────────────────────────────────────
 // Each word carries its own stable, translucent color (derived from the word
 // text) so the "To Learn" and "Completed" lists read as soft, colorful chips.
@@ -415,7 +470,7 @@ function WordBadge({ word, onClick }: { word: SavedWord; onClick: () => void }) 
   return (
     <Tag
       onClick={onClick}
-      style={c}
+      style={{ background: c.background, borderColor: c.borderColor, color: c.color }}
       className="capitalize cursor-pointer hover:brightness-125"
     >
       {word.word}
@@ -434,18 +489,9 @@ export default function MyLearningPage() {
   const added = useMemo(() => all.filter((w) => !w.completedAt), [all]);
   const completed = useMemo(() => all.filter((w) => w.completedAt), [all]);
 
-  // Added words grouped by their added day (input order is already newest-first).
-  const addedGroups = useMemo(() => {
-    const map = new Map<string, { date: Date; words: SavedWord[] }>();
-    for (const w of added) {
-      const d = parseDate(w.createdAt) ?? new Date(0);
-      const key = dayKey(d);
-      const entry = map.get(key);
-      if (entry) entry.words.push(w);
-      else map.set(key, { date: d, words: [w] });
-    }
-    return [...map.entries()].map(([key, v]) => ({ key, ...v }));
-  }, [added]);
+  // Added words grouped by their added day, completed words by their completed day.
+  const addedGroups = useMemo(() => groupByDay(added, (w) => w.createdAt), [added]);
+  const completedGroups = useMemo(() => groupByDay(completed, (w) => w.completedAt), [completed]);
 
   // Keep the open dialog's data fresh after completion (it reorders the list).
   const selectedLive = selected
@@ -508,28 +554,7 @@ export default function MyLearningPage() {
                   <p className="text-sm text-zinc-500 mt-1">Every saved word has been completed.</p>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  {addedGroups.map((g) => (
-                    <motion.div
-                      key={g.key}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-sm font-medium text-zinc-300">{friendlyDay(g.date)}</span>
-                        <span className="text-xs text-zinc-600">
-                          <span className="mr-2">|</span>
-                          {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {g.words.map((w) => (
-                          <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                <WordGroupList groups={addedGroups} onSelect={setSelected} />
               )
             ) : completed.length === 0 ? (
               <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
@@ -538,11 +563,7 @@ export default function MyLearningPage() {
                 <p className="text-sm text-zinc-500 mt-1">Finish a word's practice to move it here.</p>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {completed.map((w) => (
-                  <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
-                ))}
-              </div>
+              <WordGroupList groups={completedGroups} onSelect={setSelected} />
             )}
           </div>
         )}
