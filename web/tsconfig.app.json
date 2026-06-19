@@ -25,7 +25,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    /* baseUrl is deprecated in TS 7; silence the error so `tsc -b` still
+       type-checks instead of aborting. */
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }

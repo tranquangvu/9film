@@ -70,9 +70,9 @@ export default function MovieDetailPage() {
   const galleryImages = useMemo<string[]>(() => {
     const title = titleQuery.data;
     if (!title) return [];
-    const urls = (
-      title.images?.edges?.map((edge) => edge?.node?.url) ?? []
-    ).filter((url): url is string => !!url);
+    const urls = (title.images?.map((img) => img.url) ?? []).filter(
+      (url): url is string => !!url,
+    );
     return [...new Set(urls)];
   }, [titleQuery.data]);
 

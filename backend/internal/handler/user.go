@@ -128,7 +128,7 @@ func GetProgress(st *store.Store) gin.HandlerFunc {
 // the client can render the Continue Watching list without a per-title lookup.
 type continueWatchingItem struct {
 	store.Progress
-	Title *service.ImdbTitle `json:"title,omitempty"`
+	Title *service.Title `json:"title,omitempty"`
 }
 
 // Bound concurrent IMDb lookups per request so a page doesn't fan out 50 calls.

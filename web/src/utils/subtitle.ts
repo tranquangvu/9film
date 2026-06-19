@@ -1,5 +1,5 @@
 import type { EmbedParams } from './stream';
-import type { ImdbTitle } from './title';
+import type { Title } from './title';
 
 const LIMIT = 5;
 
@@ -19,7 +19,7 @@ export interface SubtitleSearchContext {
 
 export function pickSubs(
   subs: SubtitleOption[],
-  title: ImdbTitle,
+  title: Title,
   params: EmbedParams,
   preferredLang?: string,
 ): { list: SubtitleOption[]; fileId: number | null } {
@@ -34,7 +34,7 @@ export function pickSubs(
   const pool = langPool.length ? langPool : sorted;
 
   let fileId = pool[0].fileId;
-  const name = title.titleText?.text?.trim();
+  const name = title.title?.trim();
 
   if (name) {
     const base = name.replace(/\s+/g, '.');
@@ -44,8 +44,8 @@ export function pickSubs(
       const s = String(params.season).padStart(2, '0');
       const e = String(params.episode).padStart(2, '0');
       pattern = `${base}.S${s}E${e}`;
-    } else if (title.releaseYear?.year != null) {
-      pattern = `${base}.${title.releaseYear.year}`;
+    } else if (title.year) {
+      pattern = `${base}.${title.year}`;
     }
 
     const pl = pattern.toLowerCase();

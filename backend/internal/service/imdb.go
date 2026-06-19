@@ -197,9 +197,9 @@ type BrowseParams struct {
 }
 
 type BrowseResult struct {
-	Titles      []ImdbTitle `json:"titles"`
-	HasNextPage bool        `json:"hasNextPage"`
-	EndCursor   string      `json:"endCursor,omitempty"`
+	Titles      []Title `json:"titles"`
+	HasNextPage bool    `json:"hasNextPage"`
+	EndCursor   string  `json:"endCursor,omitempty"`
 }
 
 type graphqlRequest struct {
@@ -290,7 +290,19 @@ func storeTitle(id string, t *ImdbTitle) {
 	titleCacheMu.Unlock()
 }
 
-func GetTitle(imdbID string) (*ImdbTitle, error) {
+// GetTitle returns the flattened, client-ready detail for an IMDb id.
+func GetTitle(imdbID string) (*Title, error) {
+	raw, err := fetchTitle(imdbID)
+	if err != nil {
+		return nil, err
+	}
+	out := toTitle(*raw)
+	return &out, nil
+}
+
+// fetchTitle returns the raw IMDb title (cached), for internal callers that need
+// the unflattened shape (e.g. SimilarTitles' genre/type lookup).
+func fetchTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
 	if t := cachedTitle(id); t != nil {
 		return t, nil
@@ -322,7 +334,7 @@ func GetTitle(imdbID string) (*ImdbTitle, error) {
 	return data.Title, nil
 }
 
-func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
+func SearchTitles(term string, limit int) ([]Title, error) {
 	term = strings.TrimSpace(term)
 	if term == "" {
 		return nil, nil
@@ -369,16 +381,16 @@ func SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 		return nil, err
 	}
 
-	titles := make([]ImdbTitle, 0, len(data.AdvancedTitleSearch.Edges))
+	titles := make([]Title, 0, len(data.AdvancedTitleSearch.Edges))
 	for _, edge := range data.AdvancedTitleSearch.Edges {
 		if edge.Node.Title.ID != "" && edge.Node.Title.hasImage() {
-			titles = append(titles, edge.Node.Title)
+			titles = append(titles, toTitle(edge.Node.Title))
 		}
 	}
 	return titles, nil
 }
 
-func TrendingTitles(limit int) ([]ImdbTitle, error) {
+func TrendingTitles(limit int) ([]Title, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -400,11 +412,11 @@ func TrendingTitles(limit int) ([]ImdbTitle, error) {
 		return nil, err
 	}
 
-	titles := make([]ImdbTitle, 0, len(data.TrendingTitles.Titles))
+	titles := make([]Title, 0, len(data.TrendingTitles.Titles))
 	for _, title := range data.TrendingTitles.Titles {
 		// Skip imageless titles — they render as empty cards in the UI.
 		if title.ID != "" && title.hasImage() {
-			titles = append(titles, title)
+			titles = append(titles, toTitle(title))
 		}
 	}
 	return titles, nil
@@ -508,14 +520,14 @@ func BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	for _, edge := range data.AdvancedTitleSearch.Edges {
 		// Skip imageless titles — they render as empty cards in the UI.
 		if edge.Node.Title.ID != "" && edge.Node.Title.hasImage() {
-			result.Titles = append(result.Titles, edge.Node.Title)
+			result.Titles = append(result.Titles, toTitle(edge.Node.Title))
 		}
 	}
 	return result, nil
 }
 
-func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
-	title, err := GetTitle(imdbID)
+func SimilarTitles(imdbID string, limit int) ([]Title, error) {
+	title, err := fetchTitle(imdbID)
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +556,7 @@ func SimilarTitles(imdbID string, limit int) ([]ImdbTitle, error) {
 		return nil, err
 	}
 
-	filtered := make([]ImdbTitle, 0, limit)
+	filtered := make([]Title, 0, limit)
 	for _, item := range result.Titles {
 		if item.ID == title.ID {
 			continue

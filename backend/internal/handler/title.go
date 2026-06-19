@@ -41,7 +41,7 @@ func favoritedSet(c *gin.Context, st *store.Store) map[string]struct{} {
 
 // markFavorites flags each title the user has favorited (in place; no-op when
 // the set is nil, i.e. anonymous).
-func markFavorites(set map[string]struct{}, titles []service.ImdbTitle) {
+func markFavorites(set map[string]struct{}, titles []service.Title) {
 	if set == nil {
 		return
 	}

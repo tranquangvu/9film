@@ -1,4 +1,4 @@
-import type { BrowseResult, ImdbTitle } from '@/utils/title';
+import type { BrowseResult, Title } from '@/utils/title';
 import { normId, origLang } from '@/utils/title';
 import { apiFetch, ApiError } from '@/lib/api-fetch';
 
@@ -13,10 +13,10 @@ export class TitleNotFoundError extends Error {
 // These endpoints are public, but we still go through apiFetch so the bearer
 // token rides along when signed in — the backend uses it to stamp each title's
 // `isFavorite` flag.
-export async function getTitle(imdbId: string, signal?: AbortSignal): Promise<ImdbTitle> {
+export async function getTitle(imdbId: string, signal?: AbortSignal): Promise<Title> {
   const id = encodeURIComponent(normId(imdbId));
   try {
-    const json = await apiFetch<ImdbTitle>(`/api/title/${id}`, { signal });
+    const json = await apiFetch<Title>(`/api/title/${id}`, { signal });
     if (!json.id) throw new TitleNotFoundError(imdbId);
     return json;
   } catch (err) {
@@ -25,14 +25,14 @@ export async function getTitle(imdbId: string, signal?: AbortSignal): Promise<Im
   }
 }
 
-export async function searchTitles(q: string, limit = 20, signal?: AbortSignal): Promise<ImdbTitle[]> {
+export async function searchTitles(q: string, limit = 20, signal?: AbortSignal): Promise<Title[]> {
   const params = new URLSearchParams({ q, limit: String(limit) });
-  const json = await apiFetch<{ titles?: ImdbTitle[] }>(`/api/title/search?${params}`, { signal });
+  const json = await apiFetch<{ titles?: Title[] }>(`/api/title/search?${params}`, { signal });
   return json.titles ?? [];
 }
 
-export async function getTrendingTitles(limit = 10, signal?: AbortSignal): Promise<ImdbTitle[]> {
-  const json = await apiFetch<{ titles?: ImdbTitle[] }>(`/api/title/trending?limit=${limit}`, { signal });
+export async function getTrendingTitles(limit = 10, signal?: AbortSignal): Promise<Title[]> {
+  const json = await apiFetch<{ titles?: Title[] }>(`/api/title/trending?limit=${limit}`, { signal });
   return json.titles ?? [];
 }
 
@@ -52,9 +52,9 @@ export async function browseTitles(
   return { titles: json.titles ?? [], hasNextPage: json.hasNextPage ?? false, endCursor: json.endCursor };
 }
 
-export async function getSimilarTitles(imdbId: string, limit = 6, signal?: AbortSignal): Promise<ImdbTitle[]> {
+export async function getSimilarTitles(imdbId: string, limit = 6, signal?: AbortSignal): Promise<Title[]> {
   const id = encodeURIComponent(normId(imdbId));
-  const json = await apiFetch<{ titles?: ImdbTitle[] }>(`/api/title/${id}/similar?limit=${limit}`, { signal });
+  const json = await apiFetch<{ titles?: Title[] }>(`/api/title/${id}/similar?limit=${limit}`, { signal });
   return json.titles ?? [];
 }
 

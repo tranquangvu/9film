@@ -1,4 +1,4 @@
-import { heroTitles, matchesHeroGenres, toMovies, type ImdbTitle } from '@/utils/title';
+import { heroTitles, matchesHeroGenres, toMovies, type Title } from '@/utils/title';
 import type { Movie } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
 import { useContinueWatching } from './queries/use-progress-query';
@@ -35,12 +35,12 @@ export function useResumeTitles() {
 
 // Carve the hero + Top 10 out of the popular feed, excluding every title already
 // shown in the Popular rows so the sections never 100% duplicate each other.
-// Dedup is by IMDb id (Movie.id === ImdbTitle.id).
+// Dedup is by IMDb id (Movie.id === Title.id).
 export function selectHeroAndTop10({
   candidates,
   popularRows,
 }: {
-  candidates: ImdbTitle[];
+  candidates: Title[];
   popularRows: Movie[];
 }): { hero: Movie[]; top10: Movie[] } {
   const excluded = new Set(popularRows.map((m) => m.id));
