@@ -151,8 +151,8 @@ export function HeroBannerSkeleton() {
 
           {/* CTA buttons */}
           <div className="flex items-center gap-3 flex-wrap">
-            <Skeleton className="h-12 w-36 rounded-xl" />
-            <Skeleton className="h-12 w-36 rounded-xl" />
+            <Skeleton className="h-12 w-32 rounded-full" />
+            <Skeleton className="h-12 w-12 rounded-full" />
           </div>
         </div>
       </div>

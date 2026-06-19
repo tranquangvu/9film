@@ -258,18 +258,19 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => { if (!isDragging.current) navigate(`/watch/${activeMovie.id}`); }}
-                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm orange-glow transition-transform hover:scale-[1.03] active:scale-[0.97]')}
+                className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]')}
               >
-                <Play className="w-4 h-4 fill-white" />
+                <Play className="w-6 h-6 fill-white" />
                 Play Now
               </button>
 
               <button
                 onClick={() => { if (!isDragging.current) navigate(`/movie/${activeMovie.id}`); }}
-                className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'rounded-xl px-6 py-3 text-sm text-white hover:bg-white/15 transition-transform hover:scale-[1.03] active:scale-[0.97]')}
+                title="More Info"
+                aria-label="More Info"
+                className="w-12 h-12 rounded-full flex items-center justify-center border glass border-white/20 text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-90"
               >
-                <Info className="w-4 h-4" />
-                More Info
+                <Info className="w-5 h-5" />
               </button>
             </div>
         </div>

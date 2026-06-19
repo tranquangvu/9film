@@ -62,31 +62,28 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
           </div>
         )}
 
-        {/* Hover overlay (CSS-only) */}
-        <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-          <div className="relative z-10 p-2 flex items-center justify-between">
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/watch/${movie.id}`); }}
-              className="w-8 h-8 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-lg shadow-orange-500/30"
-            >
-              <Play className="w-3.5 h-3.5 fill-white text-white" />
-            </button>
-            <button
-              onClick={favorite.onToggle}
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
-                favorite.active ? 'bg-orange-500/20 text-orange-400' : 'bg-white/10 hover:bg-white/20 text-white',
-              )}
-              title={favorite.active ? 'Remove from favorites' : 'Add to favorites'}
-            >
-              <OrangeGradientDefs />
-              <Heart
-                className="w-3.5 h-3.5"
-                style={favorite.active ? { fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL } : undefined}
-              />
-            </button>
-          </div>
+        {/* Favorite indicator — always visible when favorited (default style) */}
+        {favorite.active && (
+          <button
+            onClick={(e) => { e.stopPropagation(); favorite.onToggle(); }}
+            aria-label="Remove from favorites"
+            title="Remove from favorites"
+            className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full flex items-center justify-center bg-white/15 border border-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
+          >
+            <OrangeGradientDefs />
+            <Heart className="w-3 h-3" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
+          </button>
+        )}
+
+        {/* Hover overlay (CSS-only) — centered play button */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/watch/${movie.id}`); }}
+            className="relative w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/40 transition-transform hover:scale-110 active:scale-95"
+          >
+            <Play className="w-5 h-5 fill-white text-white ml-0.5" />
+          </button>
         </div>
       </div>
     </div>

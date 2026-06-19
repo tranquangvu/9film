@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Play,
   Heart,
+  HeartPlus,
   Share2,
   ArrowLeft,
   Star,
@@ -229,7 +230,7 @@ export default function MovieDetailPage() {
 
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-7 text-sm text-zinc-300">
-            <span className="flex items-center gap-1 font-semibold text-white">
+            <span className="flex items-center gap-1.5 font-semibold text-white">
               <Calendar className="w-3.5 h-3.5 text-zinc-500" />
               {formatYear(movie.year)}
             </span>
@@ -319,10 +320,14 @@ export default function MovieDetailPage() {
               title={favorite.active ? "Remove from favorites" : "Add to favorites"}
             >
               <OrangeGradientDefs />
-              <Heart
-                className="w-5 h-5"
-                style={favorite.active ? { fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL } : undefined}
-              />
+              {favorite.active ? (
+                <Heart
+                  className="w-5 h-5"
+                  style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }}
+                />
+              ) : (
+                <HeartPlus className="w-5 h-5" />
+              )}
             </button>
 
             {/* Share */}
