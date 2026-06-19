@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderHeart, HeartPlus, Play, Loader2 } from 'lucide-react';
+import { FolderHeart, HeartPlus, Play } from 'lucide-react';
 import type { Movie } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
@@ -12,6 +12,7 @@ import { VirtualMovieGrid } from '@/components/system/movie/virtual-movie-grid';
 import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
+import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
 
@@ -201,11 +202,7 @@ export default function MyListPage() {
                   <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />
                 ))}
               </div>
-              {favLoadingMore && (
-                <div className="flex justify-center mt-8 text-zinc-500">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-              )}
+              {favLoadingMore && <LoadMoreIndicator className="mt-8" />}
             </>
           ) : (
             <Empty
@@ -226,13 +223,16 @@ export default function MyListPage() {
           {continueInitialLoading ? (
             <MovieGridSkeleton />
           ) : continueWatching.length > 0 ? (
-            <VirtualMovieGrid
-              items={continueWatching}
-              showProgress
-              hasMore={!!continueQ.hasNextPage}
-              isLoadingMore={continueQ.isFetchingNextPage}
-              onLoadMore={continueQ.fetchNextPage}
-            />
+            <>
+              <VirtualMovieGrid
+                items={continueWatching}
+                showProgress
+                hasMore={!!continueQ.hasNextPage}
+                isLoadingMore={continueQ.isFetchingNextPage}
+                onLoadMore={continueQ.fetchNextPage}
+              />
+              {continueQ.isFetchingNextPage && <LoadMoreIndicator className="mt-8" />}
+            </>
           ) : (
             <Empty
               icon="📺"

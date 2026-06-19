@@ -1,6 +1,6 @@
 import { memo } from "react";
-import { Loader2 } from "lucide-react";
 import { VirtualMovieGrid } from "@/components/system/movie/virtual-movie-grid";
+import { LoadMoreIndicator } from "@/components/system/common/load-more-indicator";
 import { Empty } from "@/components/system/common/empty";
 import { MovieGridSkeleton } from "@/components/system/movie/skeletons";
 import type { Movie } from "@/types";
@@ -52,11 +52,7 @@ export const BrowseContent = memo(function BrowseContent({
             onLoadMore={onLoadMore}
           />
 
-          {isLoadingMore && (
-            <div className="flex justify-center mt-8 text-zinc-500">
-              <Loader2 className="w-5 h-5 animate-spin" />
-            </div>
-          )}
+          {isLoadingMore && <LoadMoreIndicator className="mt-8" />}
         </>
       )}
     </div>

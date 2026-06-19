@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -41,6 +41,11 @@ export default function MovieDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const mouseStartX = useRef<number | null>(null);
+  const isDragging = useRef(false);
+  const wheelCooldown = useRef(false);
   const { toast } = useToast();
 
   const titleQuery = useTitleQuery(id);
@@ -84,13 +89,87 @@ export default function MovieDetailPage() {
   const currentEpisode = useCurrentEpisode(id);
   const movieProgress = useMovieProgress(id);
 
+  const goToNextImage = useCallback(() => {
+    setActiveImageIndex((i) => (i + 1) % galleryImages.length);
+  }, [galleryImages.length]);
+
+  const goToPrevImage = useCallback(() => {
+    setActiveImageIndex(
+      (i) => (i - 1 + galleryImages.length) % galleryImages.length,
+    );
+  }, [galleryImages.length]);
+
   useEffect(() => {
     if (galleryImages.length < 2) return;
-    const timer = setInterval(() => {
-      setActiveImageIndex((i) => (i + 1) % galleryImages.length);
-    }, 6000);
+    const timer = setInterval(goToNextImage, 6000);
     return () => clearInterval(timer);
-  }, [galleryImages.length]);
+  }, [galleryImages.length, goToNextImage]);
+
+  // Swipe / horizontal-wheel navigation across the hero gallery, mirroring the
+  // home hero banner. Non-passive touch/wheel listeners so we can preventDefault.
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el || galleryImages.length < 2) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return;
+      const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+      const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+      if (dx > dy && dx > 10) e.preventDefault();
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartX.current === null) return;
+      const delta = touchStartX.current - e.changedTouches[0].clientX;
+      if (Math.abs(delta) > 50) { if (delta > 0) goToNextImage(); else goToPrevImage(); }
+      touchStartX.current = null;
+      touchStartY.current = null;
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      if (Math.abs(e.deltaX) < 30) return;
+      e.preventDefault(); // blocks browser back/forward navigation
+      if (wheelCooldown.current) return;
+      wheelCooldown.current = true;
+      if (e.deltaX > 0) goToNextImage(); else goToPrevImage();
+      setTimeout(() => { wheelCooldown.current = false; }, 800);
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [galleryImages.length, goToNextImage, goToPrevImage]);
+
+  const handleHeroMouseDown = (e: React.MouseEvent) => {
+    mouseStartX.current = e.clientX;
+    isDragging.current = false;
+  };
+
+  const handleHeroMouseMove = (e: React.MouseEvent) => {
+    if (mouseStartX.current === null) return;
+    if (Math.abs(e.clientX - mouseStartX.current) > 5) isDragging.current = true;
+  };
+
+  const handleHeroMouseUp = (e: React.MouseEvent) => {
+    if (mouseStartX.current === null) return;
+    const delta = mouseStartX.current - e.clientX;
+    if (Math.abs(delta) > 60) { if (delta > 0) goToNextImage(); else goToPrevImage(); }
+    mouseStartX.current = null;
+  };
 
   useEffect(() => {
     if (titleQuery.isError) {
@@ -163,7 +242,15 @@ export default function MovieDetailPage() {
   return (
     <div className="min-h-screen bg-background text-white">
       {/* ── HERO SECTION ── */}
-      <div ref={heroRef} className="relative w-full h-screen overflow-hidden">
+      <div
+        ref={heroRef}
+        className="relative w-full h-screen overflow-hidden"
+        onMouseDown={handleHeroMouseDown}
+        onMouseMove={handleHeroMouseMove}
+        onMouseUp={handleHeroMouseUp}
+        onMouseLeave={handleHeroMouseUp}
+        style={{ userSelect: "none", overscrollBehaviorX: "none" }}
+      >
         {/* Backdrop — crossfades through gallery images. The base layer always
             stays fully opaque while the incoming image fades in on top, so the
             composite never dips to the (dark) background mid-transition. */}

@@ -260,7 +260,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
                 onClick={() => { if (!isDragging.current) navigate(`/watch/${activeMovie.id}`); }}
                 className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]')}
               >
-                <Play className="w-6 h-6 fill-white" />
+                <Play className="w-5 h-5 fill-white" />
                 Play Now
               </button>
 
