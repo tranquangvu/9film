@@ -1,8 +1,48 @@
-package store
+// Package database owns the SQLite connection and schema. It hands a *sql.DB to
+// each module's repository; the pure-Go modernc.org/sqlite driver keeps the
+// build cgo-free.
+package database
 
-// migrate creates the schema if it doesn't exist. Statements are idempotent so
+import (
+	"database/sql"
+	"fmt"
+
+	_ "modernc.org/sqlite"
+)
+
+// Open opens (creating if needed) the SQLite database at path, applies pragmas,
+// and ensures the schema exists.
+func Open(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite: %w", err)
+	}
+
+	// One connection avoids "database is locked" under SQLite's single-writer
+	// model while still being plenty for this workload.
+	db.SetMaxOpenConns(1)
+
+	for _, pragma := range []string{
+		"PRAGMA journal_mode=WAL",
+		"PRAGMA foreign_keys=ON",
+		"PRAGMA busy_timeout=5000",
+	} {
+		if _, err := db.Exec(pragma); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("pragma %q: %w", pragma, err)
+		}
+	}
+
+	if err := Migrate(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	return db, nil
+}
+
+// Migrate creates the schema if it doesn't exist. Statements are idempotent so
 // this can run on every startup.
-func (s *Store) migrate() error {
+func Migrate(db *sql.DB) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +103,7 @@ func (s *Store) migrate() error {
 	}
 
 	for _, stmt := range stmts {
-		if _, err := s.db.Exec(stmt); err != nil {
+		if _, err := db.Exec(stmt); err != nil {
 			return err
 		}
 	}

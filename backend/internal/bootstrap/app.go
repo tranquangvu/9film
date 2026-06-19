@@ -1,16 +1,19 @@
 package bootstrap
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/handler"
-	"github.com/bentran/nicefilm/backend/internal/service"
+	"github.com/bentran/nicefilm/backend/internal/learn"
+	"github.com/bentran/nicefilm/backend/internal/media"
 	"github.com/bentran/nicefilm/backend/internal/shared/config"
+	"github.com/bentran/nicefilm/backend/internal/shared/database"
 	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
-	"github.com/bentran/nicefilm/backend/internal/store"
+	"github.com/bentran/nicefilm/backend/internal/title"
+	"github.com/bentran/nicefilm/backend/internal/user"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -21,11 +24,54 @@ import (
 type App struct {
 	Config *config.Config
 	Router *gin.Engine
-	Store  *store.Store
+	DB     *sql.DB
 }
 
-// NewApp loads config, opens the store, wires every module (service → handler →
-// routes), and returns a ready-to-serve App. Fatal on unrecoverable setup errors.
+// titleEnricher adapts the user repository to title.Enricher so the title module
+// can fold per-user favorite/progress/subtitle state into its responses without
+// importing the user package (the dependency must point one way: user → title).
+type titleEnricher struct {
+	users *user.Repository
+}
+
+func (e titleEnricher) FavoritedSet(userID int64) map[string]struct{} {
+	set, err := e.users.FavoritedSet(userID)
+	if err != nil {
+		logger.Get().Warn("favorited set lookup failed", zap.Error(err))
+		return nil
+	}
+	return set
+}
+
+func (e titleEnricher) Progress(userID int64, imdbID string) []title.TitleProgress {
+	rows, err := e.users.GetTitleProgress(userID, imdbID)
+	if err != nil {
+		return nil
+	}
+	out := make([]title.TitleProgress, len(rows))
+	for i, r := range rows {
+		out[i] = title.TitleProgress{
+			Season:          r.Season,
+			Episode:         r.Episode,
+			PositionSeconds: r.PositionSeconds,
+			DurationSeconds: r.DurationSeconds,
+			UpdatedAt:       r.UpdatedAt,
+		}
+	}
+	return out
+}
+
+func (e titleEnricher) SubtitlePref(userID int64, imdbID string) *title.TitleSubtitle {
+	sub, err := e.users.GetTitleSubtitle(userID, imdbID)
+	if err != nil || sub == nil {
+		return nil
+	}
+	return &title.TitleSubtitle{FileID: sub.FileID, Language: sub.Language}
+}
+
+// NewApp loads config, opens the database, wires every module (repository →
+// service → handler → routes), and returns a ready-to-serve App. Fatal on
+// unrecoverable setup errors.
 func NewApp() *App {
 	cfg := config.Load()
 	logger.Init(os.Getenv("GIN_MODE") != "release")
@@ -35,7 +81,7 @@ func NewApp() *App {
 		log.Fatal("JWT_SECRET is required (set it in backend/.env)")
 	}
 
-	st, err := store.Open(cfg.DBPath)
+	db, err := database.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatal("failed to open database", zap.Error(err))
 	}
@@ -43,32 +89,37 @@ func NewApp() *App {
 	router := gin.New()
 	router.Use(requestLogger(), recovery(), cors.New(corsConfig()))
 
-	// Services own the upstream integrations + their caches/credentials; a single
-	// IMDb instance is shared so its title cache stays coherent across handlers.
-	imdbSvc := service.NewIMDb()
-	streamSvc := service.NewStream()
-	hlsSvc := service.NewHLS()
-	learnSvc := service.NewLearn()
-	subsSvc := service.NewSubtitles(subtitleConfig(cfg))
+	// Repositories own data access (DB-backed or the upstream IMDb GraphQL).
+	userRepo := user.NewRepository(db)
+	learnRepo := learn.NewRepository(db)
+	titleRepo := title.NewRepository()
+
+	// Services own the business logic + upstream integrations. A single title
+	// repository keeps its detail cache coherent across all callers.
+	titleSvc := title.NewService(titleRepo)
+	userSvc := user.NewService(userRepo, cfg, titleSvc)
+	learnSvc := learn.NewService(learnRepo)
+	streamSvc := media.NewStream()
+	hlsSvc := media.NewHLS()
+	subsSvc := media.NewSubtitles(subtitleConfig(cfg))
 
 	// Handlers (one per module).
-	titleH := handler.NewTitleHandler(st, imdbSvc)
-	subtitleH := handler.NewSubtitleHandler(subsSvc)
-	streamH := handler.NewStreamHandler(streamSvc)
-	learnH := handler.NewLearnHandler(learnSvc)
-	authH := handler.NewAuthHandler(st, cfg)
-	userH := handler.NewUserHandler(st, imdbSvc)
-	hlsH := handler.NewHLSHandler(hlsSvc)
+	titleH := title.NewHandler(titleSvc, titleEnricher{users: userRepo})
+	userH := user.NewHandler(userSvc)
+	learnH := learn.NewHandler(learnSvc)
+	mediaH := media.NewHandler(streamSvc, hlsSvc, subsSvc)
 
 	// Routes — each module registers its own onto a (middleware-scoped) group.
 	api := router.Group("/api")
 	titleH.RegisterRoutes(api.Group("/title", middleware.AuthOptional(cfg))) // signed-in → isFavorite
-	subtitleH.RegisterRoutes(api.Group("/subtitle"))
-	streamH.RegisterRoutes(api)
+	mediaH.RegisterSubtitleRoutes(api.Group("/subtitle"))
+	mediaH.RegisterStreamRoutes(api)
 	learnH.RegisterRoutes(api.Group("/learn"))
-	authH.RegisterRoutes(api.Group("/auth"))
-	userH.RegisterRoutes(api.Group("/me", middleware.AuthRequired(cfg)))
-	hlsH.RegisterRoutes(router)
+	userH.RegisterAuthRoutes(api.Group("/auth"))
+	me := api.Group("/me", middleware.AuthRequired(cfg))
+	userH.RegisterRoutes(me)
+	learnH.RegisterWordRoutes(me)
+	mediaH.RegisterHLSRoutes(router)
 
 	log.Info("starting 9film backend",
 		zap.Int("port", cfg.Port),
@@ -77,7 +128,7 @@ func NewApp() *App {
 		zap.Bool("subtitles_configured", cfg.OpenSubtitles != nil),
 	)
 
-	return &App{Config: cfg, Router: router, Store: st}
+	return &App{Config: cfg, Router: router, DB: db}
 }
 
 // Run starts the HTTP server (blocks until it stops).
@@ -87,8 +138,8 @@ func (a *App) Run() error {
 
 // Close releases the App's resources. Safe to defer from main.
 func (a *App) Close() {
-	if a.Store != nil {
-		a.Store.Close()
+	if a.DB != nil {
+		a.DB.Close()
 	}
 	logger.Sync()
 }
@@ -104,13 +155,13 @@ func corsConfig() cors.Config {
 	}
 }
 
-// subtitleConfig maps the app config's OpenSubtitles block into the service's
-// config, or nil when OpenSubtitles isn't configured.
-func subtitleConfig(cfg *config.Config) *service.SubtitleConfig {
+// subtitleConfig maps the app config's OpenSubtitles block into the media
+// service's config, or nil when OpenSubtitles isn't configured.
+func subtitleConfig(cfg *config.Config) *media.SubtitleConfig {
 	if cfg.OpenSubtitles == nil {
 		return nil
 	}
-	return &service.SubtitleConfig{
+	return &media.SubtitleConfig{
 		APIKey:   cfg.OpenSubtitles.APIKey,
 		Username: cfg.OpenSubtitles.Username,
 		Password: cfg.OpenSubtitles.Password,

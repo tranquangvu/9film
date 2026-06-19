@@ -1,32 +1,21 @@
-package store
+package learn
 
-type Word struct {
-	Word        string  `json:"word"`
-	Sentence    string  `json:"sentence"`
-	Translation string  `json:"translation"`
-	ImdbID      string  `json:"imdbId"`
-	Season      int     `json:"season"`
-	Episode     int     `json:"episode"`
-	Timestamp   float64 `json:"timestamp"`
-	CreatedAt   string  `json:"createdAt"`
-	CompletedAt string  `json:"completedAt"`
+import "database/sql"
+
+// Repository is the SQLite-backed persistence layer for saved vocabulary words.
+type Repository struct {
+	db *sql.DB
 }
 
-// WordStat is a saved word stripped to the fields the learning page's progress
-// chart, header counts, and "is this word already saved?" lookups need. Omitting
-// the heavy sentence/translation/scene fields keeps the full set cheap to load
-// even while the rendered list itself is paginated.
-type WordStat struct {
-	Word        string `json:"word"`
-	CreatedAt   string `json:"createdAt"`
-	CompletedAt string `json:"completedAt"`
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{db: db}
 }
 
 // GetWordStats returns every saved word in lightweight form, newest-added first.
 // Backs the progress chart, the to-learn/completed totals, and the saved-word
 // set — all of which need the whole vocabulary, not just the current page.
-func (s *Store) GetWordStats(userID int64) ([]WordStat, error) {
-	rows, err := s.db.Query(
+func (r *Repository) GetWordStats(userID int64) ([]WordStat, error) {
+	rows, err := r.db.Query(
 		`SELECT word, created_at, completed_at
 		   FROM words WHERE user_id = ?
 		   ORDER BY created_at DESC`,
@@ -52,12 +41,12 @@ func (s *Store) GetWordStats(userID int64) ([]WordStat, error) {
 // "completed" (ordered by when they were learned) or anything else meaning
 // "to learn" (ordered by when they were added) — newest first either way. Backs
 // the per-tab infinite-scrolling lists on the learning page.
-func (s *Store) GetWords(userID int64, status string, limit, offset int) ([]Word, error) {
+func (r *Repository) GetWords(userID int64, status string, limit, offset int) ([]Word, error) {
 	where, order := "completed_at = ''", "created_at DESC"
 	if status == "completed" {
 		where, order = "completed_at != ''", "completed_at DESC"
 	}
-	rows, err := s.db.Query(
+	rows, err := r.db.Query(
 		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at
 		   FROM words WHERE user_id = ? AND `+where+`
 		   ORDER BY `+order+`
@@ -85,8 +74,8 @@ func (s *Store) GetWords(userID int64, status string, limit, offset int) ([]Word
 
 // AddWord upserts a word (idempotent on the user_id+word PK). Re-saving a word
 // refreshes its context/scene but leaves its completed state untouched.
-func (s *Store) AddWord(userID int64, w Word) error {
-	_, err := s.db.Exec(
+func (r *Repository) AddWord(userID int64, w Word) error {
+	_, err := r.db.Exec(
 		`INSERT INTO words
 		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp)
 		   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,8 +91,8 @@ func (s *Store) AddWord(userID int64, w Word) error {
 	return err
 }
 
-func (s *Store) RemoveWord(userID int64, word string) error {
-	_, err := s.db.Exec(
+func (r *Repository) RemoveWord(userID int64, word string) error {
+	_, err := r.db.Exec(
 		`DELETE FROM words WHERE user_id = ? AND word = ?`,
 		userID, word,
 	)
@@ -112,8 +101,8 @@ func (s *Store) RemoveWord(userID int64, word string) error {
 
 // CompleteWord marks a word as learned, moving it out of the "added" list and
 // into the completed list. Stamps the moment of completion for the progress chart.
-func (s *Store) CompleteWord(userID int64, word string) error {
-	_, err := s.db.Exec(
+func (r *Repository) CompleteWord(userID int64, word string) error {
+	_, err := r.db.Exec(
 		`UPDATE words SET completed_at = datetime('now') WHERE user_id = ? AND word = ?`,
 		userID, word,
 	)

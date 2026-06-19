@@ -1,33 +1,41 @@
-package handler
+package title
 
 import (
 	"errors"
 	"net/http"
 	"strconv"
 
-	"github.com/bentran/nicefilm/backend/internal/service"
 	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/bentran/nicefilm/backend/internal/shared/middleware"
-	"github.com/bentran/nicefilm/backend/internal/store"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// TitleHandler serves the public IMDb title endpoints (search, trending, browse,
-// similar, detail). It carries the store so signed-in requests can be enriched
-// with favorite/progress/subtitle state, and the IMDb service for the lookups.
-type TitleHandler struct {
-	store *store.Store
-	imdb  *service.IMDb
+// Enricher supplies per-user state (favorites, progress, subtitle preference)
+// used to enrich title responses for signed-in requests. It is implemented in
+// the bootstrap package (backed by the user repository) so the title module
+// never imports user — keeping the dependency direction one-way.
+type Enricher interface {
+	FavoritedSet(userID int64) map[string]struct{}
+	Progress(userID int64, imdbID string) []TitleProgress
+	SubtitlePref(userID int64, imdbID string) *TitleSubtitle
 }
 
-func NewTitleHandler(st *store.Store, imdb *service.IMDb) *TitleHandler {
-	return &TitleHandler{store: st, imdb: imdb}
+// Handler serves the public IMDb title endpoints (search, trending, browse,
+// similar, detail). It carries the title service for lookups and an Enricher so
+// signed-in requests can be enriched with favorite/progress/subtitle state.
+type Handler struct {
+	svc      *Service
+	enricher Enricher
+}
+
+func NewHandler(svc *Service, enricher Enricher) *Handler {
+	return &Handler{svc: svc, enricher: enricher}
 }
 
 // RegisterRoutes mounts the title routes on the given group (expected to carry
 // AuthOptional so signed-in users get the isFavorite flag).
-func (h *TitleHandler) RegisterRoutes(r gin.IRoutes) {
+func (h *Handler) RegisterRoutes(r gin.IRoutes) {
 	r.GET("/search", h.SearchTitles)
 	r.GET("/trending", h.GetTrendingTitles)
 	r.GET("/browse", h.BrowseTitles)
@@ -48,22 +56,17 @@ func parseLimit(c *gin.Context, fallback int) int {
 
 // favoritedSet returns the requesting user's favorited imdb ids, or nil when the
 // request is anonymous (AuthOptional left no user) or the lookup fails.
-func (h *TitleHandler) favoritedSet(c *gin.Context) map[string]struct{} {
+func (h *Handler) favoritedSet(c *gin.Context) map[string]struct{} {
 	uid := middleware.UserID(c)
 	if uid == 0 {
 		return nil
 	}
-	set, err := h.store.FavoritedSet(uid)
-	if err != nil {
-		logger.Get().Warn("favorited set lookup failed", zap.Error(err))
-		return nil
-	}
-	return set
+	return h.enricher.FavoritedSet(uid)
 }
 
 // markFavorites flags each title the user has favorited (in place; no-op when
 // the set is nil, i.e. anonymous).
-func markFavorites(set map[string]struct{}, titles []service.Title) {
+func markFavorites(set map[string]struct{}, titles []Title) {
 	if set == nil {
 		return
 	}
@@ -74,18 +77,18 @@ func markFavorites(set map[string]struct{}, titles []service.Title) {
 	}
 }
 
-func (h *TitleHandler) GetTitle(c *gin.Context) {
+func (h *Handler) GetTitle(c *gin.Context) {
 	imdbID := c.Param("imdb")
 	if imdbID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing title id"})
 		return
 	}
 
-	title, err := h.imdb.GetTitle(imdbID)
+	title, err := h.svc.GetTitle(imdbID)
 	if err != nil {
 		// An unknown/invalid id is a client-side miss, not an upstream failure —
 		// return 404 so callers can show an empty result without a noisy error.
-		if errors.Is(err, service.ErrTitleNotFound) {
+		if errors.Is(err, ErrTitleNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "title not found"})
 			return
 		}
@@ -98,38 +101,29 @@ func (h *TitleHandler) GetTitle(c *gin.Context) {
 	// points so the detail/watch pages don't need separate /favorites or
 	// /progress calls.
 	if uid := middleware.UserID(c); uid != 0 {
-		if set, err := h.store.FavoritedSet(uid); err == nil {
+		if set := h.enricher.FavoritedSet(uid); set != nil {
 			if _, ok := set[title.ID]; ok {
 				title.IsFavorite = true
 			}
 		}
-		if rows, err := h.store.GetTitleProgress(uid, title.ID); err == nil {
-			title.Progress = make([]service.TitleProgress, len(rows))
-			for i, r := range rows {
-				title.Progress[i] = service.TitleProgress{
-					Season:          r.Season,
-					Episode:         r.Episode,
-					PositionSeconds: r.PositionSeconds,
-					DurationSeconds: r.DurationSeconds,
-					UpdatedAt:       r.UpdatedAt,
-				}
-			}
+		if rows := h.enricher.Progress(uid, title.ID); rows != nil {
+			title.Progress = rows
 		}
-		if sub, err := h.store.GetTitleSubtitle(uid, title.ID); err == nil && sub != nil {
-			title.SubtitlePref = &service.TitleSubtitle{FileID: sub.FileID, Language: sub.Language}
+		if sub := h.enricher.SubtitlePref(uid, title.ID); sub != nil {
+			title.SubtitlePref = sub
 		}
 	}
 	c.JSON(http.StatusOK, title)
 }
 
-func (h *TitleHandler) SearchTitles(c *gin.Context) {
+func (h *Handler) SearchTitles(c *gin.Context) {
 	q := c.Query("q")
 	if q == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing search query"})
 		return
 	}
 
-	titles, err := h.imdb.SearchTitles(q, parseLimit(c, 20))
+	titles, err := h.svc.SearchTitles(q, parseLimit(c, 20))
 	if err != nil {
 		logger.Get().Warn("title search failed", zap.String("q", q), zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -139,8 +133,8 @@ func (h *TitleHandler) SearchTitles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"titles": titles})
 }
 
-func (h *TitleHandler) GetTrendingTitles(c *gin.Context) {
-	titles, err := h.imdb.TrendingTitles(parseLimit(c, 10))
+func (h *Handler) GetTrendingTitles(c *gin.Context) {
+	titles, err := h.svc.TrendingTitles(parseLimit(c, 10))
 	if err != nil {
 		logger.Get().Warn("trending titles failed", zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -150,7 +144,7 @@ func (h *TitleHandler) GetTrendingTitles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"titles": titles})
 }
 
-func (h *TitleHandler) BrowseTitles(c *gin.Context) {
+func (h *Handler) BrowseTitles(c *gin.Context) {
 	first, _ := strconv.Atoi(c.DefaultQuery("first", "20"))
 	if first <= 0 {
 		first = 20
@@ -166,7 +160,7 @@ func (h *TitleHandler) BrowseTitles(c *gin.Context) {
 		}
 	}
 
-	result, err := h.imdb.BrowseTitles(service.BrowseParams{
+	result, err := h.svc.BrowseTitles(BrowseParams{
 		Type:      c.DefaultQuery("type", ""),
 		Genre:     c.Query("genre"),
 		First:     first,
@@ -184,14 +178,14 @@ func (h *TitleHandler) BrowseTitles(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func (h *TitleHandler) GetSimilarTitles(c *gin.Context) {
+func (h *Handler) GetSimilarTitles(c *gin.Context) {
 	imdbID := c.Param("imdb")
 	if imdbID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing title id"})
 		return
 	}
 
-	titles, err := h.imdb.SimilarTitles(imdbID, parseLimit(c, 6))
+	titles, err := h.svc.SimilarTitles(imdbID, parseLimit(c, 6))
 	if err != nil {
 		logger.Get().Warn("similar titles failed", zap.String("id", imdbID), zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})

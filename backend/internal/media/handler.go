@@ -1,31 +1,72 @@
-package handler
+package media
 
 import (
 	"net/http"
 	"strconv"
 
-	"github.com/bentran/nicefilm/backend/internal/service"
 	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// SubtitleHandler proxies OpenSubtitles search/download via the Subtitles
-// service (a no-op when OpenSubtitles isn't configured).
-type SubtitleHandler struct {
-	subs *service.Subtitles
+// Handler proxies the media-delivery endpoints: stream resolution, HLS manifest/
+// segment proxying, and OpenSubtitles search/download.
+type Handler struct {
+	stream *Stream
+	hls    *HLS
+	subs   *Subtitles
 }
 
-func NewSubtitleHandler(subs *service.Subtitles) *SubtitleHandler {
-	return &SubtitleHandler{subs: subs}
+func NewHandler(stream *Stream, hls *HLS, subs *Subtitles) *Handler {
+	return &Handler{stream: stream, hls: hls, subs: subs}
 }
 
-func (h *SubtitleHandler) RegisterRoutes(r gin.IRoutes) {
+// RegisterStreamRoutes mounts GET /stream on the given group (the /api group).
+func (h *Handler) RegisterStreamRoutes(r gin.IRoutes) {
+	r.GET("/stream", h.GetStream)
+}
+
+// RegisterSubtitleRoutes mounts the subtitle search/download routes on the given
+// group (the /api/subtitle group).
+func (h *Handler) RegisterSubtitleRoutes(r gin.IRoutes) {
 	r.GET("/search", h.SearchSubtitles)
 	r.GET("/download", h.GetSubtitleVTT)
 }
 
-func (h *SubtitleHandler) SearchSubtitles(c *gin.Context) {
+// RegisterHLSRoutes mounts GET /proxy/hls (registered at the root, outside /api).
+func (h *Handler) RegisterHLSRoutes(r gin.IRoutes) {
+	r.GET("/proxy/hls", h.ForwardHLS)
+}
+
+func (h *Handler) GetStream(c *gin.Context) {
+	result, err := h.stream.ProxyStreamRequest(c.Request.URL.RawQuery)
+	if err != nil {
+		logger.Get().Error("stream proxy failed", zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(result.Status, result.ContentType, result.Body)
+}
+
+func (h *Handler) ForwardHLS(c *gin.Context) {
+	targetURL := c.Query("url")
+	if targetURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url query param required"})
+		return
+	}
+
+	result, err := h.hls.ProxyHLS(targetURL)
+	if err != nil {
+		logger.Get().Error("HLS proxy failed", zap.String("url", targetURL), zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Data(result.Status, result.ContentType, result.Body)
+}
+
+func (h *Handler) SearchSubtitles(c *gin.Context) {
 	if !h.subs.Configured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "OpenSubtitles not configured. Set OPENSUBTITLES_API_KEY in .env",
@@ -46,7 +87,7 @@ func (h *SubtitleHandler) SearchSubtitles(c *gin.Context) {
 		return
 	}
 
-	params := service.SubtitleSearchParams{
+	params := SubtitleSearchParams{
 		IMDbID:    imdbID,
 		MediaType: mediaType,
 		Languages: c.Query("languages"),
@@ -76,7 +117,7 @@ func (h *SubtitleHandler) SearchSubtitles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"subtitles": subs})
 }
 
-func (h *SubtitleHandler) GetSubtitleVTT(c *gin.Context) {
+func (h *Handler) GetSubtitleVTT(c *gin.Context) {
 	if !h.subs.Configured() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "OpenSubtitles not configured. Set OPENSUBTITLES_API_KEY in .env",

@@ -1,4 +1,4 @@
-package service
+package title
 
 import (
 	"fmt"
@@ -7,73 +7,106 @@ import (
 	"strings"
 )
 
-// Title is the flattened, client-ready shape of an IMDb title. The raw GraphQL
-// response (ImdbTitle) is deeply nested; every handler returns this instead so
-// the frontend can consume titles directly without re-flattening. Field names
-// mirror the web `Movie` type.
-type Title struct {
-	ID            string       `json:"id"`
-	Title         string       `json:"title"`
-	OriginalTitle string       `json:"originalTitle,omitempty"`
-	Description   string       `json:"description"`
-	Poster        string       `json:"poster"`
-	Backdrop      string       `json:"backdrop"`
-	Rating        float64      `json:"rating"`
-	VoteCount     int          `json:"voteCount,omitempty"`
-	Year          string       `json:"year"`
-	EndYear       string       `json:"endYear,omitempty"`
-	ReleaseDate   string       `json:"releaseDate,omitempty"`
-	Duration      int          `json:"duration"` // minutes
-	Genres        []string     `json:"genres"`
-	Cast          []CastMember `json:"cast,omitempty"`
-	Director      string       `json:"director,omitempty"`
-	Language      string       `json:"language,omitempty"`
-	LanguageCode  string       `json:"languageCode,omitempty"`
-	Country       string       `json:"country,omitempty"`
-	Type          string       `json:"type"` // "movie" | "series"
-	TotalSeasons  int          `json:"totalSeasons,omitempty"`
-	TotalEpisodes int          `json:"totalEpisodes,omitempty"`
-	// Gallery images with dimensions — kept so the client can still rank hero
-	// backdrops by resolution. Backdrop above is the pre-picked best landscape.
-	Images []TitleImage `json:"images,omitempty"`
-	// Set by handlers (not IMDb) when the requesting user has favorited the title.
-	IsFavorite bool `json:"isFavorite,omitempty"`
-	// The requesting user's resume points for this title (movies: one row with
-	// season/episode 0; series: one per watched episode). Set by handlers from the
-	// store; empty/absent for anonymous requests. Replaces the old /progress call.
-	Progress []TitleProgress `json:"progress,omitempty"`
-	// The requesting user's saved subtitle selection for this title (absent when
-	// anonymous or unset). Set by handlers; replaces the old /subtitles call.
-	SubtitlePref *TitleSubtitle `json:"subtitlePref,omitempty"`
+// Service flattens the raw IMDb data the Repository returns into the
+// client-ready Title DTO and exposes the public title operations.
+type Service struct {
+	repo *Repository
 }
 
-// TitleProgress is one resume point embedded in a title's detail response.
-type TitleProgress struct {
-	Season          int     `json:"season"`
-	Episode         int     `json:"episode"`
-	PositionSeconds float64 `json:"positionSeconds"`
-	DurationSeconds float64 `json:"durationSeconds"`
-	UpdatedAt       string  `json:"updatedAt,omitempty"`
+func NewService(repo *Repository) *Service {
+	return &Service{repo: repo}
 }
 
-// TitleSubtitle is the user's saved subtitle selection embedded in a title's
-// detail response.
-type TitleSubtitle struct {
-	FileID   int64  `json:"fileId"`
-	Language string `json:"language"`
+// GetTitle returns the flattened, client-ready detail for an IMDb id.
+func (s *Service) GetTitle(imdbID string) (*Title, error) {
+	raw, err := s.repo.FetchTitle(imdbID)
+	if err != nil {
+		return nil, err
+	}
+	out := toTitle(*raw)
+	return &out, nil
 }
 
-type CastMember struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Character string `json:"character,omitempty"`
-	Photo     string `json:"photo,omitempty"`
+func (s *Service) SearchTitles(term string, limit int) ([]Title, error) {
+	raw, err := s.repo.SearchTitles(term, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Title, 0, len(raw))
+	for _, t := range raw {
+		out = append(out, toTitle(t))
+	}
+	return out, nil
 }
 
-type TitleImage struct {
-	URL    string `json:"url"`
-	Width  int    `json:"width,omitempty"`
-	Height int    `json:"height,omitempty"`
+func (s *Service) TrendingTitles(limit int) ([]Title, error) {
+	raw, err := s.repo.TrendingTitles(limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Title, 0, len(raw))
+	for _, t := range raw {
+		out = append(out, toTitle(t))
+	}
+	return out, nil
+}
+
+func (s *Service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
+	raw, err := s.repo.BrowseTitles(params)
+	if err != nil {
+		return nil, err
+	}
+	result := &BrowseResult{
+		HasNextPage: raw.HasNextPage,
+		EndCursor:   raw.EndCursor,
+	}
+	for _, t := range raw.Titles {
+		result.Titles = append(result.Titles, toTitle(t))
+	}
+	return result, nil
+}
+
+func (s *Service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
+	title, err := s.repo.FetchTitle(imdbID)
+	if err != nil {
+		return nil, err
+	}
+	genre := ""
+	if title.Genres != nil && len(title.Genres.Genres) > 0 {
+		genre = title.Genres.Genres[0].Text
+	}
+	if genre == "" {
+		return nil, nil
+	}
+
+	mediaType := "movie"
+	if title.TitleType != nil {
+		switch title.TitleType.ID {
+		case "tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial":
+			mediaType = "tv"
+		}
+	}
+
+	result, err := s.BrowseTitles(BrowseParams{
+		Type:  mediaType,
+		Genre: genre,
+		First: limit + 5,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]Title, 0, limit)
+	for _, item := range result.Titles {
+		if item.ID == title.ID {
+			continue
+		}
+		filtered = append(filtered, item)
+		if len(filtered) >= limit {
+			break
+		}
+	}
+	return filtered, nil
 }
 
 // IMDb title-type ids that the client treats as episodic "series".
@@ -165,17 +198,6 @@ func toTitle(t ImdbTitle) Title {
 		out.TotalSeasons = len(t.Episodes.Seasons)
 		if t.Episodes.Episodes != nil {
 			out.TotalEpisodes = t.Episodes.Episodes.Total
-		}
-	}
-	return out
-}
-
-// toTitles flattens and ID-filters a slice of raw titles.
-func toTitles(raw []ImdbTitle) []Title {
-	out := make([]Title, 0, len(raw))
-	for _, t := range raw {
-		if t.ID != "" {
-			out = append(out, toTitle(t))
 		}
 	}
 	return out
