@@ -1,4 +1,6 @@
-// Package middleware holds gin middleware (currently bearer-token auth).
+// Package middleware holds gin middleware (bearer-token auth) plus the auth
+// primitives it shares with the user service: JWT issue/parse and password
+// hash/verify.
 package middleware
 
 import (
@@ -6,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/shared/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,7 +24,7 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		id, err := auth.Parse(strings.TrimSpace(token), cfg.JWTSecret)
+		id, err := Parse(strings.TrimSpace(token), cfg.JWTSecret)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 			return
@@ -43,7 +44,7 @@ func AuthOptional(cfg *config.Config) gin.HandlerFunc {
 		header := c.GetHeader("Authorization")
 		if token, ok := strings.CutPrefix(header, "Bearer "); ok {
 			if token = strings.TrimSpace(token); token != "" {
-				if id, err := auth.Parse(token, cfg.JWTSecret); err == nil {
+				if id, err := Parse(token, cfg.JWTSecret); err == nil {
 					c.Set(userIDKey, id)
 				}
 			}

@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
-	"github.com/bentran/nicefilm/backend/internal/shared/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 // Enricher supplies per-user state (favorites, progress, subtitle preference)
 // used to enrich title responses for signed-in requests. It is implemented in
-// the app package (backed by the user repository) so the title module never
+// the user package (backed by the user repository) so the title module never
 // imports user — keeping the dependency direction one-way.
 type Enricher interface {
 	FavoritedSet(userID int64) map[string]struct{}
@@ -25,11 +25,11 @@ type Enricher interface {
 // similar, detail). It carries the title service for lookups and an Enricher so
 // signed-in requests can be enriched with favorite/progress/subtitle state.
 type Handler struct {
-	svc      *Service
+	svc      Service
 	enricher Enricher
 }
 
-func NewHandler(svc *Service, enricher Enricher) *Handler {
+func NewHandler(svc Service, enricher Enricher) *Handler {
 	return &Handler{svc: svc, enricher: enricher}
 }
 

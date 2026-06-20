@@ -71,7 +71,7 @@ export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnde
 
   const isHls = src.includes('.m3u8');
   const playbackUrl = isHls && import.meta.env.DEV
-    ? `/proxy/hls?url=${encodeURIComponent(src)}`
+    ? `/hls?url=${encodeURIComponent(src)}`
     : src;
 
   // Interactive subtitles replace the native track — except in fullscreen, where

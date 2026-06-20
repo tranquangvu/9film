@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/bentran/nicefilm/backend/internal/app"
-	"github.com/bentran/nicefilm/backend/internal/shared/logger"
+	"github.com/bentran/nicefilm/backend/internal/logger"
 	"go.uber.org/zap"
 )
 

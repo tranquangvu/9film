@@ -9,16 +9,24 @@ import (
 
 // Service flattens the raw IMDb data the Repository returns into the
 // client-ready Title DTO and exposes the public title operations.
-type Service struct {
-	repo *Repository
+type Service interface {
+	GetTitle(imdbID string) (*Title, error)
+	SearchTitles(term string, limit int) ([]Title, error)
+	TrendingTitles(limit int) ([]Title, error)
+	BrowseTitles(params BrowseParams) (*BrowseResult, error)
+	SimilarTitles(imdbID string, limit int) ([]Title, error)
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+type service struct {
+	repo Repository
+}
+
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
 // GetTitle returns the flattened, client-ready detail for an IMDb id.
-func (s *Service) GetTitle(imdbID string) (*Title, error) {
+func (s *service) GetTitle(imdbID string) (*Title, error) {
 	raw, err := s.repo.FetchTitle(imdbID)
 	if err != nil {
 		return nil, err
@@ -27,7 +35,7 @@ func (s *Service) GetTitle(imdbID string) (*Title, error) {
 	return &out, nil
 }
 
-func (s *Service) SearchTitles(term string, limit int) ([]Title, error) {
+func (s *service) SearchTitles(term string, limit int) ([]Title, error) {
 	raw, err := s.repo.SearchTitles(term, limit)
 	if err != nil {
 		return nil, err
@@ -39,7 +47,7 @@ func (s *Service) SearchTitles(term string, limit int) ([]Title, error) {
 	return out, nil
 }
 
-func (s *Service) TrendingTitles(limit int) ([]Title, error) {
+func (s *service) TrendingTitles(limit int) ([]Title, error) {
 	raw, err := s.repo.TrendingTitles(limit)
 	if err != nil {
 		return nil, err
@@ -51,7 +59,7 @@ func (s *Service) TrendingTitles(limit int) ([]Title, error) {
 	return out, nil
 }
 
-func (s *Service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
+func (s *service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	raw, err := s.repo.BrowseTitles(params)
 	if err != nil {
 		return nil, err
@@ -66,7 +74,7 @@ func (s *Service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	return result, nil
 }
 
-func (s *Service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
+func (s *service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
 	title, err := s.repo.FetchTitle(imdbID)
 	if err != nil {
 		return nil, err

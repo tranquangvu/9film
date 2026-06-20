@@ -20,21 +20,21 @@ Frontend (`cd web`, uses **pnpm**):
 - `pnpm typecheck` — `tsc -b` (no-emit type check)
 - `pnpm lint` — ESLint
 
-Run both apps simultaneously for development; Vite proxies `/api` and `/proxy` to `API_URL` (default `http://localhost:8081`), so the browser never calls the backend directly.
+Run both apps simultaneously for development; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`), so the browser never calls the backend directly.
 
 ## Architecture
 
 ### Backend is a proxy, not a content store
 
-The backend owns three upstream integrations and exists to add auth headers, rewrite responses, and dodge browser CORS/Referer restrictions. Each integration is one file in `internal/service/` with a thin `internal/handler/` wrapper; routes are registered in `internal/router/router.go`.
+The backend owns three upstream integrations and exists to add auth headers, rewrite responses, and dodge browser CORS/Referer restrictions. Each integration lives in a vertical-slice module under `internal/` (e.g. `stream/`, `title/`) following a layered layout: `repo.go` (data access — an interface plus its impl), `service.go` (business logic — also interface + impl), `handler.go` (HTTP only), `route.go` (the route table, takes a `*Handler`), and `module.go` (the `Module(...)` entry point that wires repository → service → handler and calls `RegisterRoutes`). `Repository`/`Service` are interfaces (unexported impls) so the layer above can be tested against a mock. `internal/app/app.go` is the composition root: it builds the engine with global middleware and calls each module's `Module(...)`. The cross-module seam is the `title.Enricher` (per-user favorite/progress/subtitle state folded into title responses): `title` imports nothing of it; instead `app.go` composes `titleEnricher` (in `internal/app/enricher.go`) from `favorite.NewEnricher` and `watching.NewEnricher` and injects it into `title.Module`. Per-user concerns are split across modules — `user/` (accounts + settings), `favorite/` (watchlist), `watching/` (watch progress, continue-watching, subtitle preference; it imports `title` to hydrate and `favorite` to flag favorites). The proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go` — they're stateless with no DB.
 
 1. **IMDb metadata** (`service/imdb.go`) — queries `api.graphql.imdb.com` with hand-written GraphQL. `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail queries. Go structs mirror the GraphQL shape, then flatten into a `Title` DTO for the frontend.
 
-2. **Stream resolution** (`service/stream.go`) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting a hard-coded `Referer` (`embedReferer` in `service/hls.go`). Returns JSON containing `stream_urls` and, for TV, an `eps` season→episode map.
+2. **Stream resolution** (`stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting a hard-coded `Referer` (`embedReferer` in the same file). Returns JSON containing `stream_urls` and, for TV, an `eps` season→episode map.
 
-3. **HLS proxy** (`service/hls.go`) — the most important piece. `/proxy/hls?url=<absolute>` fetches an `.m3u8` or `.ts` segment with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) to point back through `/proxy/hls`, resolving relative URLs to absolute first. This recursively keeps the entire HLS playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's.
+3. **HLS proxy** (`stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` segment with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) to point back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the entire HLS playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
 
-OpenSubtitles (`service/subtitle.go`) is optional — disabled entirely when `OPENSUBTITLES_API_KEY` is unset (see `config.Load`). Handlers that need credentials are constructed with `cfg` (e.g. `handler.SearchSubtitles(cfg)`).
+The `subtitle/` module (OpenSubtitles) is optional — disabled entirely when `OPENSUBTITLES_API_KEY` is unset (see `config.Load`); `subtitle.Module` builds its `SubtitleConfig` from `cfg`, and the handler returns 503 when not configured.
 
 ### Frontend data flow
 
@@ -43,7 +43,7 @@ OpenSubtitles (`service/subtitle.go`) is optional — disabled entirely when `OP
 - `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`).
 - `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from the `eps` map.
 
-`components/system/player/video-player.tsx` decides playback: HLS sources (`.m3u8`) route through `/proxy/hls` **only in dev** (`import.meta.env.DEV`); otherwise the raw src is used. This mirrors the backend HLS rewriting and is the seam to check when streams play locally but not in production.
+`components/system/player/video-player.tsx` decides playback: HLS sources (`.m3u8`) route through `/hls` **only in dev** (`import.meta.env.DEV`); otherwise the raw src is used. This mirrors the backend HLS rewriting and is the seam to check when streams play locally but not in production.
 
 Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `movie/`, `player/`, `common/`). Path alias `@/` → `web/src/`.
 
@@ -55,4 +55,4 @@ App routes use `:id` (`/watch/:id`, `/movie/:id`) — the README's `/watch/:imdb
 
 - Files are kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components are PascalCase.
 - Backend logging is structured Zap (`logger.Get()`); the router middleware logs every request with status-based level (≥500 error, ≥400 warn).
-- CORS allow-list in `router.go` is hard-coded to `localhost:5173`/`:3000` — update it when changing the frontend origin.
+- CORS allow-list in `internal/middleware/cors.go` is hard-coded to `localhost:5173`/`:3000` — update it when changing the frontend origin.
