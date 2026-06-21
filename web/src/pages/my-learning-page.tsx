@@ -507,9 +507,12 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   // when tab is "learn" this is the same cached query, so no double fetch.
   const tabQuery = useInfiniteWordsQuery(tab, list);
   const words = useMemo(() => tabQuery.data?.pages.flatMap((p) => p.items) ?? [], [tabQuery.data]);
+  // Imported lists' To-Learn tab is a flat alphabetical list (no day grouping,
+  // since they're all added at once); everything else groups by day.
+  const flat = isOxford && tab === 'learn';
   const groups = useMemo(
-    () => groupByDay(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt)),
-    [words, tab],
+    () => (flat ? [] : groupByDay(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt))),
+    [words, tab, flat],
   );
 
   // Words the flashcard deck studies — always the "to learn" set. The deck pulls
@@ -642,7 +645,15 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
               </div>
             ) : (
               <>
-                {groups.length > 0 && <WordGroupList groups={groups} onSelect={setSelected} />}
+                {flat
+                  ? words.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {words.map((w) => (
+                          <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
+                        ))}
+                      </div>
+                    )
+                  : groups.length > 0 && <WordGroupList groups={groups} onSelect={setSelected} />}
                 {(tabQuery.isLoading || isFetchingNextPage) && <LoadMoreIndicator className="mt-2" />}
                 <div ref={sentinelRef} className="h-1" />
               </>

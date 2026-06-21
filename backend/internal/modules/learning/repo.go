@@ -59,6 +59,10 @@ func (r *repository) GetWords(userID int64, status, list string, limit, offset i
 	where, order := "completed_at = ''", "created_at DESC"
 	if status == "completed" {
 		where, order = "completed_at != ''", "completed_at DESC"
+	} else if list != "" {
+		// Imported lists (e.g. the Oxford 3000) are studied alphabetically, not
+		// by recency — they're all added at once.
+		order = "word ASC"
 	}
 	rows, err := r.db.Query(
 		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list
