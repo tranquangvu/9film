@@ -1,5 +1,5 @@
-import { heroTitles, matchesHeroGenres, toMovies, type Title } from '@/utils/title';
-import type { Movie } from '@/types';
+import { heroTitles, matchesHeroGenres, toTitles, type TitleDetail } from '@/utils/title';
+import type { Title } from '@/types';
 import { useBrowseTitleQuery } from './queries/use-browse-title-query';
 import { useContinueWatching } from './queries/use-progress-query';
 
@@ -19,34 +19,34 @@ export function usePopularTitles() {
 }
 
 export function usePopularMovieTitles() {
-  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
+  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 20 }, (data) => toTitles(data.titles));
 }
 
 export function usePopularTVSeriesTitles() {
-  return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20 }, (data) => toMovies(data.titles));
+  return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20 }, (data) => toTitles(data.titles));
 }
 
 // Continue Watching row. The backend returns one deduped row per title with the
 // detail embedded, so this maps straight to cards without per-title lookups.
 export function useResumeTitles() {
-  const { movies, isLoading, isError } = useContinueWatching();
-  return { data: movies, loading: isLoading, isError };
+  const { titles, isLoading, isError } = useContinueWatching();
+  return { data: titles, loading: isLoading, isError };
 }
 
 // Carve the hero + Top 10 out of the popular feed, excluding every title already
 // shown in the Popular rows so the sections never 100% duplicate each other.
-// Dedup is by IMDb id (Movie.id === Title.id).
+// Dedup is by IMDb id (Title.id === TitleDetail.id).
 export function selectHeroAndTop10({
   candidates,
   popularRows,
 }: {
-  candidates: Title[];
-  popularRows: Movie[];
-}): { hero: Movie[]; top10: Movie[] } {
+  candidates: TitleDetail[];
+  popularRows: Title[];
+}): { hero: Title[]; top10: Title[] } {
   const excluded = new Set(popularRows.map((m) => m.id));
   const rest = candidates.filter((t) => t.id && !excluded.has(t.id));
   return {
     hero: heroTitles(rest, HERO_LIMIT),
-    top10: toMovies(rest.filter(matchesHeroGenres)).slice(0, TOP_TEN_LIMIT),
+    top10: toTitles(rest.filter(matchesHeroGenres)).slice(0, TOP_TEN_LIMIT),
   };
 }

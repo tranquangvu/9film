@@ -1,11 +1,11 @@
 import { useQueries } from '@tanstack/react-query';
 import { getTitle } from '@/services/title';
-import { normId, toMovie } from '@/utils/title';
-import type { Movie } from '@/types';
+import { normId, toTitle } from '@/utils/title';
+import type { Title } from '@/types';
 
-export function useTitlesQuery<T = Movie[]>(
+export function useTitlesQuery<T = Title[]>(
   ids: string[],
-  options?: { select?: (movies: Movie[]) => T },
+  options?: { select?: (titles: Title[]) => T },
 ) {
   const { select } = options ?? {};
   return useQueries({
@@ -19,11 +19,11 @@ export function useTitlesQuery<T = Movie[]>(
       };
     }),
     combine: (results) => {
-      const movies = results
-        .map((q) => (q.data ? toMovie(q.data) : null))
-        .filter(Boolean) as Movie[];
+      const titles = results
+        .map((q) => (q.data ? toTitle(q.data) : null))
+        .filter(Boolean) as Title[];
       return {
-        data: (select ? select(movies) : movies) as T,
+        data: (select ? select(titles) : titles) as T,
         loading: results.some((q) => q.isLoading),
         isError: results.some((q) => q.isError),
       };

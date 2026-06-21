@@ -2,9 +2,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { HeroBanner } from '@/components/system/movie/hero-banner';
-import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
-import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/movie/skeletons';
+import { HeroBanner } from '@/components/system/title/hero-banner';
+import { HorizontalCarousel } from '@/components/system/title/title-carousel';
+import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/title/skeletons';
 import {
   useResumeTitles,
   usePopularTitles,
@@ -78,13 +78,13 @@ function QuickSearch() {
 export default function HomePage() {
   const { toast } = useToast();
   const popularQuery = usePopularTitles();
-  const popularMoviesQuery = usePopularMovieTitles();
+  const popularTitlesQuery = usePopularMovieTitles();
   const popularSeriesQuery = usePopularTVSeriesTitles();
   const resumeQuery = useResumeTitles();
 
   const hasError =
     popularQuery.isError ||
-    popularMoviesQuery.isError ||
+    popularTitlesQuery.isError ||
     popularSeriesQuery.isError ||
     resumeQuery.isError;
 
@@ -98,48 +98,48 @@ export default function HomePage() {
     }
   }, [hasError, toast]);
 
-  const popularMovies = popularMoviesQuery.data ?? [];
+  const popularTitles = popularTitlesQuery.data ?? [];
   const popularSeries = popularSeriesQuery.data ?? [];
-  const resumeMovies = resumeQuery.data ?? [];
+  const resumeTitles = resumeQuery.data ?? [];
 
   // Hero + Top 10 are carved out of the popular feed, minus everything the
   // Popular rows already show, so the sections never fully duplicate.
-  const { hero: heroMovies, top10: top10Movies } = useMemo(
+  const { hero: heroTitles, top10: top10Titles } = useMemo(
     () =>
       selectHeroAndTop10({
         candidates: popularQuery.data ?? [],
-        popularRows: [...(popularMoviesQuery.data ?? []), ...(popularSeriesQuery.data ?? [])],
+        popularRows: [...(popularTitlesQuery.data ?? []), ...(popularSeriesQuery.data ?? [])],
       }),
-    [popularQuery.data, popularMoviesQuery.data, popularSeriesQuery.data],
+    [popularQuery.data, popularTitlesQuery.data, popularSeriesQuery.data],
   );
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {popularQuery.isLoading || popularQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner movies={heroMovies} />}
+      {popularQuery.isLoading || popularQuery.isError ? <HeroBannerSkeleton /> : <HeroBanner titles={heroTitles} />}
 
       <div className="pt-8 pb-16 space-y-12 relative z-10">
         {resumeQuery.loading || resumeQuery.isError ? (
           <CarouselSkeleton cardType="backdrop" />
-        ) : resumeMovies.length > 0 ? (
-          <HorizontalCarousel title="Continue Watching" movies={resumeMovies} cardType="backdrop" />
+        ) : resumeTitles.length > 0 ? (
+          <HorizontalCarousel title="Continue Watching" titles={resumeTitles} cardType="backdrop" />
         ) : null}
 
         {popularQuery.isLoading || popularQuery.isError ? (
           <CarouselSkeleton cardType="top10" />
-        ) : top10Movies.length > 0 ? (
-          <HorizontalCarousel title="Top 10 Today" movies={top10Movies} cardType="top10" />
+        ) : top10Titles.length > 0 ? (
+          <HorizontalCarousel title="Top 10 Today" titles={top10Titles} cardType="top10" />
         ) : null}
 
-        {popularMoviesQuery.isLoading || popularMoviesQuery.isError ? (
+        {popularTitlesQuery.isLoading || popularTitlesQuery.isError ? (
           <CarouselSkeleton />
-        ) : popularMovies.length > 0 ? (
-          <HorizontalCarousel title="Popular Movies" movies={popularMovies} viewAllTo="/movies" />
+        ) : popularTitles.length > 0 ? (
+          <HorizontalCarousel title="Popular Movies" titles={popularTitles} viewAllTo="/movies" />
         ) : null}
 
         {popularSeriesQuery.isLoading || popularSeriesQuery.isError ? (
           <CarouselSkeleton />
         ) : popularSeries.length > 0 ? (
-          <HorizontalCarousel title="Popular TVSeries" movies={popularSeries} viewAllTo="/tvs" />
+          <HorizontalCarousel title="Popular TVSeries" titles={popularSeries} viewAllTo="/tvs" />
         ) : null}
 
         <QuickSearch />

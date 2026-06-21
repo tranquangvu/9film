@@ -23,12 +23,12 @@ import {
 type ContentType = "movie" | "series";
 
 const TYPE_OPTIONS: { id: ContentType; label: string; icon: string }[] = [
-  { id: "movie", label: "Movies", icon: "🎬" },
+  { id: "movie", label: "Titles", icon: "🎬" },
   { id: "series", label: "TV Series", icon: "📺" },
 ];
 
 // Applied filters live entirely in the URL so a reload (or shared link)
-// restores the exact same search. `q` = free-text, `type` = movie|series,
+// restores the exact same search. `q` = free-text, `type` = title|series,
 // `genre` = comma-separated genre ids.
 function isContentType(v: string | null): v is ContentType {
   return v === "movie" || v === "series";
@@ -127,7 +127,7 @@ export default function BrowsePage() {
     selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
   // Type/genre always filter client-side on top of whichever source is active.
-  const { searching, movies, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { searching, titles, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useTitleListing({
       searchTerm,
       type: browseType,
@@ -145,7 +145,7 @@ export default function BrowsePage() {
   }, [isError, toast]);
 
   const filtered = useMemo(() => {
-    let result = movies;
+    let result = titles;
 
     if (contentType) {
       result = result.filter((m) => m.type === contentType);
@@ -161,7 +161,7 @@ export default function BrowsePage() {
     }
 
     return result;
-  }, [movies, contentType, selectedGenres]);
+  }, [titles, contentType, selectedGenres]);
 
   const gridKey = `grid-${searchTerm}-${contentType ?? "all"}-${[...selectedGenres].join("-")}`;
 

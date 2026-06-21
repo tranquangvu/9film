@@ -1,13 +1,13 @@
 import { memo } from "react";
-import { VirtualMovieGrid } from "@/components/system/movie/virtual-movie-grid";
+import { VirtualTitleGrid } from "@/components/system/title/virtual-title-grid";
 import { LoadMoreIndicator } from "@/components/system/common/load-more-indicator";
 import { Empty } from "@/components/system/common/empty";
-import { MovieGridSkeleton } from "@/components/system/movie/skeletons";
-import type { Movie } from "@/types";
+import { TitleGridSkeleton } from "@/components/system/title/skeletons";
+import type { Title } from "@/types";
 
 interface BrowseContentProps {
   isLoading: boolean;
-  items: Movie[];
+  items: Title[];
   gridKey: string;
   emptyIcon: string;
   emptyTitle: string;
@@ -33,7 +33,7 @@ export const BrowseContent = memo(function BrowseContent({
   return (
     <div className="px-4 md:px-8 lg:px-12 mt-6">
       {isLoading ? (
-        <MovieGridSkeleton />
+        <TitleGridSkeleton />
       ) : items.length === 0 ? (
         <Empty
           icon={emptyIcon}
@@ -44,7 +44,7 @@ export const BrowseContent = memo(function BrowseContent({
         />
       ) : (
         <>
-          <VirtualMovieGrid
+          <VirtualTitleGrid
             key={gridKey}
             items={items}
             hasMore={hasMore}

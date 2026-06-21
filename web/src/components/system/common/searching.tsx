@@ -4,12 +4,12 @@ import { Search, X, TrendingUp } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { useBrowseTitleQuery } from '@/hooks/queries/use-browse-title-query';
-import { toMovie } from '@/utils/title';
+import { toTitle } from '@/utils/title';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MovieCard } from '@/components/system/movie/movie-card';
-import { PosterTileSkeleton } from '@/components/system/movie/skeletons';
+import { TitleCard } from '@/components/system/title/title-card';
+import { PosterTileSkeleton } from '@/components/system/title/skeletons';
 
 interface SearchOverlayProps {
   isOpen: boolean
@@ -25,10 +25,10 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const trending = useBrowseTitleQuery({ sort: 'popular', first: 8 });
 
   const results = query.trim().length > 0
-    ? (search.data ?? []).map(toMovie)
+    ? (search.data ?? []).map(toTitle)
     : [];
 
-  const popular = (trending.data?.titles ?? []).map(toMovie).slice(0, 8);
+  const popular = (trending.data?.titles ?? []).map(toTitle).slice(0, 8);
 
   const handleClose = useCallback(() => {
     setQuery('');
@@ -59,7 +59,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [handleClose]);
 
-  // MovieCard navigates on click; close the overlay whenever the route changes.
+  // TitleCard navigates on click; close the overlay whenever the route changes.
   // Syncing the modal's open-state to the router is a deliberate state update.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -139,8 +139,8 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                   </div>
                 ) : results.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {results.map(movie => (
-                      <MovieCard key={movie.id} movie={movie} className="w-full" />
+                    {results.map(title => (
+                      <TitleCard key={title.id} title={title} className="w-full" />
                     ))}
                   </div>
                 ) : (
@@ -162,8 +162,8 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {trending.isLoading
                     ? Array.from({ length: 8 }).map((_, i) => <PosterTileSkeleton key={i} />)
-                    : popular.map(movie => (
-                      <MovieCard key={movie.id} movie={movie} className="w-full" />
+                    : popular.map(title => (
+                      <TitleCard key={title.id} title={title} className="w-full" />
                   ))}
                 </div>
               </div>

@@ -112,7 +112,7 @@ export function WatchPage() {
               {/* Left: back · title · season/episode */}
               <div className="flex items-center gap-2 md:gap-3 pointer-events-auto min-w-0">
                 <button
-                  onClick={() => navigate(`/movie/${id}`)}
+                  onClick={() => navigate(`/title/${id}`)}
                   aria-label="Back to details"
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-white/8 border border-white/12 text-zinc-300 hover:text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shrink-0"
                 >

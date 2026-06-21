@@ -18,26 +18,26 @@ import {
 import { useTitleQuery } from "@/hooks/queries/use-title-query";
 import { useSimilarQuery } from "@/hooks/queries/use-similar-query";
 import { useStreamQuery } from "@/hooks/queries/use-stream-query";
-import { toMovie, toMovies, embedParams } from "@/utils/title";
+import { toTitle, toTitles, embedParams } from "@/utils/title";
 import { seasons, episodes, type EmbedParams } from "@/utils/stream";
 import { cn } from "@/utils/cn";
 import { formatDuration, formatRating, formatYear } from "@/utils/format";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MovieCard } from "@/components/system/movie/movie-card";
-import { GenreBadge } from "@/components/system/movie/genre-badge";
+import { TitleCard } from "@/components/system/title/title-card";
+import { GenreBadge } from "@/components/system/title/genre-badge";
 import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from "@/components/system/common/orange-gradient";
-import { DetailPageSkeleton } from "@/components/system/movie/skeletons";
+import { DetailPageSkeleton } from "@/components/system/title/skeletons";
 import { useFavoriteButton } from "@/hooks/queries/use-favorites-query";
 import {
   useWatchedEpisodes,
   useCurrentEpisode,
-  useMovieProgress,
+  useTitleProgress,
   progressPercent,
 } from "@/hooks/queries/use-progress-query";
 
-export default function MovieDetailPage() {
+export default function TitleDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
@@ -50,8 +50,8 @@ export default function MovieDetailPage() {
 
   const titleQuery = useTitleQuery(id);
   const similarQuery = useSimilarQuery(id);
-  const movie = titleQuery.data ? toMovie(titleQuery.data) : null;
-  const similarMovies = toMovies(similarQuery.data ?? []);
+  const title = titleQuery.data ? toTitle(titleQuery.data) : null;
+  const similarTitles = toTitles(similarQuery.data ?? []);
 
   // For series, fetch the season→episode map (a bare stream request) so the
   // episode selector can offer real per-season episodes.
@@ -84,10 +84,10 @@ export default function MovieDetailPage() {
   // fully-opaque layer underneath avoids the mid-crossfade darkening dip.
   const [baseImageIndex, setBaseImageIndex] = useState(0);
 
-  const favorite = useFavoriteButton(id, movie?.type ?? "movie", movie?.isFavorite);
+  const favorite = useFavoriteButton(id, title?.type ?? "movie", title?.isFavorite);
   const watchedEpisodes = useWatchedEpisodes(id);
   const currentEpisode = useCurrentEpisode(id);
-  const movieProgress = useMovieProgress(id);
+  const titleProgress = useTitleProgress(id);
 
   const goToNextImage = useCallback(() => {
     setActiveImageIndex((i) => (i + 1) % galleryImages.length);
@@ -185,11 +185,11 @@ export default function MovieDetailPage() {
     return <DetailPageSkeleton />;
   }
 
-  if (!movie) {
+  if (!title) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-6">
         <div className="text-6xl">🎬</div>
-        <h1 className="text-3xl font-bold text-white">Movie not found</h1>
+        <h1 className="text-3xl font-bold text-white">Title not found</h1>
         <p className="text-zinc-400">
           We couldn't find that title in our library.
         </p>
@@ -214,28 +214,28 @@ export default function MovieDetailPage() {
     : (availableSeasons[0] ?? 1);
   const episodeList = eps ? episodes(eps, activeSeason) : [];
 
-  // Movie watch progress (series surface this per-episode in the Episodes grid).
-  const watchPercent = movieProgress ? progressPercent(movieProgress) : 0;
-  const isWatchingMovie = movie.type === "movie" && watchPercent > 0;
-  const remainingMinutes = movieProgress
+  // Title watch progress (series surface this per-episode in the Episodes grid).
+  const watchPercent = titleProgress ? progressPercent(titleProgress) : 0;
+  const isWatchingTitle = title.type === "movie" && watchPercent > 0;
+  const remainingMinutes = titleProgress
     ? Math.max(
         0,
         Math.round(
-          (movieProgress.durationSeconds - movieProgress.positionSeconds) / 60,
+          (titleProgress.durationSeconds - titleProgress.positionSeconds) / 60,
         ),
       )
     : 0;
 
-  // Whether the user has any progress to resume (movies: a saved position;
+  // Whether the user has any progress to resume (titles: a saved position;
   // series: a most-recently-played episode). Drives the Play/Resume label.
   const isResumable =
-    movie.type === "movie" ? isWatchingMovie : currentEpisode != null;
+    title.type === "movie" ? isWatchingTitle : currentEpisode != null;
 
   const handlePlay = () => {
-    if (movie.type !== "movie" && currentEpisode) {
-      navigate(`/watch/${movie.id}?s=${currentEpisode.season}&e=${currentEpisode.episode}`);
+    if (title.type !== "movie" && currentEpisode) {
+      navigate(`/watch/${title.id}?s=${currentEpisode.season}&e=${currentEpisode.episode}`);
     } else {
-      navigate(`/watch/${movie.id}`);
+      navigate(`/watch/${title.id}`);
     }
   };
 
@@ -255,17 +255,17 @@ export default function MovieDetailPage() {
             composite never dips to the (dark) background mid-transition. */}
         <div className="absolute inset-0 bg-black">
           <img
-            key={`base-${galleryImages[baseImageIndex] ?? movie.backdrop}`}
-            src={galleryImages[baseImageIndex] ?? movie.backdrop}
-            alt={movie.title}
+            key={`base-${galleryImages[baseImageIndex] ?? title.backdrop}`}
+            src={galleryImages[baseImageIndex] ?? title.backdrop}
+            alt={title.title}
             draggable={false}
             className="absolute inset-0 object-cover w-full h-full"
           />
           {activeImageIndex !== baseImageIndex && (
             <motion.img
-              key={`top-${galleryImages[activeImageIndex] ?? movie.backdrop}`}
-              src={galleryImages[activeImageIndex] ?? movie.backdrop}
-              alt={movie.title}
+              key={`top-${galleryImages[activeImageIndex] ?? title.backdrop}`}
+              src={galleryImages[activeImageIndex] ?? title.backdrop}
+              alt={title.title}
               draggable={false}
               className="absolute inset-0 object-cover w-full h-full"
               initial={{ opacity: 0 }}
@@ -293,57 +293,57 @@ export default function MovieDetailPage() {
 
         <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl">
           <div className="flex flex-wrap gap-2 mb-2">
-            {movie.genres.map((genre) => (
+            {title.genres.map((genre) => (
               <GenreBadge key={genre} genre={genre} />
             ))}
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 drop-shadow-2xl">
-            {movie.title}
+            {title.title}
           </h1>
 
-          {movie.tagline && (
+          {title.tagline && (
             <p className="text-lg text-zinc-300 italic mb-5 drop-shadow-lg">
-              "{movie.tagline}"
+              "{title.tagline}"
             </p>
           )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-7 text-sm text-zinc-300">
             <span className="flex items-center gap-1.5 font-semibold text-white">
               <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-              {formatYear(movie.year)}
+              {formatYear(title.year)}
             </span>
-            {movie.duration > 0 && (
+            {title.duration > 0 && (
               <>
                 <span className="w-px h-4 bg-zinc-700" />
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                  {formatDuration(movie.duration)}
+                  {formatDuration(title.duration)}
                 </span>
               </>
             )}
             <span className="w-px h-4 bg-zinc-700" />
             <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-              {movie.country}
+              {title.country}
             </span>
-            {movie.type === "series" &&
-              (movie.totalSeasons || movie.totalEpisodes) && (
+            {title.type === "series" &&
+              (title.totalSeasons || title.totalEpisodes) && (
                 <>
                   <span className="w-px h-4 bg-zinc-700" />
                   <span className="flex items-center gap-1">
                     <Film className="w-3.5 h-3.5 text-zinc-500" />
-                    {movie.totalSeasons != null && (
+                    {title.totalSeasons != null && (
                       <>
-                        {movie.totalSeasons}{" "}
-                        {movie.totalSeasons === 1 ? "Season" : "Seasons"}
+                        {title.totalSeasons}{" "}
+                        {title.totalSeasons === 1 ? "Season" : "Seasons"}
                       </>
                     )}
-                    {movie.totalSeasons != null &&
-                      movie.totalEpisodes != null &&
+                    {title.totalSeasons != null &&
+                      title.totalEpisodes != null &&
                       " / "}
-                    {movie.totalEpisodes != null && (
-                      <>{movie.totalEpisodes} Episodes</>
+                    {title.totalEpisodes != null && (
+                      <>{title.totalEpisodes} Episodes</>
                     )}
                   </span>
                 </>
@@ -353,11 +353,11 @@ export default function MovieDetailPage() {
               <OrangeGradientDefs />
               <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
               <span className="font-bold text-white">
-                {formatRating(movie.rating)}
+                {formatRating(title.rating)}
               </span>
               <span className="text-zinc-500 text-xs">IMDb</span>
             </span>
-            {isWatchingMovie && (
+            {isWatchingTitle && (
               <>
                 <span className="w-px h-4 bg-zinc-700" />
                 <span className="flex items-center gap-1 font-medium text-orange-400">
@@ -471,7 +471,7 @@ export default function MovieDetailPage() {
                     <Badge variant="tag"
                       key={ep}
                       onClick={() =>
-                        navigate(`/watch/${movie.id}?s=${activeSeason}&e=${ep}`)
+                        navigate(`/watch/${title.id}?s=${activeSeason}&e=${ep}`)
                       }
                     >
                       {isPlaying ? (
@@ -490,15 +490,15 @@ export default function MovieDetailPage() {
           <section>
             <h2 className="text-xl font-bold text-white mb-4">About</h2>
             <p className="text-zinc-300 leading-relaxed text-base max-w-3xl xl:max-w-[65%]">
-              {movie.description}
+              {title.description}
             </p>
           </section>
 
-          {movie.cast && movie.cast.length > 0 && (
+          {title.cast && title.cast.length > 0 && (
             <section className="max-w-3xl xl:max-w-[65%]">
               <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
               <div className="flex flex-wrap gap-x-6 gap-y-5">
-                {movie.cast.map((member, i) => (
+                {title.cast.map((member, i) => (
                   <div
                     key={member.id || `${member.name}-${i}`}
                     className="flex items-center gap-3 w-44"
@@ -531,16 +531,16 @@ export default function MovieDetailPage() {
             </section>
           )}
 
-          {similarMovies.length > 0 && (
+          {similarTitles.length > 0 && (
             <section>
               <h2 className="text-xl font-bold text-white mb-4">
                 More Like This
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
-                {similarMovies.map((movie) => (
-                  <MovieCard
-                    key={movie.id}
-                    movie={movie}
+                {similarTitles.map((title) => (
+                  <TitleCard
+                    key={title.id}
+                    title={title}
                     size="lg"
                     className="w-full"
                   />

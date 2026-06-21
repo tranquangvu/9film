@@ -9,13 +9,13 @@ import WatchLayout from "@/components/system/layout/watch-layout";
 
 import HomePage from "@/pages/home-page";
 import BrowsePage from "@/pages/browse-page";
-import MovieDetailPage from "@/pages/movie-detail-page";
+import TitleDetailPage from "@/pages/title-detail-page";
 import { WatchPage } from "@/pages/watch-page";
 import MyListPage from "@/pages/my-list-page";
 import MyLearningPage from "@/pages/my-learning-page";
 import SearchPage from "@/pages/search-page";
 import ProfilePage from "@/pages/profile-page";
-import MoviesPage from "@/pages/movies-page";
+import TitlesPage from "@/pages/titles-page";
 import TvSeriesPage from "@/pages/tv-series-page";
 import NotFoundPage from "@/pages/not-found-page";
 import LoginPage from "@/pages/login-page";
@@ -56,9 +56,9 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/browse", element: <BrowsePage /> },
-      { path: "/movies", element: <MoviesPage /> },
+      { path: "/movies", element: <TitlesPage /> },
       { path: "/tvs", element: <TvSeriesPage /> },
-      { path: "/movie/:id", element: <MovieDetailPage /> },
+      { path: "/title/:id", element: <TitleDetailPage /> },
       { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
       { path: "/my-learning", element: <RequireAuth><MyLearningPage /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },

@@ -4,17 +4,17 @@ import { motion } from 'framer-motion';
 import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
-import { GenreBadge } from '@/components/system/movie/genre-badge';
+import { GenreBadge } from '@/components/system/title/genre-badge';
 import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import type { Movie } from '@/types';
+import type { Title } from '@/types';
 
 interface HeroBannerProps {
-  movies: Movie[]
+  titles: Title[]
 }
 
-export function HeroBanner({ movies }: HeroBannerProps) {
+export function HeroBanner({ titles }: HeroBannerProps) {
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   // The backdrop shown as the opaque base layer. The active backdrop fades in on
@@ -29,22 +29,22 @@ export function HeroBanner({ movies }: HeroBannerProps) {
   const isDragging = useRef(false);
   const wheelCooldown = useRef(false);
 
-  const activeMovie = movies[activeIndex];
-  const baseMovie = movies[baseIndex] ?? activeMovie;
+  const activeTitle = titles[activeIndex];
+  const baseTitle = titles[baseIndex] ?? activeTitle;
 
   const goToNext = useCallback(() => {
-    setActiveIndex(prev => (prev + 1) % movies.length);
-  }, [movies.length]);
+    setActiveIndex(prev => (prev + 1) % titles.length);
+  }, [titles.length]);
 
   const goToPrev = useCallback(() => {
-    setActiveIndex(prev => (prev - 1 + movies.length) % movies.length);
-  }, [movies.length]);
+    setActiveIndex(prev => (prev - 1 + titles.length) % titles.length);
+  }, [titles.length]);
 
   useEffect(() => {
-    if (isPaused || movies.length <= 1) return;
+    if (isPaused || titles.length <= 1) return;
     const timer = setInterval(goToNext, 6000);
     return () => clearInterval(timer);
-  }, [goToNext, isPaused, movies.length]);
+  }, [goToNext, isPaused, titles.length]);
 
   // Non-passive touch listeners so we can preventDefault on horizontal swipe
   useEffect(() => {
@@ -121,7 +121,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
     mouseStartX.current = null;
   };
 
-  if (!activeMovie) return null;
+  if (!activeTitle) return null;
 
   return (
     <section
@@ -140,8 +140,8 @@ export function HeroBanner({ movies }: HeroBannerProps) {
         {/* Stable element (no key) so it fades in once on first load, then just
             swaps src under the crossfade layer without re-animating. */}
         <motion.img
-          src={baseMovie.backdrop}
-          alt={baseMovie.title}
+          src={baseTitle.backdrop}
+          alt={baseTitle.title}
           className="absolute inset-0 w-full h-full object-cover object-center"
           draggable={false}
           initial={{ opacity: 0 }}
@@ -150,9 +150,9 @@ export function HeroBanner({ movies }: HeroBannerProps) {
         />
         {activeIndex !== baseIndex && (
           <motion.img
-            key={`top-${activeMovie.id}`}
-            src={activeMovie.backdrop}
-            alt={activeMovie.title}
+            key={`top-${activeTitle.id}`}
+            src={activeTitle.backdrop}
+            alt={activeTitle.title}
             className="absolute inset-0 w-full h-full object-cover object-center"
             draggable={false}
             initial={{ opacity: 0 }}
@@ -177,18 +177,18 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
         <div className="w-full md:max-w-[58%]">
             <div className="flex items-center gap-2 mb-4">
-              {activeMovie.isTrending && (
+              {activeTitle.isTrending && (
                 <Badge variant="orange" className="px-3 py-1 gap-1 normal-case tracking-normal">
                   <span className="w-1.5 h-1.5 rounded-full bg-orange-500 pulse-orange inline-block" />
                   Trending
                 </Badge>
               )}
-              {activeMovie.isNew && !activeMovie.isTrending && (
+              {activeTitle.isNew && !activeTitle.isTrending && (
                 <Badge variant="emerald" className="px-3 py-1 normal-case tracking-normal">
                   New
                 </Badge>
               )}
-              {activeMovie.isFeatured && (
+              {activeTitle.isFeatured && (
                 <Badge variant="default" className="px-3 py-1 normal-case tracking-normal bg-amber-500/20 border-amber-500/40 text-amber-400">
                   Featured
                 </Badge>
@@ -196,26 +196,26 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight drop-shadow-2xl">
-              {activeMovie.title}
+              {activeTitle.title}
             </h1>
 
-            {activeMovie.tagline && (
+            {activeTitle.tagline && (
               <p className="text-base md:text-lg italic text-zinc-300 mb-4 font-medium">
-                "{activeMovie.tagline}"
+                "{activeTitle.tagline}"
               </p>
             )}
 
             <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
               <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
                 <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                {formatYear(activeMovie.year)}
+                {formatYear(activeTitle.year)}
               </span>
-              {activeMovie.duration > 0 && (
+              {activeTitle.duration > 0 && (
                 <>
                   <span className="w-px h-4 bg-zinc-700" />
                   <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
                     <Clock className="w-3.5 h-3.5 text-zinc-500" />
-                    {formatDuration(activeMovie.duration)}
+                    {formatDuration(activeTitle.duration)}
                   </span>
                 </>
               )}
@@ -223,32 +223,32 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               <span className="flex items-center gap-1.5">
                 <OrangeGradientDefs />
                 <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
-                <span className="font-bold text-white">{formatRating(activeMovie.rating)}</span>
+                <span className="font-bold text-white">{formatRating(activeTitle.rating)}</span>
                 <span className="text-zinc-500 text-xs">IMDb</span>
               </span>
-              {activeMovie.type === 'series' && activeMovie.totalSeasons && (
+              {activeTitle.type === 'series' && activeTitle.totalSeasons && (
                 <>
                   <span className="w-px h-4 bg-zinc-700" />
                   <span className="text-zinc-300 font-medium">
-                    {activeMovie.totalSeasons} Season{activeMovie.totalSeasons > 1 ? 's' : ''}
+                    {activeTitle.totalSeasons} Season{activeTitle.totalSeasons > 1 ? 's' : ''}
                   </span>
                 </>
               )}
               <span className="w-px h-4 bg-zinc-700" />
               <div className="flex flex-wrap gap-1.5">
-                {activeMovie.genres.slice(0, 3).map(genre => (
+                {activeTitle.genres.slice(0, 3).map(genre => (
                   <GenreBadge key={genre} genre={genre} />
                 ))}
               </div>
             </div>
 
             <p className="text-zinc-400 text-sm md:text-base leading-relaxed mb-6 line-clamp-3 max-w-xl">
-              {activeMovie.description}
+              {activeTitle.description}
             </p>
 
             <div className="flex items-center gap-3 flex-wrap">
               <button
-                onClick={() => { if (!isDragging.current) navigate(`/watch/${activeMovie.id}`); }}
+                onClick={() => { if (!isDragging.current) navigate(`/watch/${activeTitle.id}`); }}
                 className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'gap-2.5 font-bold transition-transform hover:scale-[1.04] active:scale-[0.97]')}
               >
                 <Play className="w-5 h-5 fill-white" />
@@ -256,7 +256,7 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               </button>
 
               <button
-                onClick={() => { if (!isDragging.current) navigate(`/movie/${activeMovie.id}`); }}
+                onClick={() => { if (!isDragging.current) navigate(`/title/${activeTitle.id}`); }}
                 title="More Info"
                 aria-label="More Info"
                 className="w-12 h-12 rounded-full flex items-center justify-center border glass border-white/20 text-zinc-400 hover:text-white transition-all hover:scale-110 active:scale-90"
@@ -266,9 +266,9 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             </div>
         </div>
 
-        {movies.length > 1 && (
+        {titles.length > 1 && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-            {movies.map((_, index) => (
+            {titles.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setActiveIndex(index)}

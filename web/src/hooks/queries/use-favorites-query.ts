@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast';
 const FAVORITES_KEY = ['favorites'] as const;
 
 // Session map of titles toggled this session: imdbId → favorited?. The backend
-// now stamps each title with `isFavorite` (see Movie.isFavorite), so cards seed
+// now stamps each title with `isFavorite` (see Title.isFavorite), so cards seed
 // their heart from that and never need the full list just to render. This map
 // layers the user's in-session toggles on top so the heart flips instantly
 // everywhere without re-fetching. Held in the query cache (never fetched) so

@@ -1,4 +1,4 @@
-import type { CastMember, Movie } from '@/types';
+import type { CastMember, Title } from '@/types';
 import type { MediaType } from './stream';
 
 export interface TitleImage {
@@ -21,9 +21,9 @@ export interface TitleProgress {
 }
 
 // Flattened, client-ready title — the exact shape the backend now returns (it
-// does the GraphQL flattening server-side). `Movie` remains the render model;
-// `toMovie` adapts a Title into it.
-export interface Title {
+// does the GraphQL flattening server-side). `Title` remains the render model;
+// `toTitle` adapts a TitleDetail into it.
+export interface TitleDetail {
   id: string;
   title: string;
   originalTitle?: string;
@@ -42,7 +42,7 @@ export interface Title {
   language?: string;
   languageCode?: string;
   country?: string;
-  type: Movie['type'];
+  type: Title['type'];
   totalSeasons?: number;
   totalEpisodes?: number;
   // Gallery images with dimensions — used to rank hero backdrops by resolution.
@@ -60,7 +60,7 @@ export interface OriginalLanguage {
 }
 
 export interface BrowseResult {
-  titles: Title[];
+  titles: TitleDetail[];
   hasNextPage: boolean;
   endCursor?: string;
 }
@@ -69,19 +69,19 @@ export function normId(id: string): string {
   return id.startsWith('tt') ? id : `tt${id}`;
 }
 
-export function embedParams(title: Title, mediaId: string) {
+export function embedParams(title: TitleDetail, mediaId: string) {
   const mediaType: MediaType = title.type === 'series' ? 'tv' : 'movie';
   return { mediaType, mediaId: title.id || normId(mediaId) };
 }
 
-export function origLang(title: Title): OriginalLanguage {
+export function origLang(title: TitleDetail): OriginalLanguage {
   if (!title.languageCode) throw new Error('No original language found on IMDb');
   return { code: title.languageCode, label: title.language ?? title.languageCode.toUpperCase() };
 }
 
 // The largest landscape image for a title — what the hero banner displays.
 // Returns null when the title has no usable wide image.
-export function bestBackdrop(title: Title): TitleImage | null {
+export function bestBackdrop(title: TitleDetail): TitleImage | null {
   let best: TitleImage | null = null;
   for (const n of title.images ?? []) {
     const w = n.width ?? 0;
@@ -92,7 +92,7 @@ export function bestBackdrop(title: Title): TitleImage | null {
   return best;
 }
 
-export function toMovie(title: Title): Movie {
+export function toTitle(title: TitleDetail): Title {
   const type = title.type;
   return {
     id: title.id ?? '',
@@ -115,25 +115,25 @@ export function toMovie(title: Title): Movie {
   };
 }
 
-export function toMovies(titles: Title[]): Movie[] {
-  return titles.filter((t) => t.id).map(toMovie);
+export function toTitles(titles: TitleDetail[]): Title[] {
+  return titles.filter((t) => t.id).map(toTitle);
 }
 
-export function filterMovies(titles: Title[], type?: Movie['type']): Movie[] {
-  const movies = toMovies(titles);
-  if (!type) return movies;
-  return movies.filter((m) => m.type === type);
+export function filterTitles(titles: TitleDetail[], type?: Title['type']): Title[] {
+  const result = toTitles(titles);
+  if (!type) return result;
+  return result.filter((m) => m.type === type);
 }
 
-export function topRated(titles: Title[], limit = 10): Movie[] {
-  return [...toMovies(titles)].sort((a, b) => b.rating - a.rating).slice(0, limit);
+export function topRated(titles: TitleDetail[], limit = 10): Title[] {
+  return [...toTitles(titles)].sort((a, b) => b.rating - a.rating).slice(0, limit);
 }
 
 const HERO_GENRES = new Set(['Action', 'Adventure', 'Sci-Fi', 'Thriller', 'Crime', 'Animation']);
 
 // True when the title is tagged with at least one marquee genre — the shared
 // gate for the hero banner and the Top 10 row.
-export function matchesHeroGenres(title: Title): boolean {
+export function matchesHeroGenres(title: TitleDetail): boolean {
   return (title.genres ?? []).some((g) => HERO_GENRES.has(g));
 }
 
@@ -145,7 +145,7 @@ const MIN_BACKDROP_WIDTH = 1024;
 // Picks the strongest hero candidates: marquee-genre titles that have a
 // good-quality landscape backdrop, ranked by user rating (tie-broken by backdrop
 // resolution so the sharper banner wins).
-export function heroTitles(titles: Title[], limit = 8): Movie[] {
+export function heroTitles(titles: TitleDetail[], limit = 8): Title[] {
   const candidates = titles
     .map((t) => ({ title: t, backdrop: bestBackdrop(t) }))
     .filter(
@@ -159,5 +159,5 @@ export function heroTitles(titles: Title[], limit = 8): Movie[] {
     return (b.backdrop?.width ?? 0) - (a.backdrop?.width ?? 0);
   });
 
-  return toMovies(candidates.slice(0, limit).map((c) => c.title));
+  return toTitles(candidates.slice(0, limit).map((c) => c.title));
 }

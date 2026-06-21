@@ -3,12 +3,12 @@ import { useBrowseTitlesInfinite } from './queries/use-browse-title-query';
 import { useSearchQuery } from './queries/use-search-query';
 import { useTitleQuery } from './queries/use-title-query';
 import { isImdb } from '@/utils/stream';
-import { toMovies } from '@/utils/title';
-import type { Movie } from '@/types';
+import { toTitles } from '@/utils/title';
+import type { Title } from '@/types';
 
 interface TitleListing {
   searching: boolean;
-  movies: Movie[];
+  titles: Title[];
   isLoading: boolean;
   isError: boolean;
   // Pagination (browse feed only — the search/id sources return a single page).
@@ -17,7 +17,7 @@ interface TitleListing {
   fetchNextPage: () => void;
 }
 
-// Resolves the title list for a browse/listing page (Browse, Movies, TV Series)
+// Resolves the title list for a browse/listing page (Browse, Titles, TV Series)
 // from one of three sources, based on the free-text search term:
 //   • IMDb id (e.g. tt2575988) → single-title lookup by id
 //   • any other text           → title-name search endpoint
@@ -41,18 +41,18 @@ export function useTitleListing(opts: {
 
   const source = !searching ? browse : byId ? titleLookup : search;
 
-  // Map IMDb titles → Movie DTOs here, memoized on the raw query data, so it only
+  // Map IMDb titles → Title DTOs here, memoized on the raw query data, so it only
   // reruns when a page/result actually changes — not on every filter toggle or
   // re-render in the consuming page.
-  const movies = useMemo<Movie[]>(() => {
-    if (!searching) return toMovies(browse.data?.pages.flatMap((p) => p.titles) ?? []);
-    if (byId) return titleLookup.data ? toMovies([titleLookup.data]) : [];
-    return toMovies(search.data ?? []);
+  const titles = useMemo<Title[]>(() => {
+    if (!searching) return toTitles(browse.data?.pages.flatMap((p) => p.titles) ?? []);
+    if (byId) return titleLookup.data ? toTitles([titleLookup.data]) : [];
+    return toTitles(search.data ?? []);
   }, [searching, byId, browse.data, titleLookup.data, search.data]);
 
   return {
     searching,
-    movies,
+    titles,
     isLoading: source.isLoading,
     isError: byId ? false : !!source.isError,
     hasNextPage: !searching && browse.hasNextPage,

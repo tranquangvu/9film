@@ -2,14 +2,14 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FolderHeart, HeartPlus, Play } from 'lucide-react';
-import type { Movie } from '@/types';
+import type { Title } from '@/types';
 import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
 import { useContinueWatching } from '@/hooks/queries/use-progress-query';
-import { MovieCard } from '@/components/system/movie/movie-card';
-import { HorizontalCarousel } from '@/components/system/movie/movie-carousel';
-import { VirtualMovieGrid } from '@/components/system/movie/virtual-movie-grid';
-import { CarouselSkeleton, MovieGridSkeleton } from '@/components/system/movie/skeletons';
+import { TitleCard } from '@/components/system/title/title-card';
+import { HorizontalCarousel } from '@/components/system/title/title-carousel';
+import { VirtualTitleGrid } from '@/components/system/title/virtual-title-grid';
+import { CarouselSkeleton, TitleGridSkeleton } from '@/components/system/title/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
@@ -40,13 +40,13 @@ const tabs: Tab[] = [
 ];
 
 interface RemovableCardProps {
-  movie: Movie
-  onRemove: (movie: Movie) => void
+  title: Title
+  onRemove: (title: Title) => void
 }
 
-function RemovableCard({ movie, onRemove }: RemovableCardProps) {
+function RemovableCard({ title, onRemove }: RemovableCardProps) {
   return (
-    <MovieCard movie={movie} size="lg" className="w-full" onRemove={() => onRemove(movie)} />
+    <TitleCard title={title} size="lg" className="w-full" onRemove={() => onRemove(title)} />
   );
 }
 
@@ -75,7 +75,7 @@ export default function MyListPage() {
   };
   const [favVisible, setFavVisible] = useState(FAVORITES_PAGE);
 
-  // Server-backed favorites, hydrated into Movie objects via the IMDb queries.
+  // Server-backed favorites, hydrated into Title objects via the IMDb queries.
   const favoritesQ = useFavorites();
 
   // Infinite scroll: only hydrate the first favVisible favorite ids; more are
@@ -86,7 +86,7 @@ export default function MyListPage() {
   // Continue Watching — backend-paginated (one deduped row per title, newest
   // first) with title detail embedded, so no per-title lookup is needed.
   const continueQ = useContinueWatching();
-  const continueWatching = continueQ.movies;
+  const continueWatching = continueQ.titles;
 
   const toggleFavorite = useToggleFavorite();
 
@@ -103,15 +103,15 @@ export default function MyListPage() {
   }, [hasError, toast]);
 
   // The grid shows favorites (All / Favorites tabs).
-  const gridMovies = favTitles.data;
+  const gridTitles = favTitles.data;
   // Full-grid skeleton only on the first load; later pages get a bottom spinner.
   const gridInitialLoading =
-    favoritesQ.isLoading || (favTitles.loading && gridMovies.length === 0);
+    favoritesQ.isLoading || (favTitles.loading && gridTitles.length === 0);
   const favHasMore = favVisible < favIds.length;
-  const favLoadingMore = favHasMore && favTitles.loading && gridMovies.length > 0;
+  const favLoadingMore = favHasMore && favTitles.loading && gridTitles.length > 0;
 
-  const handleRemove = (movie: Movie) => {
-    toggleFavorite.mutate({ imdbId: movie.id, mediaType: movie.type, active: true });
+  const handleRemove = (title: Title) => {
+    toggleFavorite.mutate({ imdbId: title.id, mediaType: title.type, active: true });
   };
 
   const showCarousel = activeTab === 'all'; // Continue Watching preview row
@@ -175,7 +175,7 @@ export default function MyListPage() {
         <div className="mt-6">
           <HorizontalCarousel
             title="Continue Watching"
-            movies={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
+            titles={continueWatching.slice(0, CONTINUE_CAROUSEL_MAX)}
             cardType="backdrop"
             showSeeAll={continueHasOverflow}
             onViewAll={() => setActiveTab('continue')}
@@ -188,14 +188,14 @@ export default function MyListPage() {
           {gridInitialLoading ? (
             <>
               <Skeleton className="h-6 w-40 mb-5" />
-              <MovieGridSkeleton />
+              <TitleGridSkeleton />
             </>
-          ) : gridMovies.length > 0 ? (
+          ) : gridTitles.length > 0 ? (
             <>
               <h2 className="text-lg font-bold text-white mb-5">Favorites</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
-                {gridMovies.map((movie) => (
-                  <RemovableCard key={movie.id} movie={movie} onRemove={handleRemove} />
+                {gridTitles.map((title) => (
+                  <RemovableCard key={title.id} title={title} onRemove={handleRemove} />
                 ))}
               </div>
               {favLoadingMore && <LoadMoreIndicator className="mt-8" />}
@@ -217,10 +217,10 @@ export default function MyListPage() {
       {showContinueGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
           {continueInitialLoading ? (
-            <MovieGridSkeleton />
+            <TitleGridSkeleton />
           ) : continueWatching.length > 0 ? (
             <>
-              <VirtualMovieGrid
+              <VirtualTitleGrid
                 items={continueWatching}
                 showProgress
                 hasMore={!!continueQ.hasNextPage}

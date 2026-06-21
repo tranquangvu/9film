@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { MovieCard } from "@/components/system/movie/movie-card";
-import type { Movie } from "@/types";
+import { TitleCard } from "@/components/system/title/title-card";
+import type { Title } from "@/types";
 
 // Mirrors the Tailwind grid breakpoints the non-virtual grid used
 // (grid-cols-2 sm:3 md:4 lg:5) and its gaps (gap-6 / md:gap-8).
@@ -15,8 +15,8 @@ function gapFor(width: number): number {
   return width >= 768 ? 32 : 24;
 }
 
-interface VirtualMovieGridProps {
-  items: Movie[];
+interface VirtualTitleGridProps {
+  items: Title[];
   // Infinite scroll: fetch the next page as the last rows scroll into view.
   hasMore?: boolean;
   isLoadingMore?: boolean;
@@ -33,13 +33,13 @@ const PREFETCH_ROWS = 2;
 // mounted, so the DOM, image loads, and per-card query subscriptions stay
 // bounded no matter how many pages are loaded. Posters are a fixed 2:3 ratio,
 // so every row is the same height and we can estimate without per-row measuring.
-export function VirtualMovieGrid({
+export function VirtualTitleGrid({
   items,
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
   showProgress = false,
-}: VirtualMovieGridProps) {
+}: VirtualTitleGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -118,10 +118,10 @@ export function VirtualMovieGrid({
               gap,
             }}
           >
-            {rowItems.map((movie) => (
-              <MovieCard
-                key={movie.id}
-                movie={movie}
+            {rowItems.map((title) => (
+              <TitleCard
+                key={title.id}
+                title={title}
                 size="lg"
                 className="w-full"
                 showProgress={showProgress}

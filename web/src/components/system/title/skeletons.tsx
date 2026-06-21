@@ -5,7 +5,7 @@ const cardWidths = { sm: 'w-32', md: 'w-44', lg: 'w-56' } as const;
 
 type CardSize = keyof typeof cardWidths;
 
-export function MovieCardSkeleton({ size = 'md', className }: { size?: CardSize; className?: string }) {
+export function TitleCardSkeleton({ size = 'md', className }: { size?: CardSize; className?: string }) {
   return (
     <div className={cn('flex-shrink-0', cardWidths[size], className)}>
       <Skeleton className="w-full rounded-xl" style={{ aspectRatio: '2/3' }} />
@@ -59,18 +59,18 @@ export function CarouselSkeleton({
         {Array.from({ length: count }).map((_, i) => {
           if (cardType === 'backdrop') return <ContinueCardSkeleton key={i} />;
           if (cardType === 'top10') return <Top10CardSkeleton key={i} rank={i + 1} />;
-          return <MovieCardSkeleton key={i} />;
+          return <TitleCardSkeleton key={i} />;
         })}
       </div>
     </section>
   );
 }
 
-export function MovieGridSkeleton({ count = 15 }: { count?: number }) {
+export function TitleGridSkeleton({ count = 15 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
       {Array.from({ length: count }).map((_, i) => (
-        <MovieCardSkeleton key={i} size="lg" className="w-full" />
+        <TitleCardSkeleton key={i} size="lg" className="w-full" />
       ))}
     </div>
   );
@@ -212,7 +212,7 @@ export function DetailPageSkeleton() {
           <Skeleton className="h-6 w-40" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
             {Array.from({ length: 5 }).map((_, i) => (
-              <MovieCardSkeleton key={i} size="lg" className="w-full" />
+              <TitleCardSkeleton key={i} size="lg" className="w-full" />
             ))}
           </div>
         </div>

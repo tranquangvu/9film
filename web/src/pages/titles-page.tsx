@@ -20,7 +20,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
-export default function MoviesPage() {
+export default function TitlesPage() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   // Free-text title / IMDb id search (?q=…).
@@ -58,7 +58,7 @@ export default function MoviesPage() {
   const primaryGenre =
     selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
-  const { searching, movies, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { searching, titles, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useTitleListing({
       searchTerm,
       type: "movie",
@@ -109,7 +109,7 @@ export default function MoviesPage() {
   }, [isError, toast]);
 
   const filtered = useMemo(() => {
-    let result = movies.filter((m) => m.type === "movie");
+    let result = titles.filter((m) => m.type === "movie");
 
     if (selectedGenres.size > 1) {
       const names = [...selectedGenres].map((id) =>
@@ -121,7 +121,7 @@ export default function MoviesPage() {
     }
 
     return result;
-  }, [movies, selectedGenres]);
+  }, [titles, selectedGenres]);
 
   const gridKey = `grid-${searchTerm}-${[...selectedGenres].join("-")}`;
 

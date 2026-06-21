@@ -4,14 +4,14 @@ import { Play, Heart, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import { formatDuration, formatYear } from '@/utils/format';
-import type { Movie } from '@/types';
-import { RatingBadge } from '@/components/system/movie/rating-badge';
-import { GenreBadge } from '@/components/system/movie/genre-badge';
+import type { Title } from '@/types';
+import { RatingBadge } from '@/components/system/title/rating-badge';
+import { GenreBadge } from '@/components/system/title/genre-badge';
 import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
-interface MovieCardProps {
-  movie: Movie
+interface TitleCardProps {
+  title: Title
   className?: string
   showProgress?: boolean
   size?: 'sm' | 'md' | 'lg'
@@ -24,12 +24,12 @@ const sizeClasses = {
   lg: 'w-56',
 };
 
-export function MovieCard({ movie, className, showProgress = false, size = 'md', onRemove }: MovieCardProps) {
+export function TitleCard({ title, className, showProgress = false, size = 'md', onRemove }: TitleCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useFavoriteButton(movie.id, movie.type, movie.isFavorite);
+  const favorite = useFavoriteButton(title.id, title.type, title.isFavorite);
 
-  const handleClick = () => navigate(`/movie/${movie.id}`);
+  const handleClick = () => navigate(`/title/${title.id}`);
 
   return (
     <div
@@ -43,8 +43,8 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
       <div className="relative w-full rounded-xl overflow-hidden bg-[#1a1a1a]" style={{ aspectRatio: '2/3' }}>
         {!imgError ? (
           <img
-            src={sizedImage(movie.poster, 400)}
-            alt={movie.title}
+            src={sizedImage(title.poster, 400)}
+            alt={title.title}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover"
@@ -52,16 +52,16 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-            <span className="text-zinc-600 text-xs text-center px-2">{movie.title}</span>
+            <span className="text-zinc-600 text-xs text-center px-2">{title.title}</span>
           </div>
         )}
 
         <div className="absolute top-2 left-2">
-          <RatingBadge rating={movie.rating} />
+          <RatingBadge rating={title.rating} />
         </div>
 
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
-          {movie.isNew && (
+          {title.isNew && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
               New
             </span>
@@ -103,20 +103,20 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           </div>
 
           <div className="relative px-2.5 pb-3 space-y-1.5">
-            <p className="text-white font-semibold text-sm leading-tight line-clamp-2">{movie.title}</p>
+            <p className="text-white font-semibold text-sm leading-tight line-clamp-2">{title.title}</p>
 
             <div className="flex items-center gap-1.5 text-zinc-400 text-xs">
-              <span>{formatYear(movie.year)}</span>
-              {movie.duration > 0 && (
+              <span>{formatYear(title.year)}</span>
+              {title.duration > 0 && (
                 <>
                   <span className="w-px h-3 bg-zinc-600 inline-block" />
-                  <span>{formatDuration(movie.duration)}</span>
+                  <span>{formatDuration(title.duration)}</span>
                 </>
               )}
             </div>
 
             <div className="flex flex-wrap gap-1 pt-0.5">
-              {movie.genres.slice(0, 2).map((g) => (
+              {title.genres.slice(0, 2).map((g) => (
                 <GenreBadge key={g} genre={g} className="text-[10px] px-1.5 py-0" />
               ))}
             </div>
@@ -130,15 +130,15 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           }}
         >
           <p className="text-white text-sm font-bold line-clamp-2 leading-snug">
-            {movie.title}
+            {title.title}
           </p>
         </div>
 
-        {showProgress && movie.progress !== undefined && (
+        {showProgress && title.progress !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
             <div
               className="h-full bg-orange-500 rounded-full transition-all duration-300"
-              style={{ width: `${movie.progress}%` }}
+              style={{ width: `${title.progress}%` }}
             />
           </div>
         )}

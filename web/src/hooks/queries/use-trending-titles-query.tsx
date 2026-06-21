@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { getTrendingTitles } from '@/services/title';
-import type { Title } from '@/utils/title';
+import type { TitleDetail } from '@/utils/title';
 
-export function useTrendingTitlesQuery<T = Title[]>(
+export function useTrendingTitlesQuery<T = TitleDetail[]>(
   limit = 10,
-  select?: (titles: Title[]) => T,
+  select?: (titles: TitleDetail[]) => T,
 ) {
   return useQuery({
     queryKey: ['titles', 'trending', limit],

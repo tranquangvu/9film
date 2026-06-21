@@ -1,5 +1,5 @@
 import type { EmbedParams } from './stream';
-import type { Title } from './title';
+import type { TitleDetail } from './title';
 
 const LIMIT = 5;
 
@@ -19,7 +19,7 @@ export interface SubtitleSearchContext {
 
 export function pickSubs(
   subs: SubtitleOption[],
-  title: Title,
+  title: TitleDetail,
   params: EmbedParams,
   preferredLang?: string,
 ): { list: SubtitleOption[]; fileId: number | null } {

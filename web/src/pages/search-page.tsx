@@ -4,16 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Clock, TrendingUp } from 'lucide-react';
 import { useSearchQuery } from '@/hooks/queries/use-search-query';
 import { useToast } from '@/components/ui/toast';
-import { toMovie } from '@/utils/title';
+import { toTitle } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SearchResultsSkeleton } from '@/components/system/movie/skeletons';
+import { SearchResultsSkeleton } from '@/components/system/title/skeletons';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Movie } from '@/types';
+import type { Title } from '@/types';
 
 const TRENDING_TAGS = [
   'Christopher Nolan',
@@ -43,61 +43,61 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 }
 
 interface SearchResultRowProps {
-  movie: Movie
+  title: Title
   query: string
 }
 
-function SearchResultRow({ movie, query }: SearchResultRowProps) {
+function SearchResultRow({ title, query }: SearchResultRowProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
   return (
     <div
-      onClick={() => navigate(`/movie/${movie.id}`)}
+      onClick={() => navigate(`/title/${title.id}`)}
       className="flex gap-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
     >
       <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-surface-2">
         {!imgError ? (
           <img
-            src={movie.poster}
-            alt={movie.title}
+            src={title.poster}
+            alt={title.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-zinc-600 text-xs text-center px-1">{movie.title}</span>
+            <span className="text-zinc-600 text-xs text-center px-1">{title.title}</span>
           </div>
         )}
       </div>
 
       <div className="min-w-0 grow py-1">
         <h3 className="text-white font-semibold text-sm leading-tight line-clamp-1">
-          {highlightMatch(movie.title, query)}
+          {highlightMatch(title.title, query)}
         </h3>
 
         <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
           <span className="flex items-center gap-1">
             <Star className="w-3 h-3 fill-orange-400 text-orange-400" />
-            <span className="text-orange-400 font-medium">{formatRating(movie.rating)}</span>
+            <span className="text-orange-400 font-medium">{formatRating(title.rating)}</span>
           </span>
           <span>·</span>
-          <span>{formatYear(movie.year)}</span>
-          {(movie.type === 'series' || movie.duration > 0) && (
+          <span>{formatYear(title.year)}</span>
+          {(title.type === 'series' || title.duration > 0) && (
             <>
               <span>·</span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {movie.type === 'series'
-                  ? `${movie.totalSeasons ?? 1} Season${(movie.totalSeasons ?? 1) > 1 ? 's' : ''}`
-                  : formatDuration(movie.duration)}
+                {title.type === 'series'
+                  ? `${title.totalSeasons ?? 1} Season${(title.totalSeasons ?? 1) > 1 ? 's' : ''}`
+                  : formatDuration(title.duration)}
               </span>
             </>
           )}
         </div>
 
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {movie.genres.slice(0, 3).map((g) => (
+          {title.genres.slice(0, 3).map((g) => (
             <span key={g} className="text-[10px] px-1.5 py-0.5 rounded bg-white/8 text-zinc-400 border border-white/8">
               {highlightMatch(g, query)}
             </span>
@@ -105,7 +105,7 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
         </div>
 
         <p className="text-zinc-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
-          {highlightMatch(movie.description.slice(0, 120) + '…', query)}
+          {highlightMatch(title.description.slice(0, 120) + '…', query)}
         </p>
       </div>
 
@@ -113,12 +113,12 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
         <span
           className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide',
-            movie.type === 'series'
+            title.type === 'series'
               ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
               : 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
           )}
         >
-          {movie.type === 'series' ? 'Series' : 'Film'}
+          {title.type === 'series' ? 'Series' : 'Film'}
         </span>
       </div>
     </div>
@@ -155,7 +155,7 @@ export default function SearchPage() {
 
   const results = useMemo(() => {
     if (!query.trim()) return { films: [], series: [] };
-    const matched = (search.data ?? []).map(toMovie);
+    const matched = (search.data ?? []).map(toTitle);
     return {
       films: matched.filter((m) => m.type === 'movie'),
       series: matched.filter((m) => m.type === 'series'),
@@ -294,8 +294,8 @@ export default function SearchPage() {
                         </span>
                       </div>
                       <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
-                        {results.films.map((movie) => (
-                          <SearchResultRow key={movie.id} movie={movie} query={query} />
+                        {results.films.map((title) => (
+                          <SearchResultRow key={title.id} title={title} query={query} />
                         ))}
                       </div>
                     </section>
@@ -310,8 +310,8 @@ export default function SearchPage() {
                         </span>
                       </div>
                       <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
-                        {results.series.map((movie) => (
-                          <SearchResultRow key={movie.id} movie={movie} query={query} />
+                        {results.series.map((title) => (
+                          <SearchResultRow key={title.id} title={title} query={query} />
                         ))}
                       </div>
                     </section>

@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
-import type { Movie } from '@/types';
-import { MovieCard } from '@/components/system/movie/movie-card';
-import { ContinueWatchingCard } from '@/components/system/movie/continue-card';
-import { Top10Card } from '@/components/system/movie/top10-card';
+import type { Title } from '@/types';
+import { TitleCard } from '@/components/system/title/title-card';
+import { ContinueWatchingCard } from '@/components/system/title/continue-card';
+import { Top10Card } from '@/components/system/title/top10-card';
 
 interface HorizontalCarouselProps {
   title: string
-  movies: Movie[]
+  titles: Title[]
   className?: string
   cardType?: 'poster' | 'backdrop' | 'top10'
   showSeeAll?: boolean
@@ -24,7 +24,7 @@ const SCROLL_AMOUNT = 600;
 
 export function HorizontalCarousel({
   title,
-  movies,
+  titles,
   className,
   cardType = 'poster',
   showSeeAll = true,
@@ -125,10 +125,10 @@ export function HorizontalCarousel({
             msOverflowStyle: 'none',
           }}
         >
-          {movies.map((movie, index) => {
-            if (cardType === 'backdrop') return <ContinueWatchingCard key={movie.id} movie={movie} />;
-            if (cardType === 'top10') return <Top10Card key={movie.id} movie={movie} rank={index + 1} />;
-            return <MovieCard key={movie.id} movie={movie} showProgress />;
+          {titles.map((title, index) => {
+            if (cardType === 'backdrop') return <ContinueWatchingCard key={title.id} title={title} />;
+            if (cardType === 'top10') return <Top10Card key={title.id} title={title} rank={index + 1} />;
+            return <TitleCard key={title.id} title={title} showProgress />;
           })}
         </div>
       </div>

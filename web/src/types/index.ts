@@ -1,4 +1,4 @@
-export interface Movie {
+export interface Title {
   id: string
   title: string
   tagline?: string
@@ -82,7 +82,7 @@ export interface Notification {
 }
 
 export interface SearchResult {
-  movies: Movie[]
+  titles: Title[]
   actors: CastMember[]
   categories: Genre[]
 }

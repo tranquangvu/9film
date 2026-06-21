@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { putSubtitle, type SubtitleItem } from '@/services/user';
-import type { Title, TitleProgress } from '@/utils/title';
+import type { TitleDetail, TitleProgress } from '@/utils/title';
 
 // Saves the subtitle picked for one episode. The saved preference rides along in
 // the title detail response (on the matching progress entry), so we patch that
@@ -10,7 +10,7 @@ export function useSaveSubtitle() {
   return useMutation({
     mutationFn: (item: SubtitleItem) => putSubtitle(item),
     onSuccess: (saved) => {
-      qc.setQueriesData<Title>({ queryKey: ['title'] }, (old) => {
+      qc.setQueriesData<TitleDetail>({ queryKey: ['title'] }, (old) => {
         if (!old || old.id !== saved.imdbId) return old;
         const subtitlePref = { fileId: saved.fileId, language: saved.language };
         const progress = [...(old.progress ?? [])];

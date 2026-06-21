@@ -3,8 +3,8 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { getContinueWatching, putProgress, type ProgressItem } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './use-title-query';
-import { toMovie, type Title, type TitleProgress } from '@/utils/title';
-import type { Movie } from '@/types';
+import { toTitle, type TitleDetail, type TitleProgress } from '@/utils/title';
+import type { Title } from '@/types';
 
 const CONTINUE_PAGE = 20;
 
@@ -22,17 +22,17 @@ export function useContinueWatchingInfinite() {
   });
 }
 
-// Continue Watching as ready-to-render Movie cards. The backend embeds each
-// title's detail, so we map straight to Movies + resume progress here — no
+// Continue Watching as ready-to-render Title cards. The backend embeds each
+// title's detail, so we map straight to Titles + resume progress here — no
 // per-title /api/title/:id lookup. Used by the home row and the My List grid.
 export function useContinueWatching() {
   const q = useContinueWatchingInfinite();
-  const movies = useMemo<Movie[]>(() => {
+  const titles = useMemo<Title[]>(() => {
     const items = q.data?.pages.flatMap((p) => p.items) ?? [];
     return items.flatMap((it) => {
       if (!it.title) return [];
       return [{
-        ...toMovie(it.title),
+        ...toTitle(it.title),
         progress: progressPercent(it),
         // season > 0 only for series; movies stay undefined.
         resumeSeason: it.season > 0 ? it.season : undefined,
@@ -40,12 +40,12 @@ export function useContinueWatching() {
       }];
     });
   }, [q.data]);
-  return { ...q, movies };
+  return { ...q, titles };
 }
 
 // Per-title progress now rides along in the title detail response, so these
 // hooks read it straight from the (cached) title query — no separate fetch.
-function useTitleProgress(imdbId: string): TitleProgress[] {
+function useProgressRows(imdbId: string): TitleProgress[] {
   const { data } = useTitleQuery(imdbId);
   return data?.progress ?? [];
 }
@@ -53,7 +53,7 @@ function useTitleProgress(imdbId: string): TitleProgress[] {
 // Set of "season:episode" keys that have saved watch progress for a title.
 // Drives the "watched" highlight in episode selectors.
 export function useWatchedEpisodes(imdbId: string): Set<string> {
-  const progress = useTitleProgress(imdbId);
+  const progress = useProgressRows(imdbId);
   return useMemo(() => {
     const set = new Set<string>();
     for (const p of progress) {
@@ -66,7 +66,7 @@ export function useWatchedEpisodes(imdbId: string): Set<string> {
 // The most-recently-played episode for a title (progress is ordered newest-first),
 // i.e. the one the user would resume — drives the "now playing" badge.
 export function useCurrentEpisode(imdbId: string): { season: number; episode: number } | null {
-  const progress = useTitleProgress(imdbId);
+  const progress = useProgressRows(imdbId);
   return useMemo(() => {
     const p = progress.find((p) => p.season > 0);
     return p ? { season: p.season, episode: p.episode } : null;
@@ -76,8 +76,8 @@ export function useCurrentEpisode(imdbId: string): { season: number; episode: nu
 // The saved resume point for a movie (movies store season/episode as 0).
 // Returns null when the user has never played it. Drives the watch-info block
 // on the detail page, mirroring the per-episode markers used for series.
-export function useMovieProgress(imdbId: string): TitleProgress | null {
-  const progress = useTitleProgress(imdbId);
+export function useTitleProgress(imdbId: string): TitleProgress | null {
+  const progress = useProgressRows(imdbId);
   return useMemo(() => progress.find((p) => p.season === 0) ?? null, [progress]);
 }
 
@@ -102,7 +102,7 @@ export function useSaveProgress() {
         durationSeconds: saved.durationSeconds,
         updatedAt: saved.updatedAt ?? new Date().toISOString(),
       };
-      qc.setQueriesData<Title>({ queryKey: ['title'] }, (old) => {
+      qc.setQueriesData<TitleDetail>({ queryKey: ['title'] }, (old) => {
         if (!old || old.id !== saved.imdbId) return old;
         // Replace this episode's row (movies use season/episode 0) and move it to
         // the front so progress stays ordered most-recent-first.

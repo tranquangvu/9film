@@ -4,28 +4,28 @@ import { Play } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import { formatDuration } from '@/utils/format';
-import type { Movie } from '@/types';
+import type { Title } from '@/types';
 
 interface ContinueWatchingCardProps {
-  movie: Movie
+  title: Title
   className?: string
 }
 
-export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardProps) {
+export function ContinueWatchingCard({ title, className }: ContinueWatchingCardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
-  const progress = movie.progress ?? 0;
-  const remaining = Math.round((movie.duration * (100 - progress)) / 100);
+  const progress = title.progress ?? 0;
+  const remaining = Math.round((title.duration * (100 - progress)) / 100);
 
   // Continue Watching jumps straight into playback, resuming at the saved
   // season/episode for series.
   const handleClick = () => {
     const resume =
-      movie.resumeSeason != null
-        ? `?s=${movie.resumeSeason}&e=${movie.resumeEpisode}`
+      title.resumeSeason != null
+        ? `?s=${title.resumeSeason}&e=${title.resumeEpisode}`
         : '';
-    navigate(`/watch/${movie.id}${resume}`);
+    navigate(`/watch/${title.id}${resume}`);
   };
 
   return (
@@ -36,14 +36,14 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
       <div className="relative w-full rounded-xl overflow-hidden bg-[#1a1a1a]" style={{ aspectRatio: '16/9' }}>
         {!imgError ? (
           <img
-            src={sizedImage(movie.backdrop, 640)}
-            alt={movie.title}
+            src={sizedImage(title.backdrop, 640)}
+            alt={title.title}
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-            <span className="text-zinc-600 text-xs">{movie.title}</span>
+            <span className="text-zinc-600 text-xs">{title.title}</span>
           </div>
         )}
 
@@ -52,12 +52,12 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
         <div className="absolute bottom-3 left-3 right-3 z-10">
           <p className="text-white text-sm font-semibold truncate leading-snug"
             style={{ textShadow: '0 1px 6px rgba(0,0,0,1), 0 2px 12px rgba(0,0,0,0.9)' }}>
-            {movie.title}
+            {title.title}
           </p>
           <p className="text-zinc-400 text-xs mt-0.5"
             style={{ textShadow: '0 1px 4px rgba(0,0,0,1)' }}>
-            {movie.resumeSeason ? `S${movie.resumeSeason} · E${movie.resumeEpisode} · ` : ''}
-            {progress}% watched{movie.duration > 0 ? ` · ${formatDuration(remaining)} left` : ''}
+            {title.resumeSeason ? `S${title.resumeSeason} · E${title.resumeEpisode} · ` : ''}
+            {progress}% watched{title.duration > 0 ? ` · ${formatDuration(remaining)} left` : ''}
           </p>
         </div>
 

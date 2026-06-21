@@ -58,7 +58,7 @@ export default function TvSeriesPage() {
   const primaryGenre =
     selectedGenres.size === 1 ? genreName([...selectedGenres][0]) : undefined;
 
-  const { searching, movies, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { searching, titles, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useTitleListing({
       searchTerm,
       type: "tv",
@@ -109,7 +109,7 @@ export default function TvSeriesPage() {
   }, [isError, toast]);
 
   const filtered = useMemo(() => {
-    let result = movies.filter((m) => m.type === "series");
+    let result = titles.filter((m) => m.type === "series");
 
     if (selectedGenres.size > 1) {
       const names = [...selectedGenres].map((id) =>
@@ -121,7 +121,7 @@ export default function TvSeriesPage() {
     }
 
     return result;
-  }, [movies, selectedGenres]);
+  }, [titles, selectedGenres]);
 
   const gridKey = `grid-${searchTerm}-${[...selectedGenres].join("-")}`;
 

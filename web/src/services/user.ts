@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api-fetch';
 import type { AuthUser } from '@/types';
-import type { Title } from '@/utils/title';
+import type { TitleDetail } from '@/utils/title';
 
 export interface FavoriteItem {
   imdbId: string;
@@ -71,7 +71,7 @@ export function putProgress(body: ProgressItem): Promise<ProgressItem> {
 // A resume point with its IMDb title detail embedded, so the client renders the
 // Continue Watching list without a separate /api/title/:id call per title.
 export interface ContinueWatchingItem extends ProgressItem {
-  title?: Title;
+  title?: TitleDetail;
 }
 
 export interface ContinueWatchingPage {

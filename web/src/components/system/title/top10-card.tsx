@@ -3,20 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
-import type { Movie } from '@/types';
+import type { Title } from '@/types';
 import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
 
 interface Top10CardProps {
-  movie: Movie
+  title: Title
   rank: number
   className?: string
 }
 
-export function Top10Card({ movie, rank, className }: Top10CardProps) {
+export function Top10Card({ title, rank, className }: Top10CardProps) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
-  const favorite = useFavoriteButton(movie.id, movie.type, movie.isFavorite);
+  const favorite = useFavoriteButton(title.id, title.type, title.isFavorite);
 
   const rankStr = rank.toString();
 
@@ -44,12 +44,12 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
       <div
         className="relative flex-shrink-0 w-32 rounded-xl overflow-hidden cursor-pointer"
         style={{ aspectRatio: '2/3', zIndex: 2 }}
-        onClick={() => navigate(`/movie/${movie.id}`)}
+        onClick={() => navigate(`/title/${title.id}`)}
       >
         {!imgError ? (
           <img
-            src={sizedImage(movie.poster, 300)}
-            alt={movie.title}
+            src={sizedImage(title.poster, 300)}
+            alt={title.title}
             className="w-full h-full object-cover"
             onError={() => setImgError(true)}
             draggable={false}
@@ -75,7 +75,7 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/watch/${movie.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/watch/${title.id}`); }}
             className="relative w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/40 transition-transform hover:scale-110 active:scale-95"
           >
             <Play className="w-5 h-5 fill-white text-white ml-0.5" />
