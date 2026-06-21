@@ -105,8 +105,8 @@ export function usePlayerSession(
 
   const allUrls = useMemo(() => streamData?.stream_urls ?? [], [streamData]);
   const autoStreamUrl = useMemo(
-    () => (allUrls.length > 0 ? bestUrl(allUrls, settings.defaultQuality) : null),
-    [allUrls, settings.defaultQuality],
+    () => (allUrls.length > 0 ? bestUrl(allUrls) : null),
+    [allUrls],
   );
   const streamUrl = userStreamUrl ?? autoStreamUrl;
 

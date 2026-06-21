@@ -6,9 +6,10 @@ import "database/sql"
 // implementation is SQLite-backed.
 type Repository interface {
 	GetWordStats(userID int64) ([]WordStat, error)
-	GetWords(userID int64, status string, limit, offset int) ([]Word, error)
+	GetWords(userID int64, status, list string, limit, offset int) ([]Word, error)
 	GetWord(userID int64, word string) (*Word, error)
 	AddWord(userID int64, w Word) error
+	BulkAddWords(userID int64, words []string, list string) (int, error)
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
 	SetImageStatus(userID int64, word, status string) error
@@ -29,7 +30,7 @@ func NewRepository(db *sql.DB) Repository {
 // set — all of which need the whole vocabulary, not just the current page.
 func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	rows, err := r.db.Query(
-		`SELECT word, created_at, completed_at
+		`SELECT word, created_at, completed_at, list
 		   FROM words WHERE user_id = ?
 		   ORDER BY created_at DESC`,
 		userID,
@@ -42,7 +43,7 @@ func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	items := make([]WordStat, 0)
 	for rows.Next() {
 		var w WordStat
-		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt); err != nil {
+		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt, &w.List); err != nil {
 			return nil, err
 		}
 		items = append(items, w)
@@ -54,17 +55,17 @@ func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 // "completed" (ordered by when they were learned) or anything else meaning
 // "to learn" (ordered by when they were added) — newest first either way. Backs
 // the per-tab infinite-scrolling lists on the learning page.
-func (r *repository) GetWords(userID int64, status string, limit, offset int) ([]Word, error) {
+func (r *repository) GetWords(userID int64, status, list string, limit, offset int) ([]Word, error) {
 	where, order := "completed_at = ''", "created_at DESC"
 	if status == "completed" {
 		where, order = "completed_at != ''", "completed_at DESC"
 	}
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at
-		   FROM words WHERE user_id = ? AND `+where+`
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list
+		   FROM words WHERE user_id = ? AND list = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
-		userID, limit, offset,
+		userID, list, limit, offset,
 	)
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func scanWord(row rowScanner) (Word, error) {
 	err := row.Scan(
 		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
-		&w.ImageStatus, &w.ImageUpdatedAt,
+		&w.ImageStatus, &w.ImageUpdatedAt, &w.List,
 	)
 	return w, err
 }
@@ -101,7 +102,7 @@ func scanWord(row rowScanner) (Word, error) {
 // confirm ownership before (re)generating). Returns (nil, nil) when not found.
 func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	w, err := scanWord(r.db.QueryRow(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list
 		   FROM words WHERE user_id = ? AND word = ?`,
 		userID, word,
 	))
@@ -174,6 +175,40 @@ func (r *repository) GetImage(userID int64, word string) ([]byte, bool) {
 		return nil, false
 	}
 	return svg, true
+}
+
+// BulkAddWords inserts many bare words (no context, no image) tagged with the
+// given list, in one transaction, skipping any the user already has so existing
+// context isn't overwritten. Returns how many were newly added.
+func (r *repository) BulkAddWords(userID int64, words []string, list string) (int, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(
+		`INSERT INTO words (user_id, word, list) VALUES (?, ?, ?) ON CONFLICT(user_id, word) DO NOTHING`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	added := 0
+	for _, w := range words {
+		res, err := stmt.Exec(userID, w, list)
+		if err != nil {
+			return 0, err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			added++
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return added, nil
 }
 
 func (r *repository) RemoveWord(userID int64, word string) error {

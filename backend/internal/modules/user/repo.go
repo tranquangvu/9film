@@ -12,6 +12,7 @@ type Repository interface {
 	CreateUser(username, avatar string) (*User, error)
 	GetUserByUsername(username string) (*User, error)
 	GetUserByID(id int64) (*User, error)
+	UpdateUser(id int64, username, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	UpsertSettings(userID int64, st Settings) error
 }
@@ -53,6 +54,16 @@ func (r *repository) GetUserByID(id int64) (*User, error) {
 	))
 }
 
+func (r *repository) UpdateUser(id int64, username, avatar string) (*User, error) {
+	if _, err := r.db.Exec(
+		`UPDATE users SET username = ?, avatar = ? WHERE id = ?`,
+		username, avatar, id,
+	); err != nil {
+		return nil, err
+	}
+	return r.GetUserByID(id)
+}
+
 func (r *repository) scanUser(row *sql.Row) (*User, error) {
 	var u User
 	var avatar sql.NullString
@@ -71,7 +82,6 @@ func defaultSettings() Settings {
 	return Settings{
 		AutoplayNext:        true,
 		DefaultSubtitleLang: "en",
-		DefaultQuality:      "auto",
 		LearningMode:        true,
 		LearningLang:        "vi",
 	}
@@ -82,10 +92,10 @@ func (r *repository) GetSettings(userID int64) (Settings, error) {
 	var st Settings
 	var autoplay, learning int
 	err := r.db.QueryRow(
-		`SELECT autoplay_next, default_subtitle_lang, default_quality, learning_mode, learning_lang
+		`SELECT autoplay_next, default_subtitle_lang, learning_mode, learning_lang
 		   FROM settings WHERE user_id = ?`,
 		userID,
-	).Scan(&autoplay, &st.DefaultSubtitleLang, &st.DefaultQuality, &learning, &st.LearningLang)
+	).Scan(&autoplay, &st.DefaultSubtitleLang, &learning, &st.LearningLang)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultSettings(), nil
 	}
@@ -107,16 +117,15 @@ func (r *repository) UpsertSettings(userID int64, st Settings) error {
 		learning = 1
 	}
 	_, err := r.db.Exec(
-		`INSERT INTO settings (user_id, autoplay_next, default_subtitle_lang, default_quality, learning_mode, learning_lang, updated_at)
-		   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+		`INSERT INTO settings (user_id, autoplay_next, default_subtitle_lang, learning_mode, learning_lang, updated_at)
+		   VALUES (?, ?, ?, ?, ?, datetime('now'))
 		   ON CONFLICT(user_id) DO UPDATE SET
 		     autoplay_next = excluded.autoplay_next,
 		     default_subtitle_lang = excluded.default_subtitle_lang,
-		     default_quality = excluded.default_quality,
 		     learning_mode = excluded.learning_mode,
 		     learning_lang = excluded.learning_lang,
 		     updated_at = datetime('now')`,
-		userID, autoplay, st.DefaultSubtitleLang, st.DefaultQuality, learning, st.LearningLang,
+		userID, autoplay, st.DefaultSubtitleLang, learning, st.LearningLang,
 	)
 	return err
 }

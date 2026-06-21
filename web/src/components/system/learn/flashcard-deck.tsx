@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2, RotateCw, Check, Sparkles, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,21 @@ import type { Word } from '@/services/user';
 // A playful flip-card study game. The front shows the AI illustration + word;
 // flipping reveals the meaning. "Got it" marks the word learned (the new
 // complete gate); "Again" requeues it to the back for another pass this session.
-export function FlashcardDeck({ words, onClose }: { words: Word[]; onClose: () => void }) {
-  const total = words.length;
-  // The deck order is a session snapshot of word keys; current card data is read
-  // live from `words` so an illustration that finishes generating appears mid-study.
+export function FlashcardDeck({
+  words,
+  total,
+  hasMore,
+  fetchMore,
+  onClose,
+}: {
+  words: Word[];
+  total: number;
+  hasMore: boolean;
+  fetchMore: () => void;
+  onClose: () => void;
+}) {
+  // The queue is a growing list of word keys; current card data is read live from
+  // `words` so an illustration that finishes generating appears mid-study.
   const [queue, setQueue] = useState<string[]>(() => words.map((w) => w.word));
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -27,9 +38,26 @@ export function FlashcardDeck({ words, onClose }: { words: Word[]; onClose: () =
   const complete = useCompleteWord();
 
   const byKey = useMemo(() => new Map(words.map((w) => [w.word, w])), [words]);
+
+  // Merge newly loaded pages into the study queue as they arrive.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQueue((prev) => {
+      const have = new Set(prev);
+      const fresh = words.map((w) => w.word).filter((k) => !have.has(k));
+      return fresh.length ? [...prev, ...fresh] : prev;
+    });
+  }, [words]);
+
+  // Pull the next page as we near the end of the loaded queue.
+  useEffect(() => {
+    if (hasMore && pos >= queue.length - 5) fetchMore();
+  }, [hasMore, pos, queue.length, fetchMore]);
+
   const currentKey = queue[pos];
   const current = currentKey ? byKey.get(currentKey) : undefined;
-  const finished = pos >= queue.length;
+  const finished = pos >= queue.length && !hasMore;
+  const loadingMore = pos >= queue.length && hasMore;
 
   function gotIt() {
     if (!current) return;
@@ -89,6 +117,8 @@ export function FlashcardDeck({ words, onClose }: { words: Word[]; onClose: () =
             onAgain={again}
             completing={complete.isPending}
           />
+        ) : loadingMore ? (
+          <p key="loading" className="text-emerald-200/70">Loading more words…</p>
         ) : (
           // Live word vanished (e.g. completed elsewhere) — skip to the next card.
           <SkipCard key={`skip-${pos}`} onSkip={() => setPos((p) => p + 1)} />

@@ -23,6 +23,7 @@ type Service interface {
 	Signup(username string) (*User, string, error)
 	Login(username string) (*User, string, error)
 	GetUser(id int64) (*User, error)
+	UpdateUser(id int64, username, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	SaveSettings(userID int64, st Settings) (Settings, error)
 }
@@ -76,6 +77,21 @@ func (s *service) GetUser(id int64) (*User, error) {
 	return s.repo.GetUserByID(id)
 }
 
+// UpdateUser changes the account's username and avatar. The username must be
+// unique (excluding the account itself).
+func (s *service) UpdateUser(id int64, username, avatar string) (*User, error) {
+	avatar = strings.TrimSpace(avatar)
+	if avatar == "" {
+		avatar = avatarFor(username)
+	}
+	if existing, err := s.repo.GetUserByUsername(username); err == nil && existing.ID != id {
+		return nil, ErrUsernameTaken
+	} else if err != nil && !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+	return s.repo.UpdateUser(id, username, avatar)
+}
+
 func (s *service) GetSettings(userID int64) (Settings, error) {
 	return s.repo.GetSettings(userID)
 }
@@ -84,9 +100,6 @@ func (s *service) GetSettings(userID int64) (Settings, error) {
 func (s *service) SaveSettings(userID int64, st Settings) (Settings, error) {
 	if st.DefaultSubtitleLang == "" {
 		st.DefaultSubtitleLang = "en"
-	}
-	if st.DefaultQuality == "" {
-		st.DefaultQuality = "auto"
 	}
 	if st.LearningLang == "" {
 		st.LearningLang = "vi"

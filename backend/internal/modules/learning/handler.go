@@ -84,8 +84,9 @@ func (h *Handler) GetWords(c *gin.Context) {
 		offset = v
 	}
 
-	// Fetch one extra row to detect whether another page exists.
-	rows, err := h.svc.GetWords(middleware.UserID(c), c.Query("status"), limit+1, offset)
+	// Fetch one extra row to detect whether another page exists. The optional
+	// `list` filter ('' = personal words, 'oxford3000' = the starter pack).
+	rows, err := h.svc.GetWords(middleware.UserID(c), c.Query("status"), c.Query("list"), limit+1, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load saved words"})
 		return
@@ -176,6 +177,26 @@ func (h *Handler) RegenerateWordImage(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusAccepted, gin.H{"imageStatus": "pending"})
+}
+
+// ImportWords bulk-adds a bundled starter list (defaults to the Oxford 3000).
+func (h *Handler) ImportWords(c *gin.Context) {
+	var req importRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	list := strings.ToLower(strings.TrimSpace(req.List))
+	if list == "" {
+		list = "oxford3000"
+	}
+	added, err := h.svc.ImportWordList(middleware.UserID(c), list)
+	if err != nil {
+		logger.Get().Warn("word list import failed", zap.String("list", list), zap.Error(err))
+		c.JSON(http.StatusBadGateway, gin.H{"error": "could not import word list"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"added": added})
 }
 
 func (h *Handler) RemoveWord(c *gin.Context) {

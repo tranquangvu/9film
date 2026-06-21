@@ -10,6 +10,7 @@ import {
   getWordStats,
   getWordImageObjectUrl,
   regenerateWordImage,
+  importWordList,
   addWord,
   removeWord,
   completeWord,
@@ -23,9 +24,9 @@ import { useToast } from '@/components/ui/toast';
 
 const STATS_KEY = ['word-stats'] as const;
 // All paginated lists share the ['words', ...] prefix so a single
-// invalidate({ queryKey: ['words'] }) refreshes every tab after a mutation.
+// invalidate({ queryKey: ['words'] }) refreshes every tab/list after a mutation.
 const WORDS_PREFIX = ['words'] as const;
-const wordsKey = (status: WordStatus) => ['words', status] as const;
+const wordsKey = (status: WordStatus, list: string) => ['words', list, status] as const;
 const WORDS_PAGE_SIZE = 30;
 
 // Lightweight full vocabulary: drives the progress chart, the to-learn/completed
@@ -40,13 +41,13 @@ export function useWordStatsQuery() {
   });
 }
 
-// One tab's saved words, paginated for infinite scroll. While any loaded word's
-// illustration is still generating, poll so the shimmer flips to the image live.
-export function useInfiniteWordsQuery(status: WordStatus) {
+// One tab+list's saved words, paginated for infinite scroll. While any loaded
+// word's illustration is still generating, poll so the shimmer flips live.
+export function useInfiniteWordsQuery(status: WordStatus, list = '') {
   const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
-    queryKey: wordsKey(status),
-    queryFn: ({ pageParam }) => getWords(status, pageParam, WORDS_PAGE_SIZE),
+    queryKey: wordsKey(status, list),
+    queryFn: ({ pageParam }) => getWords(status, pageParam, WORDS_PAGE_SIZE, list),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: isAuthenticated,
@@ -87,6 +88,25 @@ export function useWordImage(word: string, status: WordImageStatus | undefined, 
   return status === 'ready' ? url : null;
 }
 
+// Imports a bundled starter word list (e.g. Oxford 3000). Refreshes the lists
+// and toasts how many were added.
+export function useImportWordList() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (list: string) => importWordList(list),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: STATS_KEY });
+      qc.invalidateQueries({ queryKey: WORDS_PREFIX });
+      toast({
+        title: res.added > 0 ? `Added ${res.added} words` : 'Already imported',
+        description: res.added > 0 ? 'Find them under To Learn.' : 'These words are already in your list.',
+      });
+    },
+    onError: () => toast({ title: 'Could not import word list', description: 'Please try again.', variant: 'destructive' }),
+  });
+}
+
 // Triggers (re)generation; flips the word back to pending so polling resumes.
 export function useRegenerateWordImage() {
   const qc = useQueryClient();
@@ -117,7 +137,7 @@ export function useAddWord() {
       await qc.cancelQueries({ queryKey: STATS_KEY });
       const prev = qc.getQueryData<WordStat[]>(STATS_KEY);
       qc.setQueryData<WordStat[]>(STATS_KEY, (old = []) => [
-        { word, completedAt: '' },
+        { word, completedAt: '', list: '' },
         ...old.filter((w) => w.word !== word),
       ]);
       return { prev };

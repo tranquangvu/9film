@@ -66,7 +66,7 @@ func Migrate(db *sql.DB) error {
 		// Seed the default local account. The app is password-less and single-user
 		// by default: signing in with this username is enough to get in.
 		`INSERT OR IGNORE INTO users (username, avatar)
-			VALUES ('iami', 'https://api.dicebear.com/7.x/avataaars/svg?seed=iami')`,
+			VALUES ('iami', 'https://api.dicebear.com/10.x/thumbs/svg?seed=iami')`,
 		`CREATE TABLE IF NOT EXISTS favorites (
 			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id    TEXT NOT NULL,
@@ -93,7 +93,6 @@ func Migrate(db *sql.DB) error {
 			user_id               INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			autoplay_next         INTEGER NOT NULL DEFAULT 1,
 			default_subtitle_lang TEXT NOT NULL DEFAULT 'en',
-			default_quality       TEXT NOT NULL DEFAULT 'auto',
 			learning_mode         INTEGER NOT NULL DEFAULT 1,
 			learning_lang         TEXT NOT NULL DEFAULT 'vi',
 			updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
@@ -146,7 +145,26 @@ func Migrate(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "words", "image_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
+	// Word list membership: ''=personal, 'oxford3000'=imported starter pack.
+	if err := addColumnIfMissing(db, "words", "list", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	// default_quality was dropped from the settings UI; remove the dead column.
+	if err := dropColumnIfExists(db, "settings", "default_quality"); err != nil {
+		return err
+	}
 	return nil
+}
+
+// dropColumnIfExists removes a column when present, making the removal idempotent
+// across restarts and existing DBs.
+func dropColumnIfExists(db *sql.DB, table, col string) error {
+	has, err := hasColumn(db, table, col)
+	if err != nil || !has {
+		return err
+	}
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", table, col))
+	return err
 }
 
 // hasColumn reports whether a table already has the named column. A missing

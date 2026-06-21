@@ -15,6 +15,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
 	me.GET("/words", h.GetWords)
 	me.GET("/words/stats", h.GetWordStats)
 	me.POST("/words", h.AddWord)
+	me.POST("/words/import", h.ImportWords)
 	me.DELETE("/words", h.RemoveWord)
 	me.PUT("/words/complete", h.CompleteWord)
 	me.GET("/words/image", h.GetWordImage)

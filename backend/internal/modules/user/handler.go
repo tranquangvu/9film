@@ -75,6 +75,31 @@ func (h *Handler) GetMe(c *gin.Context) {
 	c.JSON(http.StatusOK, u)
 }
 
+// UpdateMe changes the signed-in user's username and avatar.
+func (h *Handler) UpdateMe(c *gin.Context) {
+	var req updateMeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	username, err := normalizeUsername(req.Username)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	u, err := h.svc.UpdateUser(middleware.UserID(c), username, req.Avatar)
+	if err != nil {
+		if errors.Is(err, ErrUsernameTaken) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		logger.Get().Warn("update user failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update profile"})
+		return
+	}
+	c.JSON(http.StatusOK, u)
+}
+
 func (h *Handler) GetSettings(c *gin.Context) {
 	s, err := h.svc.GetSettings(middleware.UserID(c))
 	if err != nil {

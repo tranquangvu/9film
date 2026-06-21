@@ -8,7 +8,6 @@ const SETTINGS_KEY = ['settings'] as const;
 export const DEFAULT_SETTINGS: UserSettings = {
   autoplayNext: true,
   defaultSubtitleLang: 'en',
-  defaultQuality: 'auto',
   learningMode: true,
   learningLang: 'vi',
 };

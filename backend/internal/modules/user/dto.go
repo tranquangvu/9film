@@ -7,3 +7,8 @@ type signupRequest struct {
 type loginRequest struct {
 	Username string `json:"username"`
 }
+
+type updateMeRequest struct {
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+}

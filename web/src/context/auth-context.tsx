@@ -21,6 +21,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (username: string) => Promise<void>;
   signup: (username: string) => Promise<void>;
+  updateUser: (user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -79,9 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyAuth],
   );
 
+  // Reflect a profile edit (username/avatar) into the session everywhere.
+  const updateUser = useCallback((u: AuthUser) => setUser(u), []);
+
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, signup, logout }}
+      value={{ user, isAuthenticated: !!user, isLoading, login, signup, updateUser, logout }}
     >
       {children}
     </AuthContext.Provider>

@@ -61,6 +61,7 @@ const router = createBrowserRouter([
       { path: "/title/:id", element: <TitleDetailPage /> },
       { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
       { path: "/my-learning", element: <RequireAuth><MyLearningPage /></RequireAuth> },
+      { path: "/my-learning/the-oxford-3000", element: <RequireAuth><MyLearningPage list="oxford3000" /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },
       { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
       { path: "/about", element: <AboutPage /> },

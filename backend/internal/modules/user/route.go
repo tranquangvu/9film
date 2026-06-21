@@ -13,6 +13,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
 
 	me := rg.Group("/me", middleware.AuthRequired(cfg))
 	me.GET("", h.GetMe)
+	me.PUT("", h.UpdateMe)
 	me.GET("/settings", h.GetSettings)
 	me.PUT("/settings", h.PutSettings)
 }

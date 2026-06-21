@@ -16,6 +16,9 @@ type Word struct {
 	// bytes live in the word_images table; ImageUpdatedAt is a cache-bust token.
 	ImageStatus    string `json:"imageStatus"`
 	ImageUpdatedAt string `json:"imageUpdatedAt"`
+	// Which list the word belongs to: ''=personal (saved while watching),
+	// 'oxford3000'=imported starter pack.
+	List string `json:"list"`
 }
 
 // WordStat is a saved word stripped to the fields the learning page's progress
@@ -26,6 +29,7 @@ type WordStat struct {
 	Word        string `json:"word"`
 	CreatedAt   string `json:"createdAt"`
 	CompletedAt string `json:"completedAt"`
+	List        string `json:"list"`
 }
 
 // Definition is the flattened shape the frontend consumes for a single word.

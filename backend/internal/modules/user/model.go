@@ -14,7 +14,6 @@ type User struct {
 type Settings struct {
 	AutoplayNext        bool   `json:"autoplayNext"`
 	DefaultSubtitleLang string `json:"defaultSubtitleLang"`
-	DefaultQuality      string `json:"defaultQuality"`
 	LearningMode        bool   `json:"learningMode"`
 	LearningLang        string `json:"learningLang"`
 }

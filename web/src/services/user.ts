@@ -20,7 +20,6 @@ export interface ProgressItem {
 export interface UserSettings {
   autoplayNext: boolean;
   defaultSubtitleLang: string;
-  defaultQuality: string;
   learningMode: boolean;
   learningLang: string;
 }
@@ -42,10 +41,17 @@ export interface Word {
   imageStatus?: WordImageStatus;
   /** Cache-bust token bumped each time the illustration is (re)generated. */
   imageUpdatedAt?: string;
+  /** '' = personal (saved while watching), 'oxford3000' = imported starter pack. */
+  list?: string;
 }
 
 export function getMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/me');
+}
+
+// Updates the signed-in user's username and avatar. Returns the updated user.
+export function updateMe(body: { username: string; avatar: string }): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/api/me', { method: 'PUT', body });
 }
 
 export function getSettings(): Promise<UserSettings> {
@@ -113,14 +119,16 @@ export interface WordsPage {
   nextOffset: number;
 }
 
-// One paginated page of saved words for a tab. Mirrors the continue-watching
-// pagination shape so the learning lists can infinite-scroll.
+// One paginated page of saved words for a tab + list. Mirrors the
+// continue-watching pagination shape so the learning lists can infinite-scroll.
 export async function getWords(
   status: WordStatus,
   offset = 0,
   limit = 30,
+  list = '',
 ): Promise<WordsPage> {
   const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+  if (list) params.set('list', list);
   const res = await apiFetch<WordsPage>(`/api/me/words?${params}`);
   return { items: res.items ?? [], hasMore: res.hasMore ?? false, nextOffset: res.nextOffset ?? offset };
 }
@@ -132,6 +140,7 @@ export interface WordStat {
   word: string;
   createdAt?: string;
   completedAt?: string;
+  list?: string;
 }
 
 export async function getWordStats(): Promise<WordStat[]> {
@@ -141,6 +150,12 @@ export async function getWordStats(): Promise<WordStat[]> {
 
 export function addWord(body: Omit<Word, 'createdAt' | 'completedAt'>): Promise<Word> {
   return apiFetch<Word>('/api/me/words', { method: 'POST', body });
+}
+
+// Bulk-imports a bundled starter word list (e.g. the Oxford 3000) into the
+// user's vocabulary. Returns how many words were newly added.
+export function importWordList(list: string): Promise<{ added: number }> {
+  return apiFetch('/api/me/words/import', { method: 'POST', body: { list } });
 }
 
 // The authed image URL (with cache-bust token); fetched as a blob since an <img>

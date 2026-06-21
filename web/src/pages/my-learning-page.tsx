@@ -9,6 +9,7 @@ import {
   Trophy,
   Flame,
   GraduationCap,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -25,6 +26,8 @@ import {
   useWordStatsQuery,
   useInfiniteWordsQuery,
   useWordImage,
+  useImportWordList,
+  useCompleteWord,
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
@@ -194,11 +197,17 @@ function ProgressChart({ words }: { words: WordStat[] }) {
 
 // Playful header: a bouncing mascot, the title, and bubbly stat pills.
 function LearningHero({
+  title,
+  subtitle,
+  mascot,
   addedCount,
   completedCount,
   streak,
   onStudy,
 }: {
+  title: string;
+  subtitle: string;
+  mascot: string;
   addedCount: number;
   completedCount: number;
   streak: number;
@@ -213,11 +222,11 @@ function LearningHero({
           animate={{ scale: 1, opacity: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 14 }}
         >
-          🐰
+          {mascot}
         </motion.div>
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">Vocabulary Garden</h1>
-          <p className="text-sm text-emerald-100/70">Grow your words — one flashcard at a time.</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">{title}</h1>
+          <p className="text-sm text-emerald-100/70">{subtitle}</p>
         </div>
       </div>
 
@@ -246,7 +255,25 @@ function LearningHero({
   );
 }
 
-function WordDialog({ word, onOpenChange }: { word: Word | null; onOpenChange: (open: boolean) => void }) {
+function WordDialog({
+  word,
+  onOpenChange,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  onComplete,
+  completing,
+}: {
+  word: Word | null;
+  onOpenChange: (open: boolean) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onComplete: (w: Word) => void;
+  completing: boolean;
+}) {
   const dict = useDictionaryQuery(word?.word);
   const imageUrl = useWordImage(word?.word ?? '', word?.imageStatus, word?.imageUpdatedAt);
 
@@ -322,11 +349,27 @@ function WordDialog({ word, onOpenChange }: { word: Word | null; onOpenChange: (
               </div>
             )}
 
-            {!isDone && (
-              <p className="mt-6 text-center text-xs text-zinc-500">
-                Tap <span className="text-emerald-300 font-medium">Study</span> to review this word and mark it learned.
-              </p>
-            )}
+            <div className="mt-6 flex items-center justify-between gap-2">
+              <Button variant="ghost" size="sm" className="rounded-full" onClick={onPrev} disabled={!hasPrev}>
+                <ChevronLeft className="w-4 h-4" /> Prev
+              </Button>
+              {!isDone ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={completing}
+                  onClick={() => onComplete(word)}
+                >
+                  <CheckCircle2 className="w-4 h-4" /> {completing ? 'Saving…' : 'Got it'}
+                </Button>
+              ) : (
+                <span className="text-xs text-orange-400 font-medium">Learned</span>
+              )}
+              <Button variant="ghost" size="sm" className="rounded-full" onClick={onNext} disabled={!hasNext}>
+                Next <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>
@@ -395,35 +438,115 @@ function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
   );
 }
 
-export default function MyLearningPage() {
+// Promo card on the personal page that links to the dedicated Oxford 3000 page.
+function StarterPack() {
+  return (
+    <div className="rounded-3xl border border-emerald-400/15 bg-white/[0.03] p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-emerald-300" />
+        <h2 className="text-sm font-semibold text-white">Starter packs</h2>
+      </div>
+      <Link
+        to="/my-learning/the-oxford-3000"
+        className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4 hover:border-emerald-400/30 transition-colors"
+      >
+        <div className="text-4xl select-none">📚</div>
+        <div className="flex-1 min-w-[180px]">
+          <p className="font-bold text-white">The Oxford 3000</p>
+          <p className="text-sm text-zinc-400">The most important English words to know — open to add &amp; study them.</p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-zinc-500 shrink-0" />
+      </Link>
+    </div>
+  );
+}
+
+// Empty state for the Oxford 3000 page: one tap imports the whole list.
+function OxfordImportCard() {
+  const importList = useImportWordList();
+  return (
+    <div className="rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/10 to-transparent p-10 text-center">
+      <div className="text-6xl mb-3 select-none">📚</div>
+      <p className="font-bold text-white text-lg">The Oxford 3000</p>
+      <p className="text-sm text-emerald-100/60 mt-1 mb-5">
+        Add the 3000 most important English words, then study them as flashcards.
+      </p>
+      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-block">
+        <Button
+          variant="primary"
+          size="lg"
+          className="rounded-2xl"
+          disabled={importList.isPending}
+          onClick={() => importList.mutate('oxford3000')}
+        >
+          {importList.isPending ? 'Adding…' : 'Add the Oxford 3000'}
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
+export default function MyLearningPage({ list = '' }: { list?: string }) {
+  const isOxford = list === 'oxford3000';
   const { isAuthenticated } = useAuth();
   const stats = useWordStatsQuery();
   const [selected, setSelected] = useState<Word | null>(null);
   const [tab, setTab] = useState<'learn' | 'completed'>('learn');
   const [studying, setStudying] = useState(false);
 
-  const all = useMemo(() => stats.data ?? [], [stats.data]);
+  // Stats cover the whole vocabulary; this page only shows its own list.
+  const all = useMemo(
+    () => (stats.data ?? []).filter((w) => (w.list ?? '') === list),
+    [stats.data, list],
+  );
   const addedCount = useMemo(() => all.filter((w) => !w.completedAt).length, [all]);
   const completedCount = useMemo(() => all.filter((w) => w.completedAt).length, [all]);
   const streak = useMemo(() => computeStreak(all), [all]);
 
   // The active tab's words (rendered list). The "learn" set also feeds the deck;
   // when tab is "learn" this is the same cached query, so no double fetch.
-  const list = useInfiniteWordsQuery(tab);
-  const words = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
+  const tabQuery = useInfiniteWordsQuery(tab, list);
+  const words = useMemo(() => tabQuery.data?.pages.flatMap((p) => p.items) ?? [], [tabQuery.data]);
   const groups = useMemo(
     () => groupByDay(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt)),
     [words, tab],
   );
 
-  // Words the flashcard deck studies — always the "to learn" set.
-  const learnList = useInfiniteWordsQuery('learn');
+  // Words the flashcard deck studies — always the "to learn" set. The deck pulls
+  // more pages as it progresses, so a large imported list (Oxford 3000) is fully
+  // studyable without loading everything up front.
+  const learnList = useInfiniteWordsQuery('learn', list);
   const learnWords = useMemo(() => learnList.data?.pages.flatMap((p) => p.items) ?? [], [learnList.data]);
 
   const selectedLive = selected ? (words.find((w) => w.word === selected.word) ?? selected) : null;
 
+  // Navigation within the open word popup, across the loaded list.
+  const selIdx = useMemo(
+    () => (selected ? words.findIndex((w) => w.word === selected.word) : -1),
+    [selected, words],
+  );
+  const complete = useCompleteWord();
+  const gotoWord = (i: number) => {
+    if (i >= 0 && i < words.length) setSelected(words[i]);
+  };
+  // Mark learned, then advance to the next word (or close when it was the last).
+  const completeAndNext = (w: Word) => {
+    const next = words[selIdx + 1] ?? null;
+    complete.mutate(w.word, {
+      onSuccess: () => setSelected(next && next.word !== w.word ? next : null),
+    });
+  };
+
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = list;
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = tabQuery;
+
+  // Keep navigation flowing for large lists: load the next page as the open
+  // word nears the end of what's loaded.
+  useEffect(() => {
+    if (selIdx >= 0 && selIdx >= words.length - 3 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [selIdx, words.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasNextPage) return;
@@ -457,17 +580,32 @@ export default function MyLearningPage() {
       }}
     >
       <div className="mx-auto max-w-3xl">
+        {isOxford && (
+          <Link to="/my-learning" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-4">
+            <ChevronLeft className="w-4 h-4" /> My Learning
+          </Link>
+        )}
         {stats.isLoading ? (
           <p className="text-zinc-500 text-sm">Loading…</p>
         ) : all.length === 0 ? (
-          <div className="rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/10 to-transparent p-10 text-center">
-            <div className="text-6xl mb-3 select-none">🌱</div>
-            <p className="font-bold text-white text-lg">Your garden is empty</p>
-            <p className="text-sm text-emerald-100/60 mt-1">Click a word in the subtitles while watching to plant it here.</p>
-          </div>
+          isOxford ? (
+            <OxfordImportCard />
+          ) : (
+            <div className="space-y-6">
+              <div className="rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/10 to-transparent p-10 text-center">
+                <div className="text-6xl mb-3 select-none">🌱</div>
+                <p className="font-bold text-white text-lg">Your garden is empty</p>
+                <p className="text-sm text-emerald-100/60 mt-1">Click a word in the subtitles while watching — or start with a pack below.</p>
+              </div>
+              <StarterPack />
+            </div>
+          )
         ) : (
           <div className="space-y-6">
             <LearningHero
+              title={isOxford ? 'The Oxford 3000' : 'Vocabulary Garden'}
+              subtitle={isOxford ? 'The essential English words — learn them as flashcards.' : 'Grow your words — one flashcard at a time.'}
+              mascot={isOxford ? '📚' : '🐰'}
               addedCount={addedCount}
               completedCount={completedCount}
               streak={streak}
@@ -475,6 +613,8 @@ export default function MyLearningPage() {
             />
 
             <ProgressChart words={all} />
+
+            {!isOxford && <StarterPack />}
 
             <div className="flex items-center gap-2 flex-wrap">
               {([
@@ -503,7 +643,7 @@ export default function MyLearningPage() {
             ) : (
               <>
                 {groups.length > 0 && <WordGroupList groups={groups} onSelect={setSelected} />}
-                {(list.isLoading || isFetchingNextPage) && <LoadMoreIndicator className="mt-2" />}
+                {(tabQuery.isLoading || isFetchingNextPage) && <LoadMoreIndicator className="mt-2" />}
                 <div ref={sentinelRef} className="h-1" />
               </>
             )}
@@ -511,10 +651,27 @@ export default function MyLearningPage() {
         )}
       </div>
 
-      <WordDialog word={selectedLive} onOpenChange={(open) => !open && setSelected(null)} />
+      <WordDialog
+        word={selectedLive}
+        onOpenChange={(open) => !open && setSelected(null)}
+        onPrev={() => gotoWord(selIdx - 1)}
+        onNext={() => gotoWord(selIdx + 1)}
+        hasPrev={selIdx > 0}
+        hasNext={selIdx >= 0 && selIdx < words.length - 1}
+        onComplete={completeAndNext}
+        completing={complete.isPending}
+      />
 
       <AnimatePresence>
-        {studying && <FlashcardDeck words={learnWords} onClose={() => setStudying(false)} />}
+        {studying && (
+          <FlashcardDeck
+            words={learnWords}
+            total={addedCount}
+            hasMore={!!learnList.hasNextPage}
+            fetchMore={learnList.fetchNextPage}
+            onClose={() => setStudying(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

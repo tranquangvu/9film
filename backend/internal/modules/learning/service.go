@@ -3,13 +3,19 @@ package learning
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"go.uber.org/zap"
 )
+
+// Bundled starter word lists the user can import in one tap. Words are added
+// bare (no image generation) to seed a vocabulary to study.
+const oxford3000URL = "https://raw.githubusercontent.com/sapbmw/The-Oxford-3000/master/The_Oxford_3000.txt"
 
 const dictAPIBase = "https://api.dictionaryapi.dev/api/v2/entries/en"
 
@@ -50,9 +56,12 @@ type translateResponse struct {
 type Service interface {
 	Define(word string) (*Definition, error)
 	Translate(text, target string) (string, error)
-	GetWords(userID int64, status string, limit, offset int) ([]Word, error)
+	GetWords(userID int64, status, list string, limit, offset int) ([]Word, error)
 	GetWordStats(userID int64) ([]WordStat, error)
 	AddWord(userID int64, w Word) error
+	// ImportWordList bulk-adds a bundled starter list (e.g. "oxford3000"),
+	// returning how many words were newly added. No images are generated.
+	ImportWordList(userID int64, list string) (int, error)
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
 	// ImageEnabled reports whether AI illustrations are configured.
@@ -176,8 +185,8 @@ func (s *service) Translate(text, target string) (string, error) {
 	return result.ResponseData.TranslatedText, nil
 }
 
-func (s *service) GetWords(userID int64, status string, limit, offset int) ([]Word, error) {
-	return s.repo.GetWords(userID, status, limit, offset)
+func (s *service) GetWords(userID int64, status, list string, limit, offset int) ([]Word, error) {
+	return s.repo.GetWords(userID, status, list, limit, offset)
 }
 
 func (s *service) GetWordStats(userID int64) ([]WordStat, error) {
@@ -195,6 +204,48 @@ func (s *service) AddWord(userID int64, w Word) error {
 		s.generateAsync(userID, w.Word, w.Translation, w.Sentence)
 	}
 	return nil
+}
+
+func (s *service) ImportWordList(userID int64, list string) (int, error) {
+	if list != "oxford3000" {
+		return 0, fmt.Errorf("unknown word list %q", list)
+	}
+	resp, err := s.dictClient.Get(oxford3000URL)
+	if err != nil {
+		return 0, fmt.Errorf("fetch word list: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("word list source returned %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("read word list: %w", err)
+	}
+	return s.repo.BulkAddWords(userID, parseWordList(string(body)), "oxford3000")
+}
+
+// parseWordList turns a newline-separated list into trimmed, lowercased, unique
+// words. It strips a leading UTF-8 BOM and skips blanks, over-long lines, and
+// marker lines (e.g. the source's trailing "=== end ==") so junk can't be
+// inserted as vocabulary. Multi-word phrases (e.g. "according to") are kept —
+// they're legitimate Oxford entries.
+func parseWordList(text string) []string {
+	text = strings.TrimPrefix(text, "\ufeff") // strip a UTF-8 BOM if present
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	for _, line := range strings.Split(text, "\n") {
+		w := strings.ToLower(strings.TrimSpace(line))
+		if w == "" || len(w) > 64 || strings.Contains(w, "=") {
+			continue
+		}
+		if _, dup := seen[w]; dup {
+			continue
+		}
+		seen[w] = struct{}{}
+		out = append(out, w)
+	}
+	return out
 }
 
 func (s *service) RemoveWord(userID int64, word string) error {
