@@ -16,9 +16,9 @@ import (
 // the user package (backed by the user repository) so the title module never
 // imports user — keeping the dependency direction one-way.
 type Enricher interface {
-	FavoritedSet(userID int64) map[string]struct{}
+	FavoritedIds(userID int64) map[string]struct{}
+	IsFavorited(userID int64, imdbID string) bool
 	Progress(userID int64, imdbID string) []TitleProgress
-	SubtitlePref(userID int64, imdbID string) *TitleSubtitle
 }
 
 // Handler serves the public IMDb title endpoints (search, trending, browse,
@@ -51,7 +51,7 @@ func (h *Handler) favoritedSet(c *gin.Context) map[string]struct{} {
 	if uid == 0 {
 		return nil
 	}
-	return h.enricher.FavoritedSet(uid)
+	return h.enricher.FavoritedIds(uid)
 }
 
 // markFavorites flags each title the user has favorited (in place; no-op when
@@ -91,16 +91,9 @@ func (h *Handler) GetTitle(c *gin.Context) {
 	// points so the detail/watch pages don't need separate /favorites or
 	// /progress calls.
 	if uid := middleware.UserID(c); uid != 0 {
-		if set := h.enricher.FavoritedSet(uid); set != nil {
-			if _, ok := set[title.ID]; ok {
-				title.IsFavorite = true
-			}
-		}
+		title.IsFavorite = h.enricher.IsFavorited(uid, title.ID)
 		if rows := h.enricher.Progress(uid, title.ID); rows != nil {
 			title.Progress = rows
-		}
-		if sub := h.enricher.SubtitlePref(uid, title.ID); sub != nil {
-			title.SubtitlePref = sub
 		}
 	}
 	c.JSON(http.StatusOK, title)

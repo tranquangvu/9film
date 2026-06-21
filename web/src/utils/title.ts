@@ -8,12 +8,15 @@ export interface TitleImage {
 }
 
 // A resume point embedded in a title's detail (movies: one row with season/
-// episode 0; series: one per watched episode). Title-scoped, so no imdbId.
+// episode 0; series: one per watched episode), carrying the subtitle chosen for
+// that episode. Title-scoped, so no imdbId.
 export interface TitleProgress {
   season: number;
   episode: number;
   positionSeconds: number;
   durationSeconds: number;
+  // The subtitle the user picked for this episode (absent when none is set).
+  subtitlePref?: { fileId: number; language: string };
   updatedAt?: string;
 }
 
@@ -46,11 +49,9 @@ export interface Title {
   images?: TitleImage[];
   // Set by the backend when the signed-in user has favorited this title.
   isFavorite?: boolean;
-  // The signed-in user's resume points for this title (absent when anonymous).
+  // The signed-in user's resume points for this title (absent when anonymous),
+  // each carrying the subtitle chosen for that episode.
   progress?: TitleProgress[];
-  // The signed-in user's saved subtitle selection for this title (absent when
-  // anonymous or unset).
-  subtitlePref?: { fileId: number; language: string };
 }
 
 export interface OriginalLanguage {

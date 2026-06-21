@@ -14,22 +14,16 @@ export default function SignupPage() {
   const [params] = useSearchParams();
   const from = params.get('from') ?? '/';
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
     setSubmitting(true);
     try {
-      await signup(email, password, name);
+      await signup(username);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
@@ -51,27 +45,11 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
-              autoComplete="name"
-              className={fieldClass}
-            />
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              autoComplete="email"
-              required
-              className={fieldClass}
-            />
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password (min 6 characters)"
-              autoComplete="new-password"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              autoComplete="username"
+              autoFocus
               required
               className={fieldClass}
             />

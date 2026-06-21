@@ -1,4 +1,4 @@
-package watching
+package history
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Module wires the watching feature (repository → service → handler) and
+// Module wires the history feature (repository → service → handler) and
 // registers its routes. It owns the title service it uses to hydrate
 // continue-watching, and reads the favorited set from the favorite module to
 // flag those items.

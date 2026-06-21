@@ -1,4 +1,4 @@
-package watching
+package history
 
 import "github.com/bentran/nicefilm/backend/internal/title"
 

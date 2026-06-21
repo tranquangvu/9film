@@ -32,25 +32,25 @@ type Title struct {
 	// Set by handlers (not IMDb) when the requesting user has favorited the title.
 	IsFavorite bool `json:"isFavorite,omitempty"`
 	// The requesting user's resume points for this title (movies: one row with
-	// season/episode 0; series: one per watched episode). Set by handlers from the
-	// store; empty/absent for anonymous requests. Replaces the old /progress call.
+	// season/episode 0; series: one per watched episode), each carrying the
+	// subtitle chosen for that episode. Set by handlers from the store;
+	// empty/absent for anonymous requests. Replaces the old /progress call.
 	Progress []TitleProgress `json:"progress,omitempty"`
-	// The requesting user's saved subtitle selection for this title (absent when
-	// anonymous or unset). Set by handlers; replaces the old /subtitles call.
-	SubtitlePref *TitleSubtitle `json:"subtitlePref,omitempty"`
 }
 
-// TitleProgress is one resume point embedded in a title's detail response.
+// TitleProgress is one episode's resume point (plus the subtitle chosen for it)
+// embedded in a title's detail response.
 type TitleProgress struct {
 	Season          int     `json:"season"`
 	Episode         int     `json:"episode"`
 	PositionSeconds float64 `json:"positionSeconds"`
 	DurationSeconds float64 `json:"durationSeconds"`
-	UpdatedAt       string  `json:"updatedAt,omitempty"`
+	// The subtitle the user picked for this episode (absent when none is set).
+	SubtitlePref *TitleSubtitle `json:"subtitlePref,omitempty"`
+	UpdatedAt    string         `json:"updatedAt,omitempty"`
 }
 
-// TitleSubtitle is the user's saved subtitle selection embedded in a title's
-// detail response.
+// TitleSubtitle is a saved subtitle selection embedded in a progress entry.
 type TitleSubtitle struct {
 	FileID   int64  `json:"fileId"`
 	Language string `json:"language"`

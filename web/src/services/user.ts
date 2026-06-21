@@ -65,7 +65,7 @@ export function removeFavorite(imdbId: string): Promise<void> {
 }
 
 export function putProgress(body: ProgressItem): Promise<ProgressItem> {
-  return apiFetch<ProgressItem>('/api/me/watching', { method: 'PUT', body });
+  return apiFetch<ProgressItem>('/api/me/history', { method: 'PUT', body });
 }
 
 // A resume point with its IMDb title detail embedded, so the client renders the
@@ -83,12 +83,14 @@ export interface ContinueWatchingPage {
 // Paginated, deduped-per-title resume list backing the Continue Watching grid.
 export async function getContinueWatching(offset = 0, limit = 20): Promise<ContinueWatchingPage> {
   const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
-  const res = await apiFetch<Partial<ContinueWatchingPage>>(`/api/me/watching?${params}`);
+  const res = await apiFetch<Partial<ContinueWatchingPage>>(`/api/me/history?${params}`);
   return { items: res.items ?? [], hasMore: res.hasMore ?? false, nextOffset: res.nextOffset ?? offset };
 }
 
 export interface SubtitleItem {
   imdbId: string;
+  season: number;
+  episode: number;
   fileId: number;
   language: string;
 }

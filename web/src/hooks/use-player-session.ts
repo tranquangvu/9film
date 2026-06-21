@@ -201,9 +201,11 @@ export function usePlayerSession(
   // title detail (DB-backed, follows them across devices); otherwise we fall back
   // to localStorage.
   const saveSubtitleMut = useSaveSubtitle();
+  // Per-episode (DB-backed, follows the signed-in user across devices), falling
+  // back to the title-scoped localStorage pref for anonymous users.
   const savedSubPref = useMemo(
-    () => titleData?.subtitlePref ?? getSubtitlePref(titleId),
-    [titleData?.subtitlePref, titleId],
+    () => currentProgress?.subtitlePref ?? getSubtitlePref(titleId),
+    [currentProgress?.subtitlePref, titleId],
   );
 
   // Prefer the exact release (fileId), else any track in the same language.
@@ -236,7 +238,12 @@ export function usePlayerSession(
     const pref = opt ? { fileId: opt.fileId, language: opt.language } : null;
     setSubtitlePref(titleId, pref); // localStorage (instant + offline fallback)
     if (isAuthenticated && pref) {
-      saveSubtitleMut.mutate({ imdbId: titleId, ...pref });
+      saveSubtitleMut.mutate({
+        imdbId: titleId,
+        season: isTv ? season : 0,
+        episode: isTv ? episode : 0,
+        ...pref,
+      });
     }
   }
 

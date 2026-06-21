@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { X, Crown, LogIn } from 'lucide-react';
+import { X, LogIn } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { genres } from '@/data/genres';
@@ -116,15 +116,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 >
                   <img
                     src={user.avatar}
-                    alt={user.name}
+                    alt={user.username}
                     className="w-10 h-10 rounded-xl object-cover bg-zinc-800 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">{user.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Crown size={10} className="text-orange-500" />
-                      <p className="text-xs text-orange-500 capitalize font-medium">{user.plan}</p>
-                    </div>
+                    <p className="text-sm font-semibold text-white truncate">@{user.username}</p>
                   </div>
                 </NavLink>
               ) : (

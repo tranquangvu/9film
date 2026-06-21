@@ -1,4 +1,4 @@
-package watching
+package history
 
 import (
 	"sync"
@@ -12,7 +12,7 @@ const continueDetailConcurrency = 8
 // Favorites supplies the user's favorited-id set so continue-watching items can
 // be flagged. Implemented by favorite.Enricher.
 type Favorites interface {
-	FavoritedSet(userID int64) map[string]struct{}
+	FavoritedIds(userID int64) map[string]struct{}
 }
 
 // Service owns watch-progress writes and the continue-watching hydration
@@ -20,7 +20,7 @@ type Favorites interface {
 type Service interface {
 	UpsertProgress(userID int64, p Progress) error
 	UpsertSubtitle(userID int64, p Subtitle) error
-	ContinueWatching(userID int64, limit, offset int) (items []continueWatchingItem, hasMore bool, nextOffset int, err error)
+	GetHistory(userID int64, limit, offset int) (items []continueWatchingItem, hasMore bool, nextOffset int, err error)
 }
 
 type service struct {
@@ -41,11 +41,11 @@ func (s *service) UpsertSubtitle(userID int64, p Subtitle) error {
 	return s.repo.UpsertSubtitle(userID, p)
 }
 
-// ContinueWatching returns the paginated, deduped-per-title resume list with
+// GetHistory returns the paginated, deduped-per-title resume list with
 // each title's detail hydrated (concurrently, bounded) and unresolved rows
 // dropped. It fetches one extra row to detect whether another page exists.
-func (s *service) ContinueWatching(userID int64, limit, offset int) (items []continueWatchingItem, hasMore bool, nextOffset int, err error) {
-	rows, err := s.repo.ContinueWatching(userID, limit+1, offset)
+func (s *service) GetHistory(userID int64, limit, offset int) (items []continueWatchingItem, hasMore bool, nextOffset int, err error) {
+	rows, err := s.repo.GetHistory(userID, limit+1, offset)
 	if err != nil {
 		return nil, false, 0, err
 	}
@@ -74,7 +74,7 @@ func (s *service) ContinueWatching(userID int64, limit, offset int) (items []con
 
 	// Drop rows whose title couldn't be resolved so the UI never shows blanks,
 	// and flag the ones the user has favorited.
-	fav := s.favorites.FavoritedSet(userID)
+	fav := s.favorites.FavoritedIds(userID)
 	items = make([]continueWatchingItem, 0, len(hydrated))
 	for _, it := range hydrated {
 		if it.Title == nil {

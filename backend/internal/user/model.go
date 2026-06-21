@@ -5,13 +5,10 @@ import "errors"
 var ErrNotFound = errors.New("not found")
 
 type User struct {
-	ID           int64  `json:"id"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"-"`
-	Name         string `json:"name"`
-	Avatar       string `json:"avatar"`
-	Plan         string `json:"plan"`
-	CreatedAt    string `json:"createdAt"`
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	Avatar    string `json:"avatar"`
+	CreatedAt string `json:"createdAt"`
 }
 
 type Settings struct {

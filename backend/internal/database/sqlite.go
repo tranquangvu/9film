@@ -45,38 +45,36 @@ func Open(path string) (*sql.DB, error) {
 func Migrate(db *sql.DB) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
-			id            INTEGER PRIMARY KEY AUTOINCREMENT,
-			email         TEXT UNIQUE NOT NULL,
-			password_hash TEXT NOT NULL,
-			name          TEXT NOT NULL,
-			avatar        TEXT,
-			plan          TEXT NOT NULL DEFAULT 'free',
-			created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			username   TEXT UNIQUE NOT NULL,
+			avatar     TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
-		`CREATE TABLE IF NOT EXISTS list_items (
+		// Seed the default local account. The app is password-less and single-user
+		// by default: signing in with this username is enough to get in.
+		`INSERT OR IGNORE INTO users (username, avatar)
+			VALUES ('iami', 'https://api.dicebear.com/7.x/avataaars/svg?seed=iami')`,
+		`CREATE TABLE IF NOT EXISTS favorites (
 			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id    TEXT NOT NULL,
 			media_type TEXT NOT NULL DEFAULT 'movie' CHECK(media_type IN ('movie','series')),
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, imdb_id)
 		)`,
-		`CREATE TABLE IF NOT EXISTS progress (
-			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			imdb_id          TEXT NOT NULL,
-			season           INTEGER NOT NULL DEFAULT 0,
-			episode          INTEGER NOT NULL DEFAULT 0,
-			position_seconds REAL NOT NULL,
-			duration_seconds REAL NOT NULL,
-			updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+		// A row per (user, title, episode) holding both the resume point and the
+		// chosen subtitle. position/duration are 0 for a subtitle-only row (a track
+		// picked before any progress); sub_file_id is NULL when no subtitle is set.
+		`CREATE TABLE IF NOT EXISTS history (
+			user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			imdb_id      TEXT NOT NULL,
+			season       INTEGER NOT NULL DEFAULT 0,
+			episode      INTEGER NOT NULL DEFAULT 0,
+			position     REAL NOT NULL DEFAULT 0,
+			duration     REAL NOT NULL DEFAULT 0,
+			sub_file_id  INTEGER,
+			sub_language TEXT NOT NULL DEFAULT '',
+			updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, imdb_id, season, episode)
-		)`,
-		`CREATE TABLE IF NOT EXISTS subtitles (
-			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			imdb_id    TEXT NOT NULL,
-			file_id    INTEGER NOT NULL,
-			language   TEXT NOT NULL DEFAULT '',
-			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-			PRIMARY KEY (user_id, imdb_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS settings (
 			user_id               INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

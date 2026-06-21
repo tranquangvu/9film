@@ -66,10 +66,8 @@ export interface UserProfile {
 // The authenticated user returned by the backend (/api/auth/*, /api/me).
 export interface AuthUser {
   id: number
-  email: string
-  name: string
+  username: string
   avatar: string
-  plan: string
   createdAt?: string
 }
 

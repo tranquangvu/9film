@@ -3,10 +3,11 @@ package favorite
 import "database/sql"
 
 // Repository is the persistence contract for a user's favorites/watchlist. The
-// default implementation is SQLite-backed (the physical table is `list_items`).
+// default implementation is SQLite-backed (the physical table is `favorites`).
 type Repository interface {
 	Favorites(userID int64) ([]Favorite, error)
-	FavoritedSet(userID int64) (map[string]struct{}, error)
+	FavoritedIds(userID int64) (map[string]struct{}, error)
+	IsFavorited(userID int64, imdbID string) (bool, error)
 	AddFavorite(userID int64, imdbID, mediaType string) error
 	RemoveFavorite(userID int64, imdbID string) error
 }
@@ -23,7 +24,7 @@ func NewRepository(db *sql.DB) Repository {
 func (r *repository) Favorites(userID int64) ([]Favorite, error) {
 	rows, err := r.db.Query(
 		`SELECT imdb_id, media_type, created_at
-		   FROM list_items WHERE user_id = ?
+		   FROM favorites WHERE user_id = ?
 		   ORDER BY created_at DESC`,
 		userID,
 	)
@@ -43,10 +44,10 @@ func (r *repository) Favorites(userID int64) ([]Favorite, error) {
 	return items, rows.Err()
 }
 
-// FavoritedSet returns the set of a user's favorited imdb ids, for marking the
+// FavoritedIds returns the set of a user's favorited imdb ids, for marking the
 // `isFavorite` flag on title listings without sending the whole list to the client.
-func (r *repository) FavoritedSet(userID int64) (map[string]struct{}, error) {
-	rows, err := r.db.Query(`SELECT imdb_id FROM list_items WHERE user_id = ?`, userID)
+func (r *repository) FavoritedIds(userID int64) (map[string]struct{}, error) {
+	rows, err := r.db.Query(`SELECT imdb_id FROM favorites WHERE user_id = ?`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +64,21 @@ func (r *repository) FavoritedSet(userID int64) (map[string]struct{}, error) {
 	return set, rows.Err()
 }
 
+// IsFavorited reports whether a user has favorited a single title — a targeted
+// existence check for the title-detail endpoint, avoiding loading the whole set.
+func (r *repository) IsFavorited(userID int64, imdbID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM favorites WHERE user_id = ? AND imdb_id = ?)`,
+		userID, imdbID,
+	).Scan(&exists)
+	return exists, err
+}
+
 // AddFavorite upserts a favorite (idempotent on the user_id+imdb_id PK).
 func (r *repository) AddFavorite(userID int64, imdbID, mediaType string) error {
 	_, err := r.db.Exec(
-		`INSERT INTO list_items (user_id, imdb_id, media_type)
+		`INSERT INTO favorites (user_id, imdb_id, media_type)
 		   VALUES (?, ?, ?)
 		   ON CONFLICT(user_id, imdb_id) DO UPDATE SET media_type = excluded.media_type`,
 		userID, imdbID, mediaType,
@@ -76,7 +88,7 @@ func (r *repository) AddFavorite(userID int64, imdbID, mediaType string) error {
 
 func (r *repository) RemoveFavorite(userID int64, imdbID string) error {
 	_, err := r.db.Exec(
-		`DELETE FROM list_items WHERE user_id = ? AND imdb_id = ?`,
+		`DELETE FROM favorites WHERE user_id = ? AND imdb_id = ?`,
 		userID, imdbID,
 	)
 	return err

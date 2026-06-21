@@ -11,6 +11,7 @@ import (
 	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/bentran/nicefilm/backend/internal/database"
 	"github.com/bentran/nicefilm/backend/internal/favorite"
+	"github.com/bentran/nicefilm/backend/internal/history"
 	"github.com/bentran/nicefilm/backend/internal/learning"
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -18,7 +19,6 @@ import (
 	"github.com/bentran/nicefilm/backend/internal/subtitle"
 	"github.com/bentran/nicefilm/backend/internal/title"
 	"github.com/bentran/nicefilm/backend/internal/user"
-	"github.com/bentran/nicefilm/backend/internal/watching"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -62,8 +62,8 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 
 	user.Module(api, db, cfg)
 	favorite.Module(api, db, cfg)
-	watching.Module(api, db, cfg)
-	title.Module(api, cfg, newTitleEnricher(db)) // enricher composed from favorite + watching
+	history.Module(api, db, cfg)
+	title.Module(api, cfg, history.NewEnricher(db)) // enriches title responses with per-user state
 	learning.Module(api, db, cfg)
 	stream.Module(r, api)
 	subtitle.Module(api, cfg)

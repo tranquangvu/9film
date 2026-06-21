@@ -1,12 +1,9 @@
 package user
 
 type signupRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Username string `json:"username"`
 }
 
 type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username string `json:"username"`
 }

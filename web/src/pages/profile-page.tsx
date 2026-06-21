@@ -149,7 +149,7 @@ function ProfileSection() {
           <div className="w-24 h-24 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-orange-500/40">
             <img
               src={user?.avatar}
-              alt={user?.name ?? 'Avatar'}
+              alt={user?.username ?? 'Avatar'}
               className="w-full h-full object-cover"
               onError={(e) => {
                 const t = e.currentTarget;
@@ -166,15 +166,8 @@ function ProfileSection() {
         {/* Info */}
         <div className="flex-1 text-center sm:text-left space-y-1">
           <div className="flex items-center justify-center sm:justify-start gap-2">
-            <h3 className="text-xl font-bold text-white">{user?.name}</h3>
-            {user?.plan === 'premium' && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400 text-xs font-semibold">
-                <Crown className="w-3 h-3" />
-                Premium
-              </span>
-            )}
+            <h3 className="text-xl font-bold text-white">@{user?.username}</h3>
           </div>
-          <p className="text-sm text-zinc-400">{user?.email}</p>
           {joinedLabel && (
             <p className="text-xs text-zinc-600">Member since {joinedLabel}</p>
           )}

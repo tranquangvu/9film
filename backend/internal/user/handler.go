@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -29,15 +28,15 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
-	email, name, err := normalizeSignup(req)
+	username, err := normalizeUsername(req.Username)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	u, token, err := h.svc.Signup(email, req.Password, name)
+	u, token, err := h.svc.Signup(username)
 	if err != nil {
-		if errors.Is(err, ErrEmailTaken) {
+		if errors.Is(err, ErrUsernameTaken) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
@@ -48,18 +47,23 @@ func (h *Handler) Signup(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"token": token, "user": u})
 }
 
-// Login verifies credentials and returns a token.
+// Login resolves the account by username and returns a token. There is no
+// password — this app is local and a correct username is sufficient.
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-
-	u, token, err := h.svc.Login(email, req.Password)
+	username, err := normalizeUsername(req.Username)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	u, token, err := h.svc.Login(username)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unknown username"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})

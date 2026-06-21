@@ -14,8 +14,7 @@ export default function LoginPage() {
   const [params] = useSearchParams();
   const from = params.get('from') ?? '/';
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('iami');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,7 +23,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(username);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
@@ -41,24 +40,16 @@ export default function LoginPage() {
         </Link>
         <div className="bg-surface border border-white/10 rounded-2xl p-6 md:p-8">
           <h1 className="text-xl font-bold text-white mb-1">Welcome back</h1>
-          <p className="text-sm text-zinc-500 mb-6">Sign in to continue watching.</p>
+          <p className="text-sm text-zinc-500 mb-6">Enter your username to continue watching.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              autoComplete="email"
-              required
-              className={fieldClass}
-            />
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              autoComplete="current-password"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              autoComplete="username"
+              autoFocus
               required
               className={fieldClass}
             />

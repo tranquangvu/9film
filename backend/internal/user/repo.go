@@ -9,8 +9,8 @@ import (
 // default implementation is SQLite-backed; the interface lets the service be
 // tested against a mock.
 type Repository interface {
-	CreateUser(email, passwordHash, name, avatar string) (*User, error)
-	GetUserByEmail(email string) (*User, error)
+	CreateUser(username, avatar string) (*User, error)
+	GetUserByUsername(username string) (*User, error)
 	GetUserByID(id int64) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	UpsertSettings(userID int64, st Settings) error
@@ -25,11 +25,10 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 // CreateUser inserts a new user and returns it with its assigned id.
-// The caller is responsible for hashing the password.
-func (r *repository) CreateUser(email, passwordHash, name, avatar string) (*User, error) {
+func (r *repository) CreateUser(username, avatar string) (*User, error) {
 	res, err := r.db.Exec(
-		`INSERT INTO users (email, password_hash, name, avatar) VALUES (?, ?, ?, ?)`,
-		email, passwordHash, name, avatar,
+		`INSERT INTO users (username, avatar) VALUES (?, ?)`,
+		username, avatar,
 	)
 	if err != nil {
 		return nil, err
@@ -41,16 +40,16 @@ func (r *repository) CreateUser(email, passwordHash, name, avatar string) (*User
 	return r.GetUserByID(id)
 }
 
-func (r *repository) GetUserByEmail(email string) (*User, error) {
+func (r *repository) GetUserByUsername(username string) (*User, error) {
 	return r.scanUser(r.db.QueryRow(
-		`SELECT id, email, password_hash, name, avatar, plan, created_at FROM users WHERE email = ?`,
-		email,
+		`SELECT id, username, avatar, created_at FROM users WHERE username = ?`,
+		username,
 	))
 }
 
 func (r *repository) GetUserByID(id int64) (*User, error) {
 	return r.scanUser(r.db.QueryRow(
-		`SELECT id, email, password_hash, name, avatar, plan, created_at FROM users WHERE id = ?`,
+		`SELECT id, username, avatar, created_at FROM users WHERE id = ?`,
 		id,
 	))
 }
@@ -58,7 +57,7 @@ func (r *repository) GetUserByID(id int64) (*User, error) {
 func (r *repository) scanUser(row *sql.Row) (*User, error) {
 	var u User
 	var avatar sql.NullString
-	err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &avatar, &u.Plan, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &avatar, &u.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}

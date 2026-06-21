@@ -107,7 +107,7 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
             >
               <img
                 src={user?.avatar}
-                alt={user?.name ?? 'Account'}
+                alt={user?.username ?? 'Account'}
                 className="w-full h-full object-cover"
               />
             </Link>

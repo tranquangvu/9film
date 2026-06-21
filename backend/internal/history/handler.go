@@ -1,4 +1,4 @@
-package watching
+package history
 
 import (
 	"net/http"
@@ -17,9 +17,9 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// GetWatching returns the paginated, deduped-per-title resume list —
+// GetHistory returns the paginated, deduped-per-title resume list —
 // with each title's detail embedded — that drives the Continue Watching list.
-func (h *Handler) GetWatching(c *gin.Context) {
+func (h *Handler) GetHistory(c *gin.Context) {
 	limit := 20
 	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
 		limit = v
@@ -32,7 +32,7 @@ func (h *Handler) GetWatching(c *gin.Context) {
 		offset = v
 	}
 
-	items, hasMore, nextOffset, err := h.svc.ContinueWatching(middleware.UserID(c), limit, offset)
+	items, hasMore, nextOffset, err := h.svc.GetHistory(middleware.UserID(c), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load continue watching"})
 		return
@@ -63,6 +63,8 @@ func (h *Handler) PutProgress(c *gin.Context) {
 	c.JSON(http.StatusOK, p)
 }
 
+// PutSubtitle saves the subtitle picked for one episode (movies omit
+// season/episode, defaulting to 0).
 func (h *Handler) PutSubtitle(c *gin.Context) {
 	var p Subtitle
 	if err := c.ShouldBindJSON(&p); err != nil {

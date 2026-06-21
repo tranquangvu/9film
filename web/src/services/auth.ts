@@ -6,10 +6,10 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
-export function signup(body: { email: string; password: string; name: string }): Promise<AuthResponse> {
+export function signup(body: { username: string }): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/api/auth/signup', { method: 'POST', body, auth: false });
 }
 
-export function login(body: { email: string; password: string }): Promise<AuthResponse> {
+export function login(body: { username: string }): Promise<AuthResponse> {
   return apiFetch<AuthResponse>('/api/auth/login', { method: 'POST', body, auth: false });
 }
