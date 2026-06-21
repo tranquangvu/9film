@@ -14,10 +14,18 @@ type OpenSubtitlesConfig struct {
 	Password string
 }
 
+// GeminiConfig is present only when GEMINI_API_KEY is set; otherwise AI word
+// illustrations are disabled and the learning module degrades gracefully.
+type GeminiConfig struct {
+	APIKey string
+	Model  string
+}
+
 type Config struct {
 	Port          int
 	Host          string
 	OpenSubtitles *OpenSubtitlesConfig
+	Gemini        *GeminiConfig
 
 	JWTSecret string
 	TokenTTL  time.Duration
@@ -57,10 +65,21 @@ func Load() *Config {
 		}
 	}
 
+	var gemini *GeminiConfig
+	if apiKey := trim(os.Getenv("GEMINI_API_KEY")); apiKey != "" {
+		// A text model: it writes SVG markup for the word illustration.
+		model := trim(os.Getenv("GEMINI_MODEL"))
+		if model == "" {
+			model = "gemini-2.5-flash"
+		}
+		gemini = &GeminiConfig{APIKey: apiKey, Model: model}
+	}
+
 	return &Config{
 		Port:          port,
 		Host:          host,
 		OpenSubtitles: openSubs,
+		Gemini:        gemini,
 		JWTSecret:     trim(os.Getenv("JWT_SECRET")),
 		TokenTTL:      time.Duration(ttlHours) * time.Hour,
 		DBPath:        dbPath,

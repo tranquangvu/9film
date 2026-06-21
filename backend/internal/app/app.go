@@ -52,6 +52,7 @@ func NewApp() *App {
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),
 		zap.Bool("subtitles_configured", cfg.OpenSubtitles != nil),
+		zap.Bool("gemini_configured", cfg.Gemini != nil),
 	)
 
 	return &App{Config: cfg, Router: engine, DB: db}

@@ -45,6 +45,17 @@ func Open(path string) (*sql.DB, error) {
 // Migrate creates the schema if it doesn't exist. Statements are idempotent so
 // it can run on every startup.
 func Migrate(db *sql.DB) error {
+	// word_images briefly stored a raster PNG BLOB; it now holds SVG markup. The
+	// table is regenerated on demand, so dropping the old shape (and its bytes)
+	// is safe — the CREATE below remakes it.
+	if hasPng, err := hasColumn(db, "word_images", "png"); err != nil {
+		return err
+	} else if hasPng {
+		if _, err := db.Exec(`DROP TABLE word_images`); err != nil {
+			return err
+		}
+	}
+
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,6 +119,15 @@ func Migrate(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_favorites_user_created ON favorites(user_id, created_at DESC)`,
 		// Saved words: WHERE user_id=? AND completed_at (?='') ORDER BY created_at/completed_at.
 		`CREATE INDEX IF NOT EXISTS idx_words_user_completed ON words(user_id, completed_at, created_at)`,
+		// Generated AI illustration (SVG markup) for a saved word, kept out of the
+		// words list query so that SELECT stays lean.
+		`CREATE TABLE IF NOT EXISTS word_images (
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			word       TEXT NOT NULL,
+			svg        TEXT NOT NULL,
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, word)
+		)`,
 	}
 
 	for _, stmt := range stmts {
@@ -115,5 +135,47 @@ func Migrate(db *sql.DB) error {
 			return err
 		}
 	}
+
+	// Additive column migrations: the statements above are CREATE-only, so new
+	// columns on an existing table need a guarded ALTER (SQLite has no
+	// ADD COLUMN IF NOT EXISTS). image_status: ''=unknown/legacy, pending, ready,
+	// failed; image_updated_at is a cache-bust token bumped on each generation.
+	if err := addColumnIfMissing(db, "words", "image_status", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "words", "image_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
 	return nil
+}
+
+// hasColumn reports whether a table already has the named column. A missing
+// table yields no rows, so it returns false.
+func hasColumn(db *sql.DB, table, col string) (bool, error) {
+	rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return false, err
+		}
+		if name == col {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+// addColumnIfMissing adds a column to a table only when it isn't already there,
+// making additive schema changes idempotent across restarts and existing DBs.
+func addColumnIfMissing(db *sql.DB, table, col, ddl string) error {
+	has, err := hasColumn(db, table, col)
+	if err != nil || has {
+		return err
+	}
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col, ddl))
+	return err
 }

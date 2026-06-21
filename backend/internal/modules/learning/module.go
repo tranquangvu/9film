@@ -9,7 +9,7 @@ import (
 
 func Module(rg *gin.RouterGroup, db *sql.DB, cfg *config.Config) {
 	repo := NewRepository(db)
-	svc := NewService(repo)
+	svc := NewService(repo, NewGenerator(cfg.Gemini))
 	h := NewHandler(svc)
 	RegisterRoutes(rg, h, cfg)
 }

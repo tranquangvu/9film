@@ -55,3 +55,17 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
   }
   return json as T;
 }
+
+// Authenticated GET returning binary data — used for endpoints an <img> can't
+// reach directly because it can't send the bearer token (e.g. the per-user word
+// illustration). The caller wraps the Blob in an object URL.
+export async function apiFetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(path, { headers, signal });
+  if (res.status === 401) onUnauthorized();
+  if (!res.ok) throw new ApiError(res.status, `Request failed (${res.status})`);
+  return res.blob();
+}

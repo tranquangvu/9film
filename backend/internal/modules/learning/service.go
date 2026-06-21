@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/bentran/nicefilm/backend/internal/logger"
+	"go.uber.org/zap"
 )
 
 const dictAPIBase = "https://api.dictionaryapi.dev/api/v2/entries/en"
@@ -52,19 +55,34 @@ type Service interface {
 	AddWord(userID int64, w Word) error
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
+	// ImageEnabled reports whether AI illustrations are configured.
+	ImageEnabled() bool
+	// RegenerateWordImage (re)generates the illustration for an existing word —
+	// backfills legacy words and retries failures.
+	RegenerateWordImage(userID int64, word string) error
+	// WordImage returns a word's stored PNG bytes, or (nil, false) when none.
+	WordImage(userID int64, word string) ([]byte, bool)
 }
+
+// maxConcurrentImageGen bounds in-flight Gemini calls across all background
+// goroutines so a burst of saves can't fan out to dozens of slow requests.
+const maxConcurrentImageGen = 3
 
 type service struct {
 	repo            Repository
 	dictClient      *http.Client
 	translateClient *http.Client
+	gen             Generator
+	imgSem          chan struct{}
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository, gen Generator) Service {
 	return &service{
 		repo:            repo,
 		dictClient:      &http.Client{Timeout: 8 * time.Second},
 		translateClient: &http.Client{Timeout: 8 * time.Second},
+		gen:             gen,
+		imgSem:          make(chan struct{}, maxConcurrentImageGen),
 	}
 }
 
@@ -167,7 +185,16 @@ func (s *service) GetWordStats(userID int64) ([]WordStat, error) {
 }
 
 func (s *service) AddWord(userID int64, w Word) error {
-	return s.repo.AddWord(userID, w)
+	// Look up any prior state before the upsert so we only (re)generate for a new
+	// word or one that never got an image — re-saving keeps the existing one.
+	prior, _ := s.repo.GetWord(userID, w.Word)
+	if err := s.repo.AddWord(userID, w); err != nil {
+		return err
+	}
+	if prior == nil || prior.ImageStatus == "" || prior.ImageStatus == "failed" {
+		s.generateAsync(userID, w.Word, w.Translation, w.Sentence)
+	}
+	return nil
 }
 
 func (s *service) RemoveWord(userID int64, word string) error {
@@ -176,4 +203,54 @@ func (s *service) RemoveWord(userID int64, word string) error {
 
 func (s *service) CompleteWord(userID int64, word string) error {
 	return s.repo.CompleteWord(userID, word)
+}
+
+func (s *service) ImageEnabled() bool { return s.gen.Configured() }
+
+func (s *service) WordImage(userID int64, word string) ([]byte, bool) {
+	return s.repo.GetImage(userID, word)
+}
+
+// RegenerateWordImage marks an existing word pending and kicks off generation
+// again — used to backfill legacy words and retry failures on demand.
+func (s *service) RegenerateWordImage(userID int64, word string) error {
+	if !s.gen.Configured() {
+		return fmt.Errorf("gemini not configured")
+	}
+	w, err := s.repo.GetWord(userID, word)
+	if err != nil {
+		return err
+	}
+	if w == nil {
+		return fmt.Errorf("word not found")
+	}
+	s.generateAsync(userID, w.Word, w.Translation, w.Sentence)
+	return nil
+}
+
+// generateAsync marks the word pending and fires a bounded background goroutine
+// that calls Gemini and persists the result. The slow API call holds no DB
+// connection; only the tiny status/blob writes touch the (single-connection)
+// DB. No-op when unconfigured.
+func (s *service) generateAsync(userID int64, word, translation, sentence string) {
+	if !s.gen.Configured() {
+		return
+	}
+	// Synchronous so an immediate refetch already sees the shimmer state.
+	_ = s.repo.SetImageStatus(userID, word, "pending")
+	go func() {
+		s.imgSem <- struct{}{}
+		defer func() { <-s.imgSem }()
+
+		png, err := s.gen.GenerateWordImage(word, translation, sentence)
+		if err != nil {
+			logger.Get().Warn("word image generation failed", zap.String("word", word), zap.Error(err))
+			_ = s.repo.SetImageStatus(userID, word, "failed")
+			return
+		}
+		if err := s.repo.SaveImage(userID, word, png); err != nil {
+			logger.Get().Warn("word image save failed", zap.String("word", word), zap.Error(err))
+			_ = s.repo.SetImageStatus(userID, word, "failed")
+		}
+	}()
 }

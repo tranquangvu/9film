@@ -12,6 +12,10 @@ type Word struct {
 	Timestamp   float64 `json:"timestamp"`
 	CreatedAt   string  `json:"createdAt"`
 	CompletedAt string  `json:"completedAt"`
+	// AI illustration state: ''=none/legacy, pending, ready, failed. The image
+	// bytes live in the word_images table; ImageUpdatedAt is a cache-bust token.
+	ImageStatus    string `json:"imageStatus"`
+	ImageUpdatedAt string `json:"imageUpdatedAt"`
 }
 
 // WordStat is a saved word stripped to the fields the learning page's progress

@@ -4,13 +4,17 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import {
   getWords,
   getWordStats,
+  getWordImageObjectUrl,
+  regenerateWordImage,
   addWord,
   removeWord,
   completeWord,
   type Word,
+  type WordImageStatus,
   type WordStat,
   type WordStatus,
 } from '@/services/user';
@@ -36,7 +40,8 @@ export function useWordStatsQuery() {
   });
 }
 
-// One tab's saved words, paginated for infinite scroll.
+// One tab's saved words, paginated for infinite scroll. While any loaded word's
+// illustration is still generating, poll so the shimmer flips to the image live.
 export function useInfiniteWordsQuery(status: WordStatus) {
   const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
@@ -46,6 +51,50 @@ export function useInfiniteWordsQuery(status: WordStatus) {
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: isAuthenticated,
     staleTime: 60 * 1000,
+    refetchInterval: (query) => {
+      const pending = query.state.data?.pages.some((p) =>
+        p.items.some((w) => w.imageStatus === 'pending'),
+      );
+      return pending ? 2500 : false;
+    },
+  });
+}
+
+// Resolves a word's AI illustration to an object URL. Enabled only when ready;
+// keyed by the cache-bust token so a regeneration busts it. Revokes on cleanup.
+export function useWordImage(word: string, status: WordImageStatus | undefined, updatedAt?: string) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (status !== 'ready') return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    getWordImageObjectUrl(word, updatedAt)
+      .then((u) => {
+        if (cancelled) {
+          URL.revokeObjectURL(u);
+          return;
+        }
+        objectUrl = u;
+        setUrl(u); // async callback, not a synchronous effect body call
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [word, status, updatedAt]);
+  // Gate by status so a stale URL never shows once the word/state changes.
+  return status === 'ready' ? url : null;
+}
+
+// Triggers (re)generation; flips the word back to pending so polling resumes.
+export function useRegenerateWordImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (word: string) => regenerateWordImage(word.toLowerCase()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: WORDS_PREFIX });
+    },
   });
 }
 

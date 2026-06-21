@@ -7,9 +7,13 @@ import "database/sql"
 type Repository interface {
 	GetWordStats(userID int64) ([]WordStat, error)
 	GetWords(userID int64, status string, limit, offset int) ([]Word, error)
+	GetWord(userID int64, word string) (*Word, error)
 	AddWord(userID int64, w Word) error
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
+	SetImageStatus(userID int64, word, status string) error
+	SaveImage(userID int64, word string, png []byte) error
+	GetImage(userID int64, word string) ([]byte, bool)
 }
 
 type repository struct {
@@ -56,7 +60,7 @@ func (r *repository) GetWords(userID int64, status string, limit, offset int) ([
 		where, order = "completed_at != ''", "completed_at DESC"
 	}
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at
 		   FROM words WHERE user_id = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
@@ -69,11 +73,8 @@ func (r *repository) GetWords(userID int64, status string, limit, offset int) ([
 
 	items := make([]Word, 0)
 	for rows.Next() {
-		var w Word
-		if err := rows.Scan(
-			&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
-			&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
-		); err != nil {
+		w, err := scanWord(rows)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, w)
@@ -81,9 +82,43 @@ func (r *repository) GetWords(userID int64, status string, limit, offset int) ([
 	return items, rows.Err()
 }
 
+// rowScanner is satisfied by both *sql.Row and *sql.Rows.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanWord(row rowScanner) (Word, error) {
+	var w Word
+	err := row.Scan(
+		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
+		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
+		&w.ImageStatus, &w.ImageUpdatedAt,
+	)
+	return w, err
+}
+
+// GetWord returns a single saved word (used to build the image prompt and to
+// confirm ownership before (re)generating). Returns (nil, nil) when not found.
+func (r *repository) GetWord(userID int64, word string) (*Word, error) {
+	w, err := scanWord(r.db.QueryRow(
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at
+		   FROM words WHERE user_id = ? AND word = ?`,
+		userID, word,
+	))
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
 // AddWord upserts a word (idempotent on the user_id+word PK). Re-saving a word
 // refreshes its context/scene but leaves its completed state untouched.
 func (r *repository) AddWord(userID int64, w Word) error {
+	// Re-saving an existing word leaves its image columns untouched (the service
+	// decides whether to (re)generate); a new row defaults image_status to ''.
 	_, err := r.db.Exec(
 		`INSERT INTO words
 		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp)
@@ -98,6 +133,47 @@ func (r *repository) AddWord(userID int64, w Word) error {
 		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp,
 	)
 	return err
+}
+
+// SetImageStatus updates only the image_status of a word (e.g. -> 'failed' or
+// 'pending' before a regeneration).
+func (r *repository) SetImageStatus(userID int64, word, status string) error {
+	_, err := r.db.Exec(
+		`UPDATE words SET image_status = ? WHERE user_id = ? AND word = ?`,
+		status, userID, word,
+	)
+	return err
+}
+
+// SaveImage stores the generated SVG markup and flips the word to 'ready',
+// bumping the cache-bust token.
+func (r *repository) SaveImage(userID int64, word string, svg []byte) error {
+	if _, err := r.db.Exec(
+		`INSERT INTO word_images (user_id, word, svg, updated_at)
+		   VALUES (?, ?, ?, datetime('now'))
+		   ON CONFLICT(user_id, word) DO UPDATE SET svg = excluded.svg, updated_at = datetime('now')`,
+		userID, word, svg,
+	); err != nil {
+		return err
+	}
+	_, err := r.db.Exec(
+		`UPDATE words SET image_status = 'ready', image_updated_at = datetime('now') WHERE user_id = ? AND word = ?`,
+		userID, word,
+	)
+	return err
+}
+
+// GetImage returns a word's stored SVG bytes, or (nil, false) when none exists.
+func (r *repository) GetImage(userID int64, word string) ([]byte, bool) {
+	var svg []byte
+	err := r.db.QueryRow(
+		`SELECT svg FROM word_images WHERE user_id = ? AND word = ?`,
+		userID, word,
+	).Scan(&svg)
+	if err != nil {
+		return nil, false
+	}
+	return svg, true
 }
 
 func (r *repository) RemoveWord(userID int64, word string) error {

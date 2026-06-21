@@ -126,7 +126,56 @@ func (h *Handler) AddWord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save word"})
 		return
 	}
+	if h.svc.ImageEnabled() {
+		w.ImageStatus = "pending"
+	}
 	c.JSON(http.StatusCreated, w)
+}
+
+// GetWordImage streams a word's generated PNG. 503 when illustrations are
+// disabled, 404 when the word has no image yet.
+func (h *Handler) GetWordImage(c *gin.Context) {
+	if !h.svc.ImageEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "illustrations are not configured"})
+		return
+	}
+	word := strings.ToLower(strings.TrimSpace(c.Query("word")))
+	if word == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+		return
+	}
+	svg, ok := h.svc.WordImage(middleware.UserID(c), word)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
+		return
+	}
+	// The image_updated_at (?v=) token makes the URL safe to cache hard.
+	c.Header("Cache-Control", "private, max-age=31536000, immutable")
+	c.Data(http.StatusOK, "image/svg+xml; charset=utf-8", svg)
+}
+
+// RegenerateWordImage (re)triggers generation for an existing word — backfills
+// legacy words and retries failures.
+func (h *Handler) RegenerateWordImage(c *gin.Context) {
+	if !h.svc.ImageEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "illustrations are not configured"})
+		return
+	}
+	var req completeWordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	req.Word = strings.ToLower(strings.TrimSpace(req.Word))
+	if req.Word == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+		return
+	}
+	if err := h.svc.RegenerateWordImage(middleware.UserID(c), req.Word); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "could not regenerate image"})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"imageStatus": "pending"})
 }
 
 func (h *Handler) RemoveWord(c *gin.Context) {
