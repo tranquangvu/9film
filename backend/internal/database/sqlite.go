@@ -179,6 +179,26 @@ func Migrate(db *sql.DB) error {
 	if err := dropColumnIfExists(db, "settings", "default_quality"); err != nil {
 		return err
 	}
+	// Spaced-repetition (SM-2) review schedule per word. due_at='' means the word
+	// isn't scheduled yet (only set once it's first completed); ease starts at the
+	// SM-2 default 2.5; interval is in days; reps is the successful-streak count.
+	if err := addColumnIfMissing(db, "words", "due_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "words", "ease", "REAL NOT NULL DEFAULT 2.5"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "words", "interval", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "words", "reps", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	// Due-for-review queue: WHERE user_id=? AND due_at!='' AND due_at<=now. Created
+	// after the column exists (the additive migration above runs before this).
+	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_words_user_due ON words(user_id, due_at)`); err != nil {
+		return err
+	}
 	return nil
 }
 

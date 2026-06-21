@@ -43,7 +43,14 @@ export interface Word {
   imageUpdatedAt?: string;
   /** '' = personal (saved while watching), 'oxford3000' = imported starter pack. */
   list?: string;
+  /** SM-2 review schedule. dueAt='' = not scheduled (seeded once learned). */
+  dueAt?: string;
+  ease?: number;
+  interval?: number;
+  reps?: number;
 }
+
+export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy';
 
 export function getMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/me');
@@ -169,6 +176,8 @@ export interface WordStat {
   createdAt?: string;
   completedAt?: string;
   list?: string;
+  /** Next SRS review time ('' when not scheduled) — drives the "due today" count. */
+  dueAt?: string;
 }
 
 export async function getWordStats(): Promise<WordStat[]> {
@@ -257,4 +266,17 @@ export function submitTest(body: {
 export async function getTests(): Promise<TestResult[]> {
   const res = await apiFetch<{ items: TestResult[] }>('/api/me/tests');
   return res.items ?? [];
+}
+
+// --- Spaced-repetition reviews ---
+
+// Words currently due for review (oldest-due first), as full rows for the deck.
+export async function getReviews(limit = 50): Promise<Word[]> {
+  const res = await apiFetch<{ items: Word[] }>(`/api/me/reviews?limit=${limit}`);
+  return res.items ?? [];
+}
+
+// Grades a due word; returns the word with its updated SM-2 schedule.
+export function submitReview(body: { word: string; grade: ReviewGrade }): Promise<Word> {
+  return apiFetch<Word>('/api/me/reviews', { method: 'POST', body });
 }

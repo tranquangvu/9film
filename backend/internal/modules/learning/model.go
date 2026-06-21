@@ -19,6 +19,12 @@ type Word struct {
 	// Which list the word belongs to: ''=personal (saved while watching),
 	// 'oxford3000'=imported starter pack.
 	List string `json:"list"`
+	// Spaced-repetition (SM-2) schedule. DueAt=''=not scheduled (seeded on first
+	// completion); Ease starts at 2.5; Interval is in days; Reps is the streak.
+	DueAt    string  `json:"dueAt"`
+	Ease     float64 `json:"ease"`
+	Interval int     `json:"interval"`
+	Reps     int     `json:"reps"`
 }
 
 // WordStat is a saved word stripped to the fields the learning page's progress
@@ -30,6 +36,9 @@ type WordStat struct {
 	CreatedAt   string `json:"createdAt"`
 	CompletedAt string `json:"completedAt"`
 	List        string `json:"list"`
+	// Next SRS review time ('' when not scheduled) — lets the page derive the
+	// "due for review today" count from the cheap stats set, no extra query.
+	DueAt string `json:"dueAt"`
 }
 
 // TestSubmissionItem is one word's raw answers as submitted by the client: the

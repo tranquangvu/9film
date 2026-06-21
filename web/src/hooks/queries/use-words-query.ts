@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getWords,
   getWordStats,
@@ -14,6 +14,9 @@ import {
   addWord,
   removeWord,
   completeWord,
+  getReviews,
+  submitReview,
+  type ReviewGrade,
   type Word,
   type WordImageStatus,
   type WordStat,
@@ -21,8 +24,10 @@ import {
 } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
+import { parseDate } from '@/utils/word-date';
 
 const STATS_KEY = ['word-stats'] as const;
+const REVIEWS_KEY = ['reviews'] as const;
 // All paginated lists share the ['words', ...] prefix so a single
 // invalidate({ queryKey: ['words'] }) refreshes every tab/list after a mutation.
 const WORDS_PREFIX = ['words'] as const;
@@ -121,6 +126,59 @@ export function useRegenerateWordImage() {
 export function useIsWordSaved(word: string): boolean {
   const { data } = useWordStatsQuery();
   return (data ?? []).some((w) => w.word === word.toLowerCase());
+}
+
+// The words due for spaced-repetition review right now (small set; no pagination).
+export function useDueReviewsQuery() {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: REVIEWS_KEY,
+    queryFn: () => getReviews(),
+    enabled: isAuthenticated,
+    staleTime: 30 * 1000,
+  });
+}
+
+// Counts stats whose review time has arrived. Top-level (like computeStreak) so the
+// `new Date()` read isn't flagged as an impure call in the hook's render body.
+function countDue(stats: WordStat[]): number {
+  const now = new Date().getTime();
+  return stats.reduce((n, w) => {
+    const d = w.dueAt ? parseDate(w.dueAt) : null;
+    return d && d.getTime() <= now ? n + 1 : n;
+  }, 0);
+}
+
+// How many learned words are due for review now — derived from the cheap stats set
+// (each carries dueAt) so the page badge needs no extra request.
+export function useDueCount(): number {
+  const { data } = useWordStatsQuery();
+  return useMemo(() => countDue(data ?? []), [data]);
+}
+
+// Submits a recall grade and reschedules the word. Optimistically drops it from the
+// due queue, and refreshes stats/lists so counts and the Learned tab stay in sync.
+export function useSubmitReview() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (vars: { word: string; grade: ReviewGrade }) => submitReview(vars),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: REVIEWS_KEY });
+      const prev = qc.getQueryData<Word[]>(REVIEWS_KEY);
+      qc.setQueryData<Word[]>(REVIEWS_KEY, (old = []) => old.filter((w) => w.word !== vars.word));
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(REVIEWS_KEY, ctx.prev);
+      toast({ title: 'Could not save review', description: 'Please try again.', variant: 'destructive' });
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: REVIEWS_KEY });
+      qc.invalidateQueries({ queryKey: STATS_KEY });
+      qc.invalidateQueries({ queryKey: WORDS_PREFIX });
+    },
+  });
 }
 
 type AddVars = Omit<Word, 'createdAt' | 'completedAt'>;

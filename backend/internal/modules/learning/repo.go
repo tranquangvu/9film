@@ -15,6 +15,8 @@ type Repository interface {
 	BulkAddWords(userID int64, words []string, list string) (int, error)
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
+	GetDueReviews(userID int64, limit int) ([]Word, error)
+	UpdateSchedule(userID int64, word string, ease float64, interval, reps int, dueAt string) error
 	SetImageStatus(userID int64, word, status string) error
 	SaveImage(userID int64, word string, png []byte) error
 	GetImage(userID int64, word string) ([]byte, bool)
@@ -35,7 +37,7 @@ func NewRepository(db *sql.DB) Repository {
 // set — all of which need the whole vocabulary, not just the current page.
 func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	rows, err := r.db.Query(
-		`SELECT word, created_at, completed_at, list
+		`SELECT word, created_at, completed_at, list, due_at
 		   FROM words WHERE user_id = ?
 		   ORDER BY created_at DESC`,
 		userID,
@@ -48,7 +50,7 @@ func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	items := make([]WordStat, 0)
 	for rows.Next() {
 		var w WordStat
-		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt, &w.List); err != nil {
+		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt, &w.List, &w.DueAt); err != nil {
 			return nil, err
 		}
 		items = append(items, w)
@@ -70,7 +72,7 @@ func (r *repository) GetWords(userID int64, status, list string, limit, offset i
 		order = "word ASC"
 	}
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
 		   FROM words WHERE user_id = ? AND list = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
@@ -103,6 +105,7 @@ func scanWord(row rowScanner) (Word, error) {
 		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
 		&w.ImageStatus, &w.ImageUpdatedAt, &w.List,
+		&w.DueAt, &w.Ease, &w.Interval, &w.Reps,
 	)
 	return w, err
 }
@@ -111,7 +114,7 @@ func scanWord(row rowScanner) (Word, error) {
 // confirm ownership before (re)generating). Returns (nil, nil) when not found.
 func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	w, err := scanWord(r.db.QueryRow(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
 		   FROM words WHERE user_id = ? AND word = ?`,
 		userID, word,
 	))
@@ -276,11 +279,52 @@ func (r *repository) RemoveWord(userID int64, word string) error {
 }
 
 // CompleteWord marks a word as learned, moving it out of the "added" list and
-// into the completed list. Stamps the moment of completion for the progress chart.
+// into the completed list. Stamps the moment of completion for the progress chart
+// and, on first completion only, seeds the SM-2 review schedule (first review
+// tomorrow). The CASE guards keep a re-completion from resetting an active schedule.
 func (r *repository) CompleteWord(userID int64, word string) error {
 	_, err := r.db.Exec(
-		`UPDATE words SET completed_at = datetime('now') WHERE user_id = ? AND word = ?`,
+		`UPDATE words SET completed_at = datetime('now'),
+		   due_at   = CASE WHEN due_at = '' THEN datetime('now', '+1 day') ELSE due_at END,
+		   interval = CASE WHEN due_at = '' THEN 1 ELSE interval END,
+		   reps     = CASE WHEN due_at = '' THEN 1 ELSE reps END
+		 WHERE user_id = ? AND word = ?`,
 		userID, word,
+	)
+	return err
+}
+
+// GetDueReviews returns up to `limit` learned words whose next review is due
+// (oldest-due first), as full rows so the review deck can show context/image.
+func (r *repository) GetDueReviews(userID int64, limit int) ([]Word, error) {
+	rows, err := r.db.Query(
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
+		   FROM words WHERE user_id = ? AND due_at != '' AND due_at <= datetime('now')
+		   ORDER BY due_at ASC
+		   LIMIT ?`,
+		userID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]Word, 0)
+	for rows.Next() {
+		w, err := scanWord(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, w)
+	}
+	return items, rows.Err()
+}
+
+// UpdateSchedule writes a word's new SM-2 state after a review grade.
+func (r *repository) UpdateSchedule(userID int64, word string, ease float64, interval, reps int, dueAt string) error {
+	_, err := r.db.Exec(
+		`UPDATE words SET ease = ?, interval = ?, reps = ?, due_at = ? WHERE user_id = ? AND word = ?`,
+		ease, interval, reps, dueAt, userID, word,
 	)
 	return err
 }

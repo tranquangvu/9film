@@ -76,6 +76,10 @@ type Service interface {
 	SubmitTest(userID int64, list, groupLabel string, items []TestSubmissionItem) (*TestResult, error)
 	// GetTests returns the user's self-test history, newest first.
 	GetTests(userID int64) ([]TestResult, error)
+	// GetDueReviews returns learned words due for spaced-repetition review.
+	GetDueReviews(userID int64, limit int) ([]Word, error)
+	// SubmitReview applies an SM-2 recall grade and reschedules the word.
+	SubmitReview(userID int64, word, grade string) (*Word, error)
 }
 
 // GeminiKeys resolves the Gemini API key + model for a user. An empty key means

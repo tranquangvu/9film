@@ -4,6 +4,12 @@ type completeWordRequest struct {
 	Word string `json:"word"`
 }
 
+// reviewRequest grades one due word in a review session. Grade ∈ again|hard|good|easy.
+type reviewRequest struct {
+	Word  string `json:"word"`
+	Grade string `json:"grade"`
+}
+
 type importRequest struct {
 	List string `json:"list"`
 }

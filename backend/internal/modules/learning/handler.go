@@ -231,6 +231,49 @@ func (h *Handler) SubmitTest(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
+// GetReviews returns the words currently due for spaced-repetition review.
+func (h *Handler) GetReviews(c *gin.Context) {
+	limit := 30
+	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
+		limit = v
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	rows, err := h.svc.GetDueReviews(middleware.UserID(c), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load reviews"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": rows})
+}
+
+// SubmitReview applies a recall grade to a due word and returns its updated schedule.
+func (h *Handler) SubmitReview(c *gin.Context) {
+	var req reviewRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	req.Word = strings.ToLower(strings.TrimSpace(req.Word))
+	if req.Word == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
+		return
+	}
+	switch req.Grade {
+	case "again", "hard", "good", "easy":
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grade must be again|hard|good|easy"})
+		return
+	}
+	w, err := h.svc.SubmitReview(middleware.UserID(c), req.Word, req.Grade)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "could not submit review"})
+		return
+	}
+	c.JSON(http.StatusOK, w)
+}
+
 // GetTests returns the user's self-test history, newest first.
 func (h *Handler) GetTests(c *gin.Context) {
 	items, err := h.svc.GetTests(middleware.UserID(c))

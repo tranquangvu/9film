@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Brain,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import {
   useWordImage,
   useImportWordList,
   useCompleteWord,
+  useDueCount,
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
@@ -37,6 +39,7 @@ import { wordColor } from '@/utils/word-color';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
 import { FlashcardDeck } from '@/components/system/learn/flashcard-deck';
 import { WordTest } from '@/components/system/learn/word-test';
+import { ReviewDeck } from '@/components/system/learn/review-deck';
 import { parseDate, dayKey } from '@/utils/word-date';
 import type { Word, WordStat } from '@/services/user';
 
@@ -87,7 +90,9 @@ function LearningHero({
   addedCount,
   completedCount,
   streak,
+  dueCount,
   onStudy,
+  onReview,
   insightsTo,
 }: {
   title: string;
@@ -96,7 +101,9 @@ function LearningHero({
   addedCount: number;
   completedCount: number;
   streak: number;
+  dueCount: number;
   onStudy: () => void;
+  onReview: () => void;
   insightsTo?: string;
 }) {
   return (
@@ -128,12 +135,24 @@ function LearningHero({
             <Flame className="w-4 h-4 text-orange-400" /> {streak}-day streak
           </span>
         )}
+        {dueCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 border border-sky-400/25 px-3 py-1.5 text-sm font-semibold text-sky-200">
+            <Brain className="w-4 h-4" /> {dueCount} due for review
+          </span>
+        )}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
+        {dueCount > 0 && (
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+            <Button variant="primary" size="lg" className="rounded-2xl" onClick={onReview}>
+              <Brain className="w-5 h-5" /> Review {dueCount} {dueCount === 1 ? 'word' : 'words'}
+            </Button>
+          </motion.div>
+        )}
         {addedCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button variant="primary" size="lg" className="rounded-2xl" onClick={onStudy}>
+            <Button variant={dueCount > 0 ? 'outline' : 'primary'} size="lg" className="rounded-2xl" onClick={onStudy}>
               <GraduationCap className="w-5 h-5" /> Study {addedCount} {addedCount === 1 ? 'word' : 'words'}
             </Button>
           </motion.div>
@@ -405,6 +424,7 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   const [selected, setSelected] = useState<Word | null>(null);
   const [tab, setTab] = useState<'learn' | 'completed'>('learn');
   const [studying, setStudying] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   // The completed-date group currently being self-tested (null = no test open).
   const [testGroup, setTestGroup] = useState<{ words: Word[]; label: string } | null>(null);
 
@@ -416,6 +436,8 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   const addedCount = useMemo(() => all.filter((w) => !w.completedAt).length, [all]);
   const completedCount = useMemo(() => all.filter((w) => w.completedAt).length, [all]);
   const streak = useMemo(() => computeStreak(all), [all]);
+  // SRS reviews are global (any list); surface them on the main page only.
+  const dueCount = useDueCount();
 
   // The active tab's words (rendered list). The "learn" set also feeds the deck;
   // when tab is "learn" this is the same cached query, so no double fetch.
@@ -526,7 +548,9 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
               addedCount={addedCount}
               completedCount={completedCount}
               streak={streak}
+              dueCount={isOxford ? 0 : dueCount}
               onStudy={() => setStudying(true)}
+              onReview={() => setReviewing(true)}
               insightsTo={isOxford ? undefined : '/my-learning/insights'}
             />
 
@@ -623,6 +647,10 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
             onClose={() => setTestGroup(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {reviewing && <ReviewDeck onClose={() => setReviewing(false)} />}
       </AnimatePresence>
     </div>
   );
