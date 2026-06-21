@@ -3,7 +3,7 @@ package history
 import (
 	"sync"
 
-	"github.com/bentran/nicefilm/backend/internal/title"
+	"github.com/bentran/nicefilm/backend/internal/modules/title"
 )
 
 // Bound concurrent IMDb lookups per request so a page doesn't fan out 50 calls.

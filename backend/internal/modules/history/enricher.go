@@ -3,8 +3,8 @@ package history
 import (
 	"database/sql"
 
-	"github.com/bentran/nicefilm/backend/internal/favorite"
-	"github.com/bentran/nicefilm/backend/internal/title"
+	"github.com/bentran/nicefilm/backend/internal/modules/favorite"
+	"github.com/bentran/nicefilm/backend/internal/modules/title"
 )
 
 // Enricher implements title.Enricher: it supplies all the per-user state the

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 
 	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/favorite"
-	"github.com/bentran/nicefilm/backend/internal/title"
+	"github.com/bentran/nicefilm/backend/internal/modules/favorite"
+	"github.com/bentran/nicefilm/backend/internal/modules/title"
 	"github.com/gin-gonic/gin"
 )
 
