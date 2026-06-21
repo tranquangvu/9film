@@ -13,6 +13,7 @@ import TitleDetailPage from "@/pages/title-detail-page";
 import { WatchPage } from "@/pages/watch-page";
 import MyListPage from "@/pages/my-list-page";
 import MyLearningPage from "@/pages/my-learning-page";
+import LearningInsightsPage from "@/pages/learning-insights-page";
 import SearchPage from "@/pages/search-page";
 import ProfilePage from "@/pages/profile-page";
 import TitlesPage from "@/pages/titles-page";
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
       { path: "/title/:id", element: <TitleDetailPage /> },
       { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
       { path: "/my-learning", element: <RequireAuth><MyLearningPage /></RequireAuth> },
+      { path: "/my-learning/insights", element: <RequireAuth><LearningInsightsPage /></RequireAuth> },
       { path: "/my-learning/the-oxford-3000", element: <RequireAuth><MyLearningPage list="oxford3000" /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },
       { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
