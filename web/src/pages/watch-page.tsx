@@ -5,6 +5,7 @@ import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { MediaProvider } from '@/components/system/player/media-context';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
+import { WatchTour } from '@/components/system/player/watch-tour';
 import { SelectField } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
@@ -112,6 +113,7 @@ export function WatchPage() {
               {/* Left: back · title · season/episode */}
               <div className="flex items-center gap-2 md:gap-3 pointer-events-auto min-w-0">
                 <button
+                  data-tour="back"
                   onClick={() => navigate(`/title/${id}`)}
                   aria-label="Back to details"
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-white/8 border border-white/12 text-zinc-300 hover:text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shrink-0"
@@ -123,41 +125,45 @@ export function WatchPage() {
                   {title ?? ((loading || blocked) ? '' : id)}
                 </span>
 
-                {isSeries && availableSeasons.length > 0 && (
-                  <SelectField
-                    icon={<Film size={14} />}
-                    size="sm"
-                    value={String(season)}
-                    onValueChange={(v) => handleEpisodeChange(Number(v), 1)}
-                    options={availableSeasons.map((s) => ({
-                      id: String(s),
-                      label: `S${String(s).padStart(2, '0')}`,
-                      trailing: [...watchedEpisodes].some((k) => k.startsWith(`${s}:`)) ? (
-                        <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
-                      ) : undefined,
-                    }))}
-                    indicatorIcon={<CirclePlay className="size-4 text-orange-400" />}
-                    triggerClassName="shrink-0"
-                    contentClassName="bg-white/8"
-                  />
-                )}
-                {isSeries && episodesBySeason.length > 0 && (
-                  <SelectField
-                    icon={<ListVideo size={14} />}
-                    size="sm"
-                    value={String(episode)}
-                    onValueChange={(v) => handleEpisodeChange(season, Number(v))}
-                    options={episodesBySeason.map((ep) => ({
-                      id: String(ep),
-                      label: `E${String(ep).padStart(2, '0')}`,
-                      trailing: watchedEpisodes.has(`${season}:${ep}`) ? (
-                        <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
-                      ) : undefined,
-                    }))}
-                    indicatorIcon={<CirclePlay className="size-4 text-orange-400" />}
-                    triggerClassName="shrink-0"
-                    contentClassName="bg-white/8"
-                  />
+                {isSeries && (availableSeasons.length > 0 || episodesBySeason.length > 0) && (
+                  <span data-tour="episodes" className="inline-flex items-center gap-2 md:gap-3">
+                    {availableSeasons.length > 0 && (
+                      <SelectField
+                        icon={<Film size={14} />}
+                        size="sm"
+                        value={String(season)}
+                        onValueChange={(v) => handleEpisodeChange(Number(v), 1)}
+                        options={availableSeasons.map((s) => ({
+                          id: String(s),
+                          label: `S${String(s).padStart(2, '0')}`,
+                          trailing: [...watchedEpisodes].some((k) => k.startsWith(`${s}:`)) ? (
+                            <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
+                          ) : undefined,
+                        }))}
+                        indicatorIcon={<CirclePlay className="size-4 text-orange-400" />}
+                        triggerClassName="shrink-0"
+                        contentClassName="bg-white/8"
+                      />
+                    )}
+                    {episodesBySeason.length > 0 && (
+                      <SelectField
+                        icon={<ListVideo size={14} />}
+                        size="sm"
+                        value={String(episode)}
+                        onValueChange={(v) => handleEpisodeChange(season, Number(v))}
+                        options={episodesBySeason.map((ep) => ({
+                          id: String(ep),
+                          label: `E${String(ep).padStart(2, '0')}`,
+                          trailing: watchedEpisodes.has(`${season}:${ep}`) ? (
+                            <span className="block w-1.5 h-1.5 rounded-full bg-orange-400" />
+                          ) : undefined,
+                        }))}
+                        indicatorIcon={<CirclePlay className="size-4 text-orange-400" />}
+                        triggerClassName="shrink-0"
+                        contentClassName="bg-white/8"
+                      />
+                    )}
+                  </span>
                 )}
               </div>
 
@@ -169,6 +175,7 @@ export function WatchPage() {
                       <Tooltip.Trigger
                         render={
                           <button
+                            data-tour="transcript"
                             onClick={() => setShowTranscript((v) => !v)}
                             aria-label="Toggle transcript"
                             className={cn(
@@ -192,21 +199,23 @@ export function WatchPage() {
                     <Tooltip.Root side="bottom">
                       <Tooltip.Trigger
                         render={
-                          <SelectField
-                            icon={<CloudCog size={16} />}
-                            value={streamUrl ?? ''}
-                            onValueChange={(v) => setStreamUrl(v)}
-                            options={allUrls.map((url, i) => ({
-                              id: url,
-                              label: `Stream #${i + 1}`,
-                            }))}
-                            iconOnly
-                          />
+                          <span data-tour="source" className="inline-flex">
+                            <SelectField
+                              icon={<CloudCog size={16} />}
+                              value={streamUrl ?? ''}
+                              onValueChange={(v) => setStreamUrl(v)}
+                              options={allUrls.map((url, i) => ({
+                                id: url,
+                                label: `Stream #${i + 1}`,
+                              }))}
+                              iconOnly
+                            />
+                          </span>
                         }
                       />
                       <Tooltip.Popup className="z-50 rounded-md border border-white/10 bg-zinc-900/95 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur">
                         <Tooltip.Arrow className="fill-zinc-900" />
-                        Source
+                        Video source — switch if it won't play
                       </Tooltip.Popup>
                     </Tooltip.Root>
                   )}
@@ -214,13 +223,15 @@ export function WatchPage() {
                     <Tooltip.Root side="bottom">
                       <Tooltip.Trigger
                         render={
-                          <SelectField
-                            icon={<Captions size={16} />}
-                            value={selectedSubId !== null ? String(selectedSubId) : ''}
-                            onValueChange={(v) => handleSubtitleTrackChange(v ? Number(v) : null)}
-                            options={subList.map((s) => ({ id: String(s.fileId), label: s.label }))}
-                            iconOnly
-                          />
+                          <span data-tour="subtitles" className="inline-flex">
+                            <SelectField
+                              icon={<Captions size={16} />}
+                              value={selectedSubId !== null ? String(selectedSubId) : ''}
+                              onValueChange={(v) => handleSubtitleTrackChange(v ? Number(v) : null)}
+                              options={subList.map((s) => ({ id: String(s.fileId), label: s.label }))}
+                              iconOnly
+                            />
+                          </span>
                         }
                       />
                       <Tooltip.Popup className="z-50 rounded-md border border-white/10 bg-zinc-900/95 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur">
@@ -262,6 +273,10 @@ export function WatchPage() {
               </div>
             </div>
           )}
+
+          {/* First-use spotlight tour — activates once the player is ready so the
+              highlighted controls are on screen; self-hides after completion. */}
+          <WatchTour enabled={!loading && !blocked && !!streamUrl} />
         </div>
 
         {/* Transcript sidebar — full-screen overlay on mobile, side column on desktop */}
