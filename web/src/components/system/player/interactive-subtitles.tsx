@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMediaElement } from '@/components/system/player/media-context';
 import { WordPopup, type WordContext } from '@/components/system/learn/word-popup';
 import { activeCueIndex, type Cue } from '@/utils/vtt';
@@ -12,6 +12,7 @@ interface Selection {
   word: string;
   sentence: string;
   timestamp: number;
+  kind: 'word' | 'phrase';
 }
 
 // Splits a cue into word / non-word tokens so punctuation and spacing render
@@ -26,6 +27,17 @@ function tokenize(text: string): { value: string; isWord: boolean }[] {
 // Strip surrounding punctuation/possessives for a clean dictionary lookup.
 function cleanWord(raw: string): string {
   return raw.toLowerCase().replace(/['’]s$/, '').replace(/^[-'’]+|[-'’]+$/g, '');
+}
+
+// Normalize a multi-word span: lowercase, collapse spacing, trim only the outer
+// punctuation so internal apostrophes/hyphens (e.g. "don't give up") survive.
+function cleanPhrase(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[^a-z'’-]+|[^a-z'’-]+$/gi, '')
+    .trim();
 }
 
 export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProps) {
@@ -61,12 +73,42 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
   const cue = activeIdx >= 0 ? cues[activeIdx] : null;
   const tokens = useMemo(() => (cue ? tokenize(cue.text) : []), [cue]);
 
-  const onWordClick = (raw: string) => {
+  // Press-start token index, so a tap (down+up on one word) saves that word while
+  // a drag/swipe across words (down on one, up on another) saves the whole phrase.
+  const pressAnchor = useRef<number | null>(null);
+
+  // Clear a stale anchor if the pointer is released off any word.
+  useEffect(() => {
+    const clear = () => { pressAnchor.current = null; };
+    window.addEventListener('pointerup', clear);
+    return () => window.removeEventListener('pointerup', clear);
+  }, []);
+
+  const onWordDown = (i: number) => {
+    pressAnchor.current = i;
+  };
+
+  const onWordUp = (i: number) => {
     if (!cue) return;
-    const word = cleanWord(raw);
-    if (!word) return;
+    const anchor = pressAnchor.current;
+    pressAnchor.current = null;
+
+    // Single word: a plain tap, or release on the same word it started on.
+    if (anchor === null || anchor === i) {
+      const word = cleanWord(tokens[i].value);
+      if (!word) return;
+      media?.pause();
+      setSelection({ word, sentence: cue.text, timestamp: cue.start, kind: 'word' });
+      return;
+    }
+
+    // Phrase: join every token between the two words (separators included).
+    const lo = Math.min(anchor, i);
+    const hi = Math.max(anchor, i);
+    const phrase = cleanPhrase(tokens.slice(lo, hi + 1).map((t) => t.value).join(''));
+    if (!phrase) return;
     media?.pause();
-    setSelection({ word, sentence: cue.text, timestamp: cue.start });
+    setSelection({ word: phrase, sentence: cue.text, timestamp: cue.start, kind: phrase.includes(' ') ? 'phrase' : 'word' });
   };
 
   // Close the popup and resume playback (clicking a word paused it).
@@ -79,12 +121,13 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
     <div className="pointer-events-none absolute inset-0 z-40">
       {cue && (
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[85%] text-center">
-          <p className="pointer-events-auto inline text-balance text-white text-lg md:text-2xl font-semibold [text-shadow:0_2px_8px_rgba(0,0,0,0.9)] leading-relaxed">
+          <p className="pointer-events-auto inline select-none text-balance text-white text-lg md:text-2xl font-semibold [text-shadow:0_2px_8px_rgba(0,0,0,0.9)] leading-relaxed">
             {tokens.map((t, i) =>
               t.isWord ? (
                 <span
                   key={i}
-                  onClick={() => onWordClick(t.value)}
+                  onPointerDown={() => onWordDown(i)}
+                  onPointerUp={() => onWordUp(i)}
                   className="cursor-pointer rounded px-0.5 hover:bg-orange-500/40 hover:text-orange-200 transition-colors"
                 >
                   {t.value}
@@ -94,6 +137,11 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
               ),
             )}
           </p>
+          {!selection && (
+            <p className="pointer-events-none mt-1 text-xs text-white/40">
+              Tap a word · drag across words to save a phrase
+            </p>
+          )}
         </div>
       )}
 
@@ -105,6 +153,7 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
             word={selection.word}
             sentence={selection.sentence}
             timestamp={selection.timestamp}
+            kind={selection.kind}
             context={context}
             onClose={closePopup}
           />

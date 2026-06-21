@@ -48,9 +48,27 @@ export interface Word {
   ease?: number;
   interval?: number;
   reps?: number;
+  /** 'word' (default) or 'phrase' (a saved idiom / phrasal verb). */
+  kind?: 'word' | 'phrase';
 }
 
 export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy';
+
+export interface PhraseExplanation {
+  meaning: string;
+  literal: string;
+  figurative: string;
+  usage: string;
+}
+
+// AI breakdown of a phrase/idiom (cached server-side; falls back to a plain
+// translation when no Gemini key is set).
+export function explainPhrase(phrase: string, sentence: string, target?: string): Promise<PhraseExplanation> {
+  const p = new URLSearchParams({ phrase: phrase.toLowerCase() });
+  if (sentence) p.set('sentence', sentence);
+  if (target) p.set('target', target);
+  return apiFetch<PhraseExplanation>(`/api/me/words/explain?${p}`);
+}
 
 export function getMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/me');

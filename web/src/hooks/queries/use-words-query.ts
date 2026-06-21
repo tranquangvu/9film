@@ -195,7 +195,7 @@ export function useAddWord() {
       await qc.cancelQueries({ queryKey: STATS_KEY });
       const prev = qc.getQueryData<WordStat[]>(STATS_KEY);
       qc.setQueryData<WordStat[]>(STATS_KEY, (old = []) => [
-        { word, completedAt: '', list: '' },
+        { word, completedAt: '', list: '', kind: vars.kind ?? 'word' },
         ...old.filter((w) => w.word !== word),
       ]);
       return { prev };

@@ -127,10 +127,32 @@ func (h *Handler) AddWord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save word"})
 		return
 	}
-	if h.svc.ImageEnabled(middleware.UserID(c)) {
+	// Phrases never get an illustration, so don't advertise a pending image.
+	if w.Kind != "phrase" && h.svc.ImageEnabled(middleware.UserID(c)) {
 		w.ImageStatus = "pending"
 	}
 	c.JSON(http.StatusCreated, w)
+}
+
+// ExplainPhrase returns an AI breakdown of an idiom/phrasal verb (cached per user;
+// degrades to a plain translation when Gemini isn't configured).
+func (h *Handler) ExplainPhrase(c *gin.Context) {
+	phrase := strings.ToLower(strings.TrimSpace(c.Query("phrase")))
+	if phrase == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "phrase is required"})
+		return
+	}
+	target := c.Query("target")
+	if target == "" {
+		target = "vi"
+	}
+	exp, err := h.svc.ExplainPhrase(middleware.UserID(c), phrase, c.Query("sentence"), target)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not explain phrase"})
+		return
+	}
+	c.Header("Cache-Control", "private, max-age=86400")
+	c.JSON(http.StatusOK, exp)
 }
 
 // GetWordImage streams a word's generated SVG; 404 when the word has no image.

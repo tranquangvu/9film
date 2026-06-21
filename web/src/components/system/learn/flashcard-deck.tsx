@@ -213,6 +213,16 @@ function CardImage({ word, tint }: { word: Word; tint: string }) {
   const url = useWordImage(word.word, word.imageStatus, word.imageUpdatedAt);
   const regen = useRegenerateWordImage();
 
+  // Phrases/idioms get no illustration — show a calm placeholder, not a "generate"
+  // prompt (an SVG mnemonic of an idiom is meaningless).
+  if (word.kind === 'phrase') {
+    return (
+      <div className="w-full aspect-square rounded-2xl flex items-center justify-center" style={{ background: tint }}>
+        <span className="text-5xl select-none">💬</span>
+      </div>
+    );
+  }
+
   if (word.imageStatus === 'pending') {
     return <Skeleton className="w-full aspect-square rounded-2xl" />;
   }

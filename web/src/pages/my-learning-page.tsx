@@ -34,6 +34,7 @@ import {
   useDueCount,
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
+import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
@@ -189,7 +190,9 @@ function WordDialog({
   onComplete: (w: Word) => void;
   completing: boolean;
 }) {
-  const dict = useDictionaryQuery(word?.word);
+  const isPhrase = word?.kind === 'phrase';
+  const dict = useDictionaryQuery(isPhrase ? undefined : word?.word);
+  const explain = useExplainPhrase(isPhrase ? (word?.word ?? null) : null, word?.sentence ?? '');
   const imageUrl = useWordImage(word?.word ?? '', word?.imageStatus, word?.imageUpdatedAt);
 
   const openWord = word?.word;
@@ -244,8 +247,17 @@ function WordDialog({
               </Link>
             )}
 
-            {dict.isLoading && <p className="mt-4 text-sm text-zinc-600">Loading definitions…</p>}
-            {dict.data && (
+            {isPhrase && (
+              <div className="mt-4 space-y-3">
+                {explain.isLoading && <p className="text-sm text-zinc-600">Explaining…</p>}
+                {explain.data?.literal && <ExplainBlock label="Literally" text={explain.data.literal} />}
+                {explain.data?.figurative && <ExplainBlock label="Figuratively" text={explain.data.figurative} />}
+                {explain.data?.usage && <ExplainBlock label="Usage" text={explain.data.usage} />}
+              </div>
+            )}
+
+            {!isPhrase && dict.isLoading && <p className="mt-4 text-sm text-zinc-600">Loading definitions…</p>}
+            {!isPhrase && dict.data && (
               <div className="mt-4 space-y-3">
                 {dict.data.meanings.slice(0, 4).map((m, i) => (
                   <div key={`${m.partOfSpeech}-${i}`}>
@@ -289,6 +301,16 @@ function WordDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// One labelled line of a phrase explanation in the word detail dialog.
+function ExplainBlock({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-0.5 text-sm text-zinc-200">{text}</p>
+    </div>
   );
 }
 
@@ -363,7 +385,11 @@ function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
       style={{ background: c.background, borderColor: c.borderColor, color: c.color }}
       className="capitalize cursor-pointer hover:brightness-125"
     >
-      {word.imageStatus === 'ready' && <span className="mr-1">🖼️</span>}
+      {word.kind === 'phrase' ? (
+        <span className="mr-1">💬</span>
+      ) : (
+        word.imageStatus === 'ready' && <span className="mr-1">🖼️</span>
+      )}
       {word.word}
     </Badge>
   );
@@ -602,7 +628,11 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
                         onSelect={setSelected}
                         onTest={
                           tab === 'completed'
-                            ? (g) => setTestGroup({ words: g.words, label: friendlyDay(g.date) })
+                            ? (g) => {
+                                // Spelling a long idiom is harsh — test single words only.
+                                const words = g.words.filter((w) => w.kind !== 'phrase');
+                                if (words.length > 0) setTestGroup({ words, label: friendlyDay(g.date) });
+                              }
                             : undefined
                         }
                       />

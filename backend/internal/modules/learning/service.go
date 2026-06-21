@@ -80,6 +80,9 @@ type Service interface {
 	GetDueReviews(userID int64, limit int) ([]Word, error)
 	// SubmitReview applies an SM-2 recall grade and reschedules the word.
 	SubmitReview(userID int64, word, grade string) (*Word, error)
+	// ExplainPhrase returns an AI breakdown of an idiom/phrasal verb (cached;
+	// falls back to a plain translation when no Gemini key is configured).
+	ExplainPhrase(userID int64, phrase, sentence, target string) (*PhraseExplanation, error)
 }
 
 // GeminiKeys resolves the Gemini API key + model for a user. An empty key means
@@ -207,6 +210,31 @@ func (s *service) GetWords(userID int64, status, list string, limit, offset int)
 	return s.repo.GetWords(userID, status, list, limit, offset)
 }
 
+// ExplainPhrase returns the cached explanation for a phrase, generating it with
+// Gemini on first request. With no key (or on AI failure) it degrades to a plain
+// machine translation as the meaning and does NOT cache, so adding a key later
+// still yields the full breakdown.
+func (s *service) ExplainPhrase(userID int64, phrase, sentence, target string) (*PhraseExplanation, error) {
+	if e, ok := s.repo.GetExplanation(userID, phrase); ok {
+		return e, nil
+	}
+	apiKey, model := s.keys.Resolve(userID)
+	if apiKey == "" {
+		meaning, _ := s.Translate(phrase, target)
+		return &PhraseExplanation{Meaning: meaning}, nil
+	}
+	e, err := s.gen.ExplainPhrase(apiKey, model, phrase, sentence)
+	if err != nil {
+		logger.Get().Warn("phrase explanation failed; using translation", zap.String("phrase", phrase), zap.Error(err))
+		meaning, _ := s.Translate(phrase, target)
+		return &PhraseExplanation{Meaning: meaning}, nil
+	}
+	if err := s.repo.SaveExplanation(userID, phrase, *e); err != nil {
+		logger.Get().Warn("save explanation failed", zap.String("phrase", phrase), zap.Error(err))
+	}
+	return e, nil
+}
+
 func (s *service) GetWordStats(userID int64) ([]WordStat, error) {
 	return s.repo.GetWordStats(userID)
 }
@@ -218,7 +246,9 @@ func (s *service) AddWord(userID int64, w Word) error {
 	if err := s.repo.AddWord(userID, w); err != nil {
 		return err
 	}
-	if prior == nil || prior.ImageStatus == "" || prior.ImageStatus == "failed" {
+	// Phrases/idioms don't get an SVG mnemonic — they get an on-demand explanation
+	// instead. Only words trigger illustration generation.
+	if w.Kind != "phrase" && (prior == nil || prior.ImageStatus == "" || prior.ImageStatus == "failed") {
 		s.generateAsync(userID, w.Word, w.Translation, w.Sentence)
 	}
 	return nil

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Volume2, X, BookmarkPlus, BookmarkCheck, Languages, Loader2 } from 'lucide-react';
 import { useDefineQuery } from '@/hooks/queries/use-define-query';
+import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { useAddWord, useIsWordSaved } from '@/hooks/queries/use-words-query';
 import { useAuth } from '@/context/auth-context';
 import { translate } from '@/services/learn';
@@ -17,16 +18,25 @@ interface WordPopupProps {
   sentence: string;
   timestamp: number;
   context: WordContext;
+  kind?: 'word' | 'phrase';
   onClose: () => void;
 }
 
-export function WordPopup({ word, sentence, timestamp, context, onClose }: WordPopupProps) {
+export function WordPopup({ word, sentence, timestamp, context, kind = 'word', onClose }: WordPopupProps) {
+  const isPhrase = kind === 'phrase';
   const { isAuthenticated } = useAuth();
-  const { data, isLoading, isError } = useDefineQuery(word, context.learningLang);
+  // Only one lookup runs: single words hit the dictionary, phrases hit the AI
+  // explainer (the other is disabled by passing a null query key).
+  const { data, isLoading, isError } = useDefineQuery(isPhrase ? null : word, context.learningLang);
+  const explain = useExplainPhrase(isPhrase ? word : null, sentence, context.learningLang);
   const saved = useIsWordSaved(word);
   const addWord = useAddWord();
   const [sentenceVi, setSentenceVi] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+
+  // The meaning stored with the word (shown later on cards/lists): the dictionary
+  // translation for a word, the AI/translation meaning for a phrase.
+  const savedTranslation = isPhrase ? (explain.data?.meaning ?? '') : (data?.translation ?? '');
 
   const audioUrl = data?.definition?.audioUrl;
   const playAudio = () => {
@@ -49,11 +59,12 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
     addWord.mutate({
       word,
       sentence,
-      translation: data?.translation ?? '',
+      translation: savedTranslation,
       imdbId: context.imdbId,
       season: context.season,
       episode: context.episode,
       timestamp,
+      kind,
     });
   };
 
@@ -78,30 +89,40 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
         </button>
       </div>
 
-      {data?.translation && (
-        <p className="mt-2 text-orange-300 font-medium">{data.translation}</p>
+      {savedTranslation && (
+        <p className="mt-2 text-orange-300 font-medium">{savedTranslation}</p>
       )}
 
-      <div className="mt-3 space-y-2">
-        {isLoading && <p className="text-sm text-white/40">Looking up…</p>}
-        {isError && <p className="text-sm text-white/40">Couldn't reach the dictionary.</p>}
-        {!isLoading && data && !data.definition && !data.translation && (
-          <p className="text-sm text-white/40">No definition found.</p>
-        )}
-        {data?.definition?.meanings.slice(0, 2).map((m, mi) => (
-          <div key={mi}>
-            <p className="text-xs uppercase tracking-wide text-white/40">{m.partOfSpeech}</p>
-            <ul className="mt-0.5 space-y-1">
-              {m.definitions.slice(0, 2).map((d, di) => (
-                <li key={di} className="text-sm text-white/80">
-                  • {d.definition}
-                  {d.example && <span className="block text-white/40 italic">“{d.example}”</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+      {isPhrase ? (
+        <div className="mt-3 space-y-2">
+          {explain.isLoading && <p className="text-sm text-white/40">Explaining…</p>}
+          {explain.isError && <p className="text-sm text-white/40">Couldn't explain this phrase.</p>}
+          {explain.data?.literal && <ExplainRow label="Literally" text={explain.data.literal} />}
+          {explain.data?.figurative && <ExplainRow label="Figuratively" text={explain.data.figurative} />}
+          {explain.data?.usage && <ExplainRow label="Usage" text={explain.data.usage} />}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {isLoading && <p className="text-sm text-white/40">Looking up…</p>}
+          {isError && <p className="text-sm text-white/40">Couldn't reach the dictionary.</p>}
+          {!isLoading && data && !data.definition && !data.translation && (
+            <p className="text-sm text-white/40">No definition found.</p>
+          )}
+          {data?.definition?.meanings.slice(0, 2).map((m, mi) => (
+            <div key={mi}>
+              <p className="text-xs uppercase tracking-wide text-white/40">{m.partOfSpeech}</p>
+              <ul className="mt-0.5 space-y-1">
+                {m.definitions.slice(0, 2).map((d, di) => (
+                  <li key={di} className="text-sm text-white/80">
+                    • {d.definition}
+                    {d.example && <span className="block text-white/40 italic">“{d.example}”</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
 
       {sentence && (
         <div className="mt-3 border-t border-white/10 pt-3">
@@ -135,6 +156,16 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
           <span className="text-xs text-white/40">Sign in to save words</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// One labelled line of a phrase explanation (Literally / Figuratively / Usage).
+function ExplainRow({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-white/40">{label}</p>
+      <p className="text-sm text-white/80">{text}</p>
     </div>
   );
 }

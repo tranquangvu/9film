@@ -25,6 +25,16 @@ type Word struct {
 	Ease     float64 `json:"ease"`
 	Interval int     `json:"interval"`
 	Reps     int     `json:"reps"`
+	// Capture kind: 'word' (default) or 'phrase' (a multi-word idiom/phrasal verb).
+	Kind string `json:"kind"`
+}
+
+// PhraseExplanation is the AI breakdown of a saved phrase/idiom.
+type PhraseExplanation struct {
+	Meaning    string `json:"meaning"`
+	Literal    string `json:"literal"`
+	Figurative string `json:"figurative"`
+	Usage      string `json:"usage"`
 }
 
 // WordStat is a saved word stripped to the fields the learning page's progress
@@ -39,6 +49,8 @@ type WordStat struct {
 	// Next SRS review time ('' when not scheduled) — lets the page derive the
 	// "due for review today" count from the cheap stats set, no extra query.
 	DueAt string `json:"dueAt"`
+	// 'word' or 'phrase' — so the lists can badge/skip phrases without full rows.
+	Kind string `json:"kind"`
 }
 
 // TestSubmissionItem is one word's raw answers as submitted by the client: the

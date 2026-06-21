@@ -153,6 +153,18 @@ func Migrate(db *sql.DB) error {
 		)`,
 		// Test history: WHERE user_id=? ORDER BY created_at DESC.
 		`CREATE INDEX IF NOT EXISTS idx_word_tests_user_created ON word_tests(user_id, created_at DESC)`,
+		// Cached AI explanation for a saved phrase/idiom (meaning + literal vs
+		// figurative + usage). Kept out of the lean words list query, like word_images.
+		`CREATE TABLE IF NOT EXISTS word_explanations (
+			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			word       TEXT NOT NULL,
+			meaning    TEXT NOT NULL DEFAULT '',
+			literal    TEXT NOT NULL DEFAULT '',
+			figurative TEXT NOT NULL DEFAULT '',
+			usage      TEXT NOT NULL DEFAULT '',
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			PRIMARY KEY (user_id, word)
+		)`,
 	}
 
 	for _, stmt := range stmts {
@@ -192,6 +204,10 @@ func Migrate(db *sql.DB) error {
 		return err
 	}
 	if err := addColumnIfMissing(db, "words", "reps", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	// Capture kind: 'word' (default) or 'phrase' (a saved idiom / phrasal verb).
+	if err := addColumnIfMissing(db, "words", "kind", "TEXT NOT NULL DEFAULT 'word'"); err != nil {
 		return err
 	}
 	// Due-for-review queue: WHERE user_id=? AND due_at!='' AND due_at<=now. Created

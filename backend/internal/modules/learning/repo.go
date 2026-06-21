@@ -20,6 +20,8 @@ type Repository interface {
 	SetImageStatus(userID int64, word, status string) error
 	SaveImage(userID int64, word string, png []byte) error
 	GetImage(userID int64, word string) ([]byte, bool)
+	SaveExplanation(userID int64, word string, e PhraseExplanation) error
+	GetExplanation(userID int64, word string) (*PhraseExplanation, bool)
 	SaveTest(userID int64, t TestResult) (int64, error)
 	GetTests(userID int64) ([]TestResult, error)
 }
@@ -37,7 +39,7 @@ func NewRepository(db *sql.DB) Repository {
 // set — all of which need the whole vocabulary, not just the current page.
 func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	rows, err := r.db.Query(
-		`SELECT word, created_at, completed_at, list, due_at
+		`SELECT word, created_at, completed_at, list, due_at, kind
 		   FROM words WHERE user_id = ?
 		   ORDER BY created_at DESC`,
 		userID,
@@ -50,7 +52,7 @@ func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 	items := make([]WordStat, 0)
 	for rows.Next() {
 		var w WordStat
-		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt, &w.List, &w.DueAt); err != nil {
+		if err := rows.Scan(&w.Word, &w.CreatedAt, &w.CompletedAt, &w.List, &w.DueAt, &w.Kind); err != nil {
 			return nil, err
 		}
 		items = append(items, w)
@@ -72,7 +74,7 @@ func (r *repository) GetWords(userID int64, status, list string, limit, offset i
 		order = "word ASC"
 	}
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
 		   FROM words WHERE user_id = ? AND list = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
@@ -105,7 +107,7 @@ func scanWord(row rowScanner) (Word, error) {
 		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
 		&w.ImageStatus, &w.ImageUpdatedAt, &w.List,
-		&w.DueAt, &w.Ease, &w.Interval, &w.Reps,
+		&w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind,
 	)
 	return w, err
 }
@@ -114,7 +116,7 @@ func scanWord(row rowScanner) (Word, error) {
 // confirm ownership before (re)generating). Returns (nil, nil) when not found.
 func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	w, err := scanWord(r.db.QueryRow(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
 		   FROM words WHERE user_id = ? AND word = ?`,
 		userID, word,
 	))
@@ -132,18 +134,23 @@ func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 func (r *repository) AddWord(userID int64, w Word) error {
 	// Re-saving an existing word leaves its image columns untouched (the service
 	// decides whether to (re)generate); a new row defaults image_status to ''.
+	kind := w.Kind
+	if kind == "" {
+		kind = "word"
+	}
 	_, err := r.db.Exec(
 		`INSERT INTO words
-		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp)
-		   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp, kind)
+		   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		   ON CONFLICT(user_id, word) DO UPDATE SET
 		     sentence = excluded.sentence,
 		     translation = excluded.translation,
 		     imdb_id = excluded.imdb_id,
 		     season = excluded.season,
 		     episode = excluded.episode,
-		     timestamp = excluded.timestamp`,
-		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp,
+		     timestamp = excluded.timestamp,
+		     kind = excluded.kind`,
+		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp, kind,
 	)
 	return err
 }
@@ -236,6 +243,33 @@ func (r *repository) GetTests(userID int64) ([]TestResult, error) {
 	return items, rows.Err()
 }
 
+// SaveExplanation upserts the AI breakdown of a phrase/idiom.
+func (r *repository) SaveExplanation(userID int64, word string, e PhraseExplanation) error {
+	_, err := r.db.Exec(
+		`INSERT INTO word_explanations (user_id, word, meaning, literal, figurative, usage, updated_at)
+		   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+		   ON CONFLICT(user_id, word) DO UPDATE SET
+		     meaning = excluded.meaning, literal = excluded.literal,
+		     figurative = excluded.figurative, usage = excluded.usage,
+		     updated_at = datetime('now')`,
+		userID, word, e.Meaning, e.Literal, e.Figurative, e.Usage,
+	)
+	return err
+}
+
+// GetExplanation returns a cached phrase explanation, or (nil, false) when none.
+func (r *repository) GetExplanation(userID int64, word string) (*PhraseExplanation, bool) {
+	var e PhraseExplanation
+	err := r.db.QueryRow(
+		`SELECT meaning, literal, figurative, usage FROM word_explanations WHERE user_id = ? AND word = ?`,
+		userID, word,
+	).Scan(&e.Meaning, &e.Literal, &e.Figurative, &e.Usage)
+	if err != nil {
+		return nil, false
+	}
+	return &e, true
+}
+
 // BulkAddWords inserts many bare words (no context, no image) tagged with the
 // given list, in one transaction, skipping any the user already has so existing
 // context isn't overwritten. Returns how many were newly added.
@@ -298,7 +332,7 @@ func (r *repository) CompleteWord(userID int64, word string) error {
 // (oldest-due first), as full rows so the review deck can show context/image.
 func (r *repository) GetDueReviews(userID int64, limit int) ([]Word, error) {
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps
+		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
 		   FROM words WHERE user_id = ? AND due_at != '' AND due_at <= datetime('now')
 		   ORDER BY due_at ASC
 		   LIMIT ?`,

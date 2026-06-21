@@ -21,6 +21,9 @@ type Generator interface {
 	// VerifyMeanings grades a batch of meaning answers in one call, returning a
 	// verdict per item (order/word-matched by the caller).
 	VerifyMeanings(apiKey, model string, items []MeaningCheck) ([]MeaningVerdict, error)
+	// ExplainPhrase breaks down a saved idiom/phrasal verb (meaning, literal vs
+	// figurative, usage), using the sentence it was captured from as context.
+	ExplainPhrase(apiKey, model, phrase, sentence string) (*PhraseExplanation, error)
 }
 
 // MeaningCheck is one word's grading input: the word, an optional reference
@@ -204,6 +207,89 @@ func extractJSONArray(text string) (string, bool) {
 		return "", false
 	}
 	return text[lo : hi+1], true
+}
+
+// extractJSONObject pulls the {...} object out of a model reply that may include
+// prose or code fences around it.
+func extractJSONObject(text string) (string, bool) {
+	lo := strings.Index(text, "{")
+	hi := strings.LastIndex(text, "}")
+	if lo < 0 || hi < 0 || hi < lo {
+		return "", false
+	}
+	return text[lo : hi+1], true
+}
+
+// phrasePrompt asks the model to explain an idiom/phrasal verb as one strict JSON
+// object so the result parses deterministically.
+func phrasePrompt(phrase, sentence string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Explain the English phrase %q for a language learner. ", phrase)
+	if s := strings.TrimSpace(sentence); s != "" {
+		fmt.Fprintf(&b, "It was used in this line: %q. ", s)
+	}
+	b.WriteString("Return ONLY a JSON object shaped exactly like ")
+	b.WriteString(`{"meaning": string, "literal": string, "figurative": string, "usage": string}. `)
+	b.WriteString(`"meaning" = the plain everyday meaning; "literal" = what the words say word-for-word; `)
+	b.WriteString(`"figurative" = the idiomatic/figurative sense (empty string if it is not figurative); `)
+	b.WriteString(`"usage" = a short note on when/how it's used, with one fresh example. `)
+	b.WriteString("Keep each field under 30 words. No markdown, no code fences.")
+	return b.String()
+}
+
+func (g *geminiGenerator) ExplainPhrase(apiKey, model, phrase, sentence string) (*PhraseExplanation, error) {
+	if model == "" {
+		model = defaultGeminiModel
+	}
+	reqBody := geminiRequest{
+		Contents: []geminiContent{{
+			Parts: []geminiPart{{Text: phrasePrompt(phrase, sentence)}},
+		}},
+	}
+	payload, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/%s:generateContent", geminiAPIBase, model)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", apiKey)
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("gemini request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(resp.Body)
+		return nil, fmt.Errorf("gemini returned %d: %s", resp.StatusCode, strings.TrimSpace(buf.String()))
+	}
+
+	var result geminiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode gemini response: %w", err)
+	}
+
+	var text strings.Builder
+	for _, cand := range result.Candidates {
+		for _, part := range cand.Content.Parts {
+			text.WriteString(part.Text)
+		}
+	}
+	raw, ok := extractJSONObject(text.String())
+	if !ok {
+		return nil, fmt.Errorf("gemini response contained no json object")
+	}
+	var e PhraseExplanation
+	if err := json.Unmarshal([]byte(raw), &e); err != nil {
+		return nil, fmt.Errorf("parse explanation: %w", err)
+	}
+	return &e, nil
 }
 
 // extractSVG pulls the <svg>…</svg> element out of a model reply that may include
