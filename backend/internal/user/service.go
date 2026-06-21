@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	// ErrUsernameTaken is returned by Signup when the username is already in use.
 	ErrUsernameTaken = errors.New("that username is already taken")
 	// ErrUnknownUser is returned by Login when no account has the given username.
 	// This app is local and password-less: a correct username is the only thing
@@ -41,7 +40,6 @@ func avatarFor(username string) string {
 	return "https://api.dicebear.com/7.x/avataaars/svg?seed=" + url.QueryEscape(username)
 }
 
-// Signup creates a new account and returns the user plus a signed JWT.
 func (s *service) Signup(username string) (*User, string, error) {
 	if _, err := s.repo.GetUserByUsername(username); err == nil {
 		return nil, "", ErrUsernameTaken

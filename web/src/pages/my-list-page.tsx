@@ -138,7 +138,6 @@ export default function MyListPage() {
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      {/* Page header */}
       <div className="pt-24 pb-6 px-4 md:px-8 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: -12 }}
@@ -152,7 +151,6 @@ export default function MyListPage() {
         </motion.div>
       </div>
 
-      {/* Tab filters */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md px-4 md:px-8 lg:px-12 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           {tabs.map((tab) => (
@@ -168,7 +166,6 @@ export default function MyListPage() {
         </div>
       </div>
 
-      {/* Continue Watching preview (All tab) */}
       {showCarousel && continueInitialLoading && (
         <div className="mt-6">
           <CarouselSkeleton cardType="backdrop" count={4} />
@@ -186,7 +183,6 @@ export default function MyListPage() {
         </div>
       )}
 
-      {/* Favorites grid (All / Favorites tabs) */}
       {showFavGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
           {gridInitialLoading ? (

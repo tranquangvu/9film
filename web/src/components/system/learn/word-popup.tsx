@@ -59,7 +59,6 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
 
   return (
     <div className="pointer-events-auto absolute bottom-28 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,420px)] max-h-[60vh] overflow-y-auto glass border border-white/15 rounded-2xl p-4 shadow-2xl text-white">
-      {/* Header: word + phonetics + close */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -79,12 +78,10 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
         </button>
       </div>
 
-      {/* Vietnamese translation of the word */}
       {data?.translation && (
         <p className="mt-2 text-orange-300 font-medium">{data.translation}</p>
       )}
 
-      {/* Definitions */}
       <div className="mt-3 space-y-2">
         {isLoading && <p className="text-sm text-white/40">Looking up…</p>}
         {isError && <p className="text-sm text-white/40">Couldn't reach the dictionary.</p>}
@@ -106,7 +103,6 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
         ))}
       </div>
 
-      {/* Sentence + on-demand translation */}
       {sentence && (
         <div className="mt-3 border-t border-white/10 pt-3">
           <p className="text-sm text-white/60 italic">{sentence}</p>
@@ -125,7 +121,6 @@ export function WordPopup({ word, sentence, timestamp, context, onClose }: WordP
         </div>
       )}
 
-      {/* Save */}
       <div className="mt-5 flex justify-start">
         {isAuthenticated ? (
           <button

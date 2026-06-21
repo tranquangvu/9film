@@ -29,7 +29,10 @@ type repository struct {
 }
 
 func NewRepository() Repository {
-	return &repository{client: http.DefaultClient, cache: make(map[string]titleCacheEntry)}
+	return &repository{
+		client: &http.Client{Timeout: 12 * time.Second},
+		cache:  make(map[string]titleCacheEntry),
+	}
 }
 
 func (r *repository) imdbRequest(query string, variables map[string]any, dataTarget any) error {
@@ -89,7 +92,6 @@ func (r *repository) storeTitle(id string, t *ImdbTitle) {
 	r.cacheMu.Unlock()
 }
 
-// FetchTitle returns the raw IMDb title (cached).
 func (r *repository) FetchTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
 	if t := r.cachedTitle(id); t != nil {
@@ -122,7 +124,6 @@ func (r *repository) FetchTitle(imdbID string) (*ImdbTitle, error) {
 	return data.Title, nil
 }
 
-// SearchTitles returns raw IMDb titles matching the search term (image-filtered).
 func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 	term = strings.TrimSpace(term)
 	if term == "" {
@@ -179,7 +180,6 @@ func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 	return titles, nil
 }
 
-// TrendingTitles returns raw trending IMDb titles (image-filtered).
 func (r *repository) TrendingTitles(limit int) ([]ImdbTitle, error) {
 	if limit <= 0 {
 		limit = 10
@@ -212,14 +212,12 @@ func (r *repository) TrendingTitles(limit int) ([]ImdbTitle, error) {
 	return titles, nil
 }
 
-// rawBrowseResult carries the raw browse titles plus paging info.
 type rawBrowseResult struct {
 	Titles      []ImdbTitle
 	HasNextPage bool
 	EndCursor   string
 }
 
-// BrowseTitles returns a raw, paged browse result (image-filtered titles).
 func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error) {
 	first := params.First
 	if first <= 0 {

@@ -168,7 +168,6 @@ export default function BrowsePage() {
   return (
     <Drawer open={drawerOpen} onOpenChange={handleDrawerOpenChange}>
       <div className="min-h-screen bg-background pb-16">
-        {/* Page header */}
         <div className="pt-24 pb-6 px-4 md:px-8 lg:px-12">
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -191,7 +190,6 @@ export default function BrowsePage() {
               </motion.p>
             </div>
 
-            {/* Filter drawer trigger */}
             <motion.div
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -236,7 +234,6 @@ export default function BrowsePage() {
           isLoadingMore={isFetchingNextPage}
         />
 
-        {/* Filter drawer */}
         <DrawerContent>
           <DrawerHeader>
             <div className="flex items-center gap-2">
@@ -257,7 +254,6 @@ export default function BrowsePage() {
           </DrawerHeader>
 
           <div className="flex-1 overflow-y-auto px-5 pt-8 pb-5 space-y-6">
-            {/* Title / IMDb id search */}
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
                 Search
@@ -277,7 +273,6 @@ export default function BrowsePage() {
               />
             </div>
 
-            {/* Type group */}
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
                 Type
@@ -296,7 +291,6 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            {/* Genre group */}
             <div>
               <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
                 Genre

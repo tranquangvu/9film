@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Handler proxies the OpenSubtitles search/download endpoints.
 type Handler struct {
 	subs Subtitles
 }

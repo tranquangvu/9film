@@ -5,7 +5,6 @@ const cardWidths = { sm: 'w-32', md: 'w-44', lg: 'w-56' } as const;
 
 type CardSize = keyof typeof cardWidths;
 
-/** Mirrors MovieCard: a 2:3 poster at the same fixed widths. */
 export function MovieCardSkeleton({ size = 'md', className }: { size?: CardSize; className?: string }) {
   return (
     <div className={cn('flex-shrink-0', cardWidths[size], className)}>
@@ -14,7 +13,6 @@ export function MovieCardSkeleton({ size = 'md', className }: { size?: CardSize;
   );
 }
 
-/** Mirrors ContinueWatchingCard: a 16:9 backdrop, w-72. */
 export function ContinueCardSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('flex-shrink-0 w-72', className)}>
@@ -23,7 +21,6 @@ export function ContinueCardSkeleton({ className }: { className?: string }) {
   );
 }
 
-/** Mirrors Top10Card: outlined rank number + w-32 2:3 poster. */
 export function Top10CardSkeleton({ rank }: { rank: number }) {
   return (
     <div className="relative flex-shrink-0 flex items-end">
@@ -45,7 +42,6 @@ export function Top10CardSkeleton({ rank }: { rank: number }) {
 
 type CarouselCardType = 'poster' | 'backdrop' | 'top10';
 
-/** Mirrors HorizontalCarousel: header row + a scrolling strip of card skeletons. */
 export function CarouselSkeleton({
   cardType = 'poster',
   count = 8,
@@ -70,7 +66,6 @@ export function CarouselSkeleton({
   );
 }
 
-/** Mirrors the responsive poster grid used on the Movies/TV/Browse pages. */
 export function MovieGridSkeleton({ count = 15 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
@@ -81,7 +76,6 @@ export function MovieGridSkeleton({ count = 15 }: { count?: number }) {
   );
 }
 
-/** Mirrors the poster tile used in the search overlay grids (poster + footer). */
 export function PosterTileSkeleton() {
   return (
     <div
@@ -97,7 +91,6 @@ export function PosterTileSkeleton() {
   );
 }
 
-/** Mirrors a SearchResultRow list inside its surface container. */
 export function SearchResultsSkeleton({ count = 6 }: { count?: number }) {
   return (
     <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
@@ -121,7 +114,6 @@ export function SearchResultsSkeleton({ count = 6 }: { count?: number }) {
   );
 }
 
-/** Mirrors HeroBanner: full-screen backdrop with bottom-left content block. */
 export function HeroBannerSkeleton() {
   return (
     <section className="relative min-h-screen w-full overflow-hidden">
@@ -131,10 +123,8 @@ export function HeroBannerSkeleton() {
 
       <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
         <div className="w-full md:max-w-[50%]">
-          {/* Title */}
           <Skeleton className="h-6 md:h-8 w-1/3 rounded-lg mb-4" />
 
-          {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <Skeleton className="h-5 w-16 rounded-full" />
             <Skeleton className="h-5 w-16 rounded-full" />
@@ -143,13 +133,11 @@ export function HeroBannerSkeleton() {
             <Skeleton className="h-5 w-16 rounded-full" />
           </div>
 
-          {/* Description */}
           <div className="space-y-2.5 max-w-xl mb-6">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
 
-          {/* CTA buttons */}
           <div className="flex items-center gap-3 flex-wrap">
             <Skeleton className="h-12 w-32 rounded-full" />
             <Skeleton className="h-12 w-12 rounded-full" />
@@ -160,7 +148,6 @@ export function HeroBannerSkeleton() {
   );
 }
 
-/** Mirrors MovieDetailPage: full-screen hero + Episodes, About, Cast, More Like This. */
 export function DetailPageSkeleton() {
   return (
     <div className="min-h-screen bg-background">
@@ -189,7 +176,6 @@ export function DetailPageSkeleton() {
       </div>
 
       <div className="px-4 md:px-8 lg:px-12 pt-0 pb-8 space-y-10">
-        {/* Episodes — season select + episode pills */}
         <div className="space-y-4">
           <Skeleton className="h-6 w-28" />
           <div className="flex flex-wrap items-center gap-2">
@@ -200,7 +186,6 @@ export function DetailPageSkeleton() {
           </div>
         </div>
 
-        {/* About — heading + paragraph lines */}
         <div className="space-y-3">
           <Skeleton className="h-6 w-24" />
           <Skeleton className="h-4 w-full max-w-3xl" />
@@ -208,7 +193,6 @@ export function DetailPageSkeleton() {
           <Skeleton className="h-4 w-4/6 max-w-3xl" />
         </div>
 
-        {/* Cast — avatar + name/character rows */}
         <div className="space-y-4">
           <Skeleton className="h-6 w-20" />
           <div className="flex flex-wrap gap-x-6 gap-y-5">
@@ -224,7 +208,6 @@ export function DetailPageSkeleton() {
           </div>
         </div>
 
-        {/* More Like This — responsive poster grid */}
         <div className="space-y-4">
           <Skeleton className="h-6 w-40" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">

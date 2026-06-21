@@ -205,7 +205,6 @@ function SelectScrollDownButton({
   );
 }
 
-// ─── Convenience wrapper ─────────────────────────────────────────────────────
 // Most call sites just need an icon + a flat list of options; this composes the
 // primitives above so those sites stay terse while still being a real Radix Select.
 

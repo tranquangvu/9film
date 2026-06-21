@@ -18,6 +18,14 @@ import (
 const openSubsAPIBase = "https://api.opensubtitles.com/api/v1"
 const openSubsUserAgent = "NiceFilm/1.0"
 
+// SRT-parsing regexes, compiled once (they were previously recompiled per call
+// and per cue block inside srtToVTT's loop — pure overhead on every download).
+var (
+	srtBlockSplitRe = regexp.MustCompile(`\n{2,}`)
+	srtIndexLineRe  = regexp.MustCompile(`^\d+$`)
+	srtTimeRe       = regexp.MustCompile(`^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}[,.]\d{3})`)
+)
+
 type SubtitleConfig struct {
 	APIKey   string
 	Username string
@@ -46,10 +54,9 @@ type subtitles struct {
 }
 
 func NewSubtitles(cfg *SubtitleConfig) Subtitles {
-	return &subtitles{cfg: cfg, client: http.DefaultClient}
+	return &subtitles{cfg: cfg, client: &http.Client{Timeout: 15 * time.Second}}
 }
 
-// Configured reports whether OpenSubtitles credentials are present.
 func (s *subtitles) Configured() bool { return s.cfg != nil }
 
 func baseSubsHeaders(apiKey string) map[string]string {
@@ -107,8 +114,7 @@ func (s *subtitles) getAuthToken() (string, error) {
 }
 
 func imdbToNumeric(imdb string) int {
-	re := regexp.MustCompile(`(?i)^tt`)
-	numeric := re.ReplaceAllString(imdb, "")
+	numeric := strings.TrimPrefix(strings.ToLower(imdb), "tt")
 	n, _ := strconv.Atoi(numeric)
 	return n
 }
@@ -305,8 +311,7 @@ func srtToVTT(srt string) string {
 		return "WEBVTT\n\n"
 	}
 
-	re := regexp.MustCompile(`\n{2,}`)
-	blocks := re.Split(normalized, -1)
+	blocks := srtBlockSplitRe.Split(normalized, -1)
 	var cues []string
 
 	for _, block := range blocks {
@@ -320,7 +325,7 @@ func srtToVTT(srt string) string {
 		}
 
 		timeIdx := 0
-		if matched, _ := regexp.MatchString(`^\d+$`, strings.TrimSpace(lines[0])); matched {
+		if srtIndexLineRe.MatchString(strings.TrimSpace(lines[0])) {
 			timeIdx = 1
 		}
 
@@ -329,8 +334,7 @@ func srtToVTT(srt string) string {
 		}
 
 		timeLine := strings.TrimSpace(lines[timeIdx])
-		timeRe := regexp.MustCompile(`^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}[,.]\d{3})`)
-		if !timeRe.MatchString(timeLine) {
+		if !srtTimeRe.MatchString(timeLine) {
 			continue
 		}
 

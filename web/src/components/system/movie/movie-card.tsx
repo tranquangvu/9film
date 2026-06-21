@@ -40,9 +40,7 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
       )}
       onClick={handleClick}
     >
-      {/* Poster container — 2:3 aspect ratio */}
       <div className="relative w-full rounded-xl overflow-hidden bg-[#1a1a1a]" style={{ aspectRatio: '2/3' }}>
-        {/* Poster image */}
         {!imgError ? (
           <img
             src={sizedImage(movie.poster, 400)}
@@ -58,12 +56,10 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           </div>
         )}
 
-        {/* Base badges (always visible) */}
         <div className="absolute top-2 left-2">
           <RatingBadge rating={movie.rating} />
         </div>
 
-        {/* Top-right: New badge + favorite indicator (only shown when favorited) */}
         <div className="absolute top-2 right-2 flex items-center gap-1.5">
           {movie.isNew && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500 text-white uppercase tracking-wide">
@@ -83,7 +79,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           )}
         </div>
 
-        {/* Remove button — centered below the play button, revealed on card hover */}
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -95,12 +90,9 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           </button>
         )}
 
-        {/* Hover overlay (CSS-only) */}
         <div className="absolute inset-0 flex flex-col justify-between opacity-0 group-hover/card:opacity-100 transition-opacity duration-200 pointer-events-none group-hover/card:pointer-events-auto">
-          {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20 rounded-xl" />
 
-          {/* Play button — centered */}
           <div className="relative flex-1 flex items-center justify-center">
             <button
               className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/40 transition-transform hover:scale-110 active:scale-95"
@@ -110,7 +102,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
             </button>
           </div>
 
-          {/* Bottom info */}
           <div className="relative px-2.5 pb-3 space-y-1.5">
             <p className="text-white font-semibold text-sm leading-tight line-clamp-2">{movie.title}</p>
 
@@ -124,7 +115,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
               )}
             </div>
 
-            {/* Genre badges row */}
             <div className="flex flex-wrap gap-1 pt-0.5">
               {movie.genres.slice(0, 2).map((g) => (
                 <GenreBadge key={g} genre={g} className="text-[10px] px-1.5 py-0" />
@@ -133,7 +123,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           </div>
         </div>
 
-        {/* Default title overlay — hidden on hover */}
         <div
           className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-6.5 opacity-100 group-hover/card:opacity-0 transition-opacity duration-200"
           style={{
@@ -145,7 +134,6 @@ export function MovieCard({ movie, className, showProgress = false, size = 'md',
           </p>
         </div>
 
-        {/* Progress bar */}
         {showProgress && movie.progress !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
             <div

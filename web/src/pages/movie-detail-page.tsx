@@ -241,7 +241,6 @@ export default function MovieDetailPage() {
 
   return (
     <div className="min-h-screen bg-background text-white">
-      {/* ── HERO SECTION ── */}
       <div
         ref={heroRef}
         className="relative w-full h-screen overflow-hidden"
@@ -277,12 +276,10 @@ export default function MovieDetailPage() {
           )}
         </div>
 
-        {/* Gradient overlays */}
         <div className="absolute inset-0 gradient-overlay" />
         <div className="absolute inset-0 gradient-overlay-right" />
         <div className="absolute inset-0 bg-linear-to-t from-background via-transparent to-black/30" />
 
-        {/* Back button */}
         <button
           onClick={() => navigate(-1)}
           aria-label="Go back"
@@ -294,28 +291,23 @@ export default function MovieDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
 
-        {/* Hero content */}
         <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl">
-          {/* Genre badges */}
           <div className="flex flex-wrap gap-2 mb-2">
             {movie.genres.map((genre) => (
               <GenreBadge key={genre} genre={genre} />
             ))}
           </div>
 
-          {/* Title */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 drop-shadow-2xl">
             {movie.title}
           </h1>
 
-          {/* Tagline */}
           {movie.tagline && (
             <p className="text-lg text-zinc-300 italic mb-5 drop-shadow-lg">
               "{movie.tagline}"
             </p>
           )}
 
-          {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-7 text-sm text-zinc-300">
             <span className="flex items-center gap-1.5 font-semibold text-white">
               <Calendar className="w-3.5 h-3.5 text-zinc-500" />
@@ -381,9 +373,7 @@ export default function MovieDetailPage() {
             )}
           </div>
 
-          {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-4">
-            {/* Play / Resume */}
             <button
               onClick={handlePlay}
               className={cn(
@@ -395,7 +385,6 @@ export default function MovieDetailPage() {
               {isResumable ? "Resume" : "Play Now"}
             </button>
 
-            {/* Favorite */}
             <button
               onClick={favorite.onToggle}
               className={cn(
@@ -417,7 +406,6 @@ export default function MovieDetailPage() {
               )}
             </button>
 
-            {/* Share */}
             <div className="relative">
               <button
                 onClick={handleShare}
@@ -435,7 +423,6 @@ export default function MovieDetailPage() {
           </div>
         </div>
 
-        {/* Dot indicators — auto-rotating hero backdrop */}
         {galleryImages.length > 1 && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
             {galleryImages.map((url, i) => (
@@ -456,10 +443,8 @@ export default function MovieDetailPage() {
         )}
       </div>
 
-      {/* ── CONTENT SECTION ── */}
       <div className="relative z-10 bg-background px-4 md:px-8 lg:px-12 pt-0 pb-8">
         <div className="space-y-10">
-          {/* ── Episodes (series only) ── */}
           {eps && (
             <section className="max-w-3xl xl:max-w-[65%]">
               <h2 className="text-xl font-bold text-white mb-4">Episodes</h2>
@@ -502,7 +487,6 @@ export default function MovieDetailPage() {
             </section>
           )}
 
-          {/* ── About ── */}
           <section>
             <h2 className="text-xl font-bold text-white mb-4">About</h2>
             <p className="text-zinc-300 leading-relaxed text-base max-w-3xl xl:max-w-[65%]">
@@ -510,7 +494,6 @@ export default function MovieDetailPage() {
             </p>
           </section>
 
-          {/* ── Cast ── */}
           {movie.cast && movie.cast.length > 0 && (
             <section className="max-w-3xl xl:max-w-[65%]">
               <h2 className="text-xl font-bold text-white mb-4">Cast</h2>
@@ -548,7 +531,6 @@ export default function MovieDetailPage() {
             </section>
           )}
 
-          {/* ── More Like This ── */}
           {similarMovies.length > 0 && (
             <section>
               <h2 className="text-xl font-bold text-white mb-4">

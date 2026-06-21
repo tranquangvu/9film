@@ -5,8 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Module wires the subtitle feature (OpenSubtitles service → handler) and
-// registers its routes.
 func Module(api *gin.RouterGroup, cfg *config.Config) {
 	h := NewHandler(NewSubtitles(subtitleConfig(cfg)))
 	RegisterRoutes(api, h)

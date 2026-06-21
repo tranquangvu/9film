@@ -87,7 +87,6 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
             className="w-full max-w-3xl mx-auto px-4 pt-20 pb-6"
             onClick={e => e.stopPropagation()}
           >
-            {/* Search input */}
             <div
               className="flex items-center gap-3 px-5 py-4 rounded-2xl mb-8"
               style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.1)' }}
@@ -117,7 +116,6 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
               </button>
             </div>
 
-            {/* Results */}
             {query.trim() ? (
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -156,9 +154,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 )}
               </div>
             ) : (
-              /* Trending section */
               <div>
-                {/* Popular right now */}
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp size={14} className="text-orange-500" />
                   <span className="text-sm font-semibold text-zinc-300">Popular Now</span>

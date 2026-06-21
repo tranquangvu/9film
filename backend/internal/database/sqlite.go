@@ -10,8 +10,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// Open opens (creating if needed) the SQLite database at path, applies pragmas,
-// and ensures the schema exists.
 func Open(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -24,6 +22,10 @@ func Open(path string) (*sql.DB, error) {
 
 	for _, pragma := range []string{
 		"PRAGMA journal_mode=WAL",
+		// NORMAL is the recommended durability level under WAL: it fsyncs at
+		// checkpoints rather than on every commit, so frequent progress upserts
+		// during playback don't each pay a full fsync. (FULL is the default.)
+		"PRAGMA synchronous=NORMAL",
 		"PRAGMA foreign_keys=ON",
 		"PRAGMA busy_timeout=5000",
 	} {
@@ -41,7 +43,7 @@ func Open(path string) (*sql.DB, error) {
 }
 
 // Migrate creates the schema if it doesn't exist. Statements are idempotent so
-// this can run on every startup.
+// it can run on every startup.
 func Migrate(db *sql.DB) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -98,6 +100,14 @@ func Migrate(db *sql.DB) error {
 			completed_at TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (user_id, word)
 		)`,
+		// Secondary indexes for the per-user list queries whose filter/sort
+		// columns the primary keys don't already cover.
+		// Continue Watching: WHERE user_id=? AND duration>0 ORDER BY updated_at DESC.
+		`CREATE INDEX IF NOT EXISTS idx_history_user_updated ON history(user_id, updated_at DESC)`,
+		// Watchlist: WHERE user_id=? ORDER BY created_at DESC.
+		`CREATE INDEX IF NOT EXISTS idx_favorites_user_created ON favorites(user_id, created_at DESC)`,
+		// Saved words: WHERE user_id=? AND completed_at (?='') ORDER BY created_at/completed_at.
+		`CREATE INDEX IF NOT EXISTS idx_words_user_completed ON words(user_id, completed_at, created_at)`,
 	}
 
 	for _, stmt := range stmts {

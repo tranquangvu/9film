@@ -25,10 +25,6 @@ import { useAuth } from '@/context/auth-context';
 import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
 import { SelectField } from '@/components/ui/select';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type SectionId = 'profile' | 'playback' | 'notifications' | 'language' | 'subscription' | 'devices'
 
 interface NavItem {
@@ -45,10 +41,6 @@ const navItems: NavItem[] = [
   { id: 'subscription', label: 'Subscription', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'devices', label: 'Devices', icon: <Monitor className="w-4 h-4" /> },
 ];
-
-// ---------------------------------------------------------------------------
-// Toggle Switch
-// ---------------------------------------------------------------------------
 
 interface ToggleProps {
   enabled: boolean
@@ -88,10 +80,6 @@ function Toggle({ enabled, onChange, label, description }: ToggleProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Select Dropdown
-// ---------------------------------------------------------------------------
-
 interface SelectProps {
   value: string
   options: string[]
@@ -110,10 +98,6 @@ function Select({ value, options, onChange, label }: SelectProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section card wrapper
-// ---------------------------------------------------------------------------
-
 function SectionCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('bg-surface border border-zinc-800 rounded-2xl p-6', className)}>
@@ -128,10 +112,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Sections
-// ---------------------------------------------------------------------------
-
 function ProfileSection() {
   const { user } = useAuth();
   const joined = user?.createdAt ? new Date(user.createdAt.replace(' ', 'T')) : null;
@@ -144,7 +124,6 @@ function ProfileSection() {
     <SectionCard>
       <SectionTitle>Profile</SectionTitle>
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-        {/* Avatar */}
         <div className="relative shrink-0">
           <div className="w-24 h-24 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-orange-500/40">
             <img
@@ -163,7 +142,6 @@ function ProfileSection() {
           </button>
         </div>
 
-        {/* Info */}
         <div className="flex-1 text-center sm:text-left space-y-1">
           <div className="flex items-center justify-center sm:justify-start gap-2">
             <h3 className="text-xl font-bold text-white">@{user?.username}</h3>
@@ -173,14 +151,12 @@ function ProfileSection() {
           )}
         </div>
 
-        {/* Edit button */}
         <Button variant="outline" className="rounded-lg text-sm">
           <Pencil className="w-3.5 h-3.5" />
           Edit Profile
         </Button>
       </div>
 
-      {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800">
         {[
           { label: 'Titles Watched', value: '148' },
@@ -361,9 +337,7 @@ function SubscriptionSection() {
     <SectionCard>
       <SectionTitle>Subscription Plan</SectionTitle>
 
-      {/* Plan card */}
       <div className="relative rounded-xl overflow-hidden bg-linear-to-br from-orange-900/30 via-surface-2 to-surface-2 border border-orange-500/20 p-5 mb-5">
-        {/* Glow */}
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative flex items-start justify-between gap-4">
@@ -394,7 +368,6 @@ function SubscriptionSection() {
         </div>
       </div>
 
-      {/* Renewal info */}
       <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-lg bg-surface-2 border border-zinc-800">
         <Calendar className="w-4 h-4 text-zinc-500 shrink-0" />
         <div>
@@ -403,7 +376,6 @@ function SubscriptionSection() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-wrap gap-3">
         <Button variant="primary" className="rounded-lg text-sm">
           <Crown className="w-4 h-4" />
@@ -502,10 +474,6 @@ function DevicesSection() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section renderer
-// ---------------------------------------------------------------------------
-
 const sectionComponents: Record<SectionId, React.ReactNode> = {
   profile: <ProfileSection />,
   playback: <PlaybackSection />,
@@ -515,10 +483,6 @@ const sectionComponents: Record<SectionId, React.ReactNode> = {
   devices: <DevicesSection />,
 };
 
-// ---------------------------------------------------------------------------
-// ProfilePage
-// ---------------------------------------------------------------------------
-
 export default function ProfilePage() {
   const [activeSection, setActiveSection] = useState<SectionId>('profile');
   const { logout } = useAuth();
@@ -527,7 +491,6 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background pt-20 pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Page header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -546,7 +509,6 @@ export default function ProfilePage() {
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-          {/* ── Left Sidebar Navigation ── */}
           <motion.aside
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
@@ -580,7 +542,6 @@ export default function ProfilePage() {
             </div>
           </motion.aside>
 
-          {/* ── Content Area ── */}
           <main className="flex-1 min-w-0">
             <AnimatePresence mode="wait">
               <motion.div

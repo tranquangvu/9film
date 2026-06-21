@@ -11,8 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Handler serves the language-learning helpers (dictionary + translation) and
-// the per-user saved-vocabulary endpoints.
 type Handler struct {
 	svc Service
 }
@@ -22,7 +20,6 @@ func NewHandler(svc Service) *Handler {
 }
 
 // Define looks up an English word and its translation into the target language.
-// GET /api/learn/define?word=...&target=vi
 func (h *Handler) Define(c *gin.Context) {
 	word := strings.ToLower(strings.TrimSpace(c.Query("word")))
 	if word == "" {
@@ -52,7 +49,6 @@ func (h *Handler) Define(c *gin.Context) {
 }
 
 // Translate renders a phrase/sentence into the target language.
-// GET /api/learn/translate?q=...&target=vi
 func (h *Handler) Translate(c *gin.Context) {
 	q := strings.TrimSpace(c.Query("q"))
 	if q == "" {

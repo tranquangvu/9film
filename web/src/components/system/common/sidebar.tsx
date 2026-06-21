@@ -26,7 +26,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -36,7 +35,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={onClose}
           />
 
-          {/* Panel */}
           <motion.div
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
@@ -46,7 +44,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             style={{ background: '#0f0f0f', borderRight: '1px solid rgba(255,255,255,0.06)' }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
               <NavLink to="/" onClick={onClose} className="flex items-center gap-1.5">
                 <span className="text-lg">🎬</span>
@@ -60,7 +57,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </button>
             </div>
 
-            {/* Navigation */}
             <div className="px-3 py-4 border-b border-white/5">
               <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider px-2 mb-2">Navigation</p>
               <nav className="flex flex-col gap-0.5">
@@ -86,7 +82,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </nav>
             </div>
 
-            {/* Genres */}
             <div className="px-3 py-4 flex-1 overflow-y-auto">
               <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider px-2 mb-2">Genres</p>
               <div className="flex flex-col gap-0.5">
@@ -106,7 +101,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             </div>
 
-            {/* User profile */}
             <div className="px-4 py-4 border-t border-white/5">
               {isAuthenticated && user ? (
                 <NavLink

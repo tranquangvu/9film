@@ -19,7 +19,6 @@ type Config struct {
 	Host          string
 	OpenSubtitles *OpenSubtitlesConfig
 
-	// Auth / persistence
 	JWTSecret string
 	TokenTTL  time.Duration
 	DBPath    string

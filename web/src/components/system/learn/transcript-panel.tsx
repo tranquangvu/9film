@@ -70,7 +70,6 @@ export function TranscriptPanel({ cues }: TranscriptPanelProps) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Cue list */}
       <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-1.5 py-1.5 space-y-px">
         {cues.map((cue, i) => {
           const isActive = i === activeIdx;

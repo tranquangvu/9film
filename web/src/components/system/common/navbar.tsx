@@ -49,7 +49,6 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
       )}
     >
       <div className="relative flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
-        {/* Logo */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -79,7 +78,6 @@ export default function Navbar({ onSearchOpen, onSidebarToggle }: NavbarProps) {
           ))}
         </nav>
 
-        {/* Actions */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

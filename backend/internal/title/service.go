@@ -7,35 +7,62 @@ import (
 	"strings"
 )
 
-// Service flattens the raw IMDb data the Repository returns into the
-// client-ready Title DTO and exposes the public title operations.
+// Enricher supplies the per-user state folded into title responses for signed-in
+// requests: the favorited-id set (for lists), a single-title favorite check (for
+// detail), and resume points + chosen subtitle. The title package owns this
+// interface and never imports the modules that implement it, keeping the
+// dependency direction one-way; app.go injects history.NewEnricher.
+type Enricher interface {
+	FavoritedIds(userID int64) map[string]struct{}
+	IsFavorited(userID int64, imdbID string) bool
+	Progress(userID int64, imdbID string) []TitleProgress
+}
+
+// NoEnrichment is an Enricher that adds nothing — for callers that want raw
+// title data and fold in their own per-user state (e.g. the history module
+// hydrating Continue-Watching cards).
+var NoEnrichment Enricher = noopEnricher{}
+
+type noopEnricher struct{}
+
+func (noopEnricher) FavoritedIds(int64) map[string]struct{} { return nil }
+func (noopEnricher) IsFavorited(int64, string) bool         { return false }
+func (noopEnricher) Progress(int64, string) []TitleProgress { return nil }
+
+// Service flattens the raw IMDb data the Repository returns into the client-ready
+// Title DTO and folds in the requesting user's state via the Enricher. Every
+// public method takes the user id (0 = anonymous, no enrichment) so handlers
+// stay thin.
 type Service interface {
-	GetTitle(imdbID string) (*Title, error)
-	SearchTitles(term string, limit int) ([]Title, error)
-	TrendingTitles(limit int) ([]Title, error)
-	BrowseTitles(params BrowseParams) (*BrowseResult, error)
-	SimilarTitles(imdbID string, limit int) ([]Title, error)
+	GetTitle(userID int64, imdbID string) (*Title, error)
+	SearchTitles(userID int64, term string, limit int) ([]Title, error)
+	TrendingTitles(userID int64, limit int) ([]Title, error)
+	BrowseTitles(userID int64, params BrowseParams) (*BrowseResult, error)
+	SimilarTitles(userID int64, imdbID string, limit int) ([]Title, error)
 }
 
 type service struct {
-	repo Repository
+	repo     Repository
+	enricher Enricher
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, enricher Enricher) Service {
+	return &service{repo: repo, enricher: enricher}
 }
 
-// GetTitle returns the flattened, client-ready detail for an IMDb id.
-func (s *service) GetTitle(imdbID string) (*Title, error) {
+// GetTitle returns the flattened, client-ready detail for an IMDb id, with the
+// user's favorite flag and resume points folded in.
+func (s *service) GetTitle(userID int64, imdbID string) (*Title, error) {
 	raw, err := s.repo.FetchTitle(imdbID)
 	if err != nil {
 		return nil, err
 	}
 	out := toTitle(*raw)
+	s.enrichDetail(userID, &out)
 	return &out, nil
 }
 
-func (s *service) SearchTitles(term string, limit int) ([]Title, error) {
+func (s *service) SearchTitles(userID int64, term string, limit int) ([]Title, error) {
 	raw, err := s.repo.SearchTitles(term, limit)
 	if err != nil {
 		return nil, err
@@ -44,10 +71,11 @@ func (s *service) SearchTitles(term string, limit int) ([]Title, error) {
 	for _, t := range raw {
 		out = append(out, toTitle(t))
 	}
+	s.markFavorites(userID, out)
 	return out, nil
 }
 
-func (s *service) TrendingTitles(limit int) ([]Title, error) {
+func (s *service) TrendingTitles(userID int64, limit int) ([]Title, error) {
 	raw, err := s.repo.TrendingTitles(limit)
 	if err != nil {
 		return nil, err
@@ -56,10 +84,22 @@ func (s *service) TrendingTitles(limit int) ([]Title, error) {
 	for _, t := range raw {
 		out = append(out, toTitle(t))
 	}
+	s.markFavorites(userID, out)
 	return out, nil
 }
 
-func (s *service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
+func (s *service) BrowseTitles(userID int64, params BrowseParams) (*BrowseResult, error) {
+	result, err := s.browse(params)
+	if err != nil {
+		return nil, err
+	}
+	s.markFavorites(userID, result.Titles)
+	return result, nil
+}
+
+// browse fetches and flattens a browse page without per-user enrichment, so it
+// can back both BrowseTitles and SimilarTitles (which enrich at their own end).
+func (s *service) browse(params BrowseParams) (*BrowseResult, error) {
 	raw, err := s.repo.BrowseTitles(params)
 	if err != nil {
 		return nil, err
@@ -74,7 +114,7 @@ func (s *service) BrowseTitles(params BrowseParams) (*BrowseResult, error) {
 	return result, nil
 }
 
-func (s *service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
+func (s *service) SimilarTitles(userID int64, imdbID string, limit int) ([]Title, error) {
 	title, err := s.repo.FetchTitle(imdbID)
 	if err != nil {
 		return nil, err
@@ -95,7 +135,7 @@ func (s *service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
 		}
 	}
 
-	result, err := s.BrowseTitles(BrowseParams{
+	result, err := s.browse(BrowseParams{
 		Type:  mediaType,
 		Genre: genre,
 		First: limit + 5,
@@ -114,7 +154,37 @@ func (s *service) SimilarTitles(imdbID string, limit int) ([]Title, error) {
 			break
 		}
 	}
+	s.markFavorites(userID, filtered)
 	return filtered, nil
+}
+
+// markFavorites flags the titles the user has favorited, using a single
+// favorited-id set lookup for the whole slice. No-op for anonymous requests.
+func (s *service) markFavorites(userID int64, titles []Title) {
+	if userID == 0 {
+		return
+	}
+	set := s.enricher.FavoritedIds(userID)
+	if set == nil {
+		return
+	}
+	for i := range titles {
+		if _, ok := set[titles[i].ID]; ok {
+			titles[i].IsFavorite = true
+		}
+	}
+}
+
+// enrichDetail folds the user's favorite flag and per-episode resume points into
+// a single title's detail. No-op for anonymous requests.
+func (s *service) enrichDetail(userID int64, t *Title) {
+	if userID == 0 {
+		return
+	}
+	t.IsFavorite = s.enricher.IsFavorited(userID, t.ID)
+	if rows := s.enricher.Progress(userID, t.ID); rows != nil {
+		t.Progress = rows
+	}
 }
 
 // IMDb title-type ids that the client treats as episodic "series".

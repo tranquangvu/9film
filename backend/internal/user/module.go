@@ -7,8 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Module wires the user feature (repository → service → handler) and registers
-// its routes.
 func Module(rg *gin.RouterGroup, db *sql.DB, cfg *config.Config) {
 	repo := NewRepository(db)
 	svc := NewService(repo, cfg)

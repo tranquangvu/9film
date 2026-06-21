@@ -63,7 +63,7 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	user.Module(api, db, cfg)
 	favorite.Module(api, db, cfg)
 	history.Module(api, db, cfg)
-	title.Module(api, cfg, history.NewEnricher(db)) // enriches title responses with per-user state
+	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
 	learning.Module(api, db, cfg)
 	stream.Module(r, api)
 	subtitle.Module(api, cfg)

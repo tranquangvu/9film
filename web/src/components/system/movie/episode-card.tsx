@@ -26,7 +26,6 @@ export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardPr
       whileTap={{ scale: 0.99 }}
       onClick={onPlay}
     >
-      {/* Thumbnail */}
       <div
         className="relative flex-shrink-0 w-36 rounded-lg overflow-hidden bg-zinc-800"
         style={{ aspectRatio: '16/9' }}
@@ -44,7 +43,6 @@ export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardPr
           <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-800" />
         )}
 
-        {/* Play overlay */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center bg-black/40"
           animate={{ opacity: thumbHovered || isActive ? 1 : 0 }}
@@ -61,7 +59,6 @@ export function EpisodeCard({ episode, isActive = false, onPlay }: EpisodeCardPr
         </motion.div>
       </div>
 
-      {/* Episode details */}
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
         <div className="flex items-center gap-2">
           <span

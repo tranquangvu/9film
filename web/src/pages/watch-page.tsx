@@ -12,7 +12,6 @@ import { useWatchedEpisodes } from '@/hooks/queries/use-progress-query';
 import { episodes, seasons } from '@/utils/stream';
 import { cn } from '@/utils/cn';
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export function WatchPage() {
   const { toast } = useToast();
   const { id = '' } = useParams<{ id: string }>();
@@ -90,7 +89,6 @@ export function WatchPage() {
         className="relative w-full h-screen bg-black flex"
         style={{ '--media-border-radius': '0' } as React.CSSProperties}
       >
-        {/* Video column */}
         <div className="relative flex-1 min-w-0">
           <VideoPlayer
             src={streamUrl}
@@ -236,7 +234,6 @@ export function WatchPage() {
             </div>
           </header>
 
-          {/* Loading / error overlay */}
           {(loading || blocked) && (
             <div className="absolute inset-0 z-40 flex flex-col items-center justify-center overflow-hidden">
               {poster && (
@@ -270,7 +267,6 @@ export function WatchPage() {
         {/* Transcript sidebar — full-screen overlay on mobile, side column on desktop */}
         {hasTranscript && showTranscript && (
           <aside className="hidden sm:flex absolute inset-y-0 right-0 z-50 w-full sm:static sm:w-72 shrink-0 flex-col border-l border-white/[0.06] bg-zinc-950 backdrop-blur-2xl">
-            {/* Subtle warm glow rising from the bottom into deep neutral dark */}
             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-orange-600/7 via-orange-950/[0.03] to-transparent" />
             <div className="pointer-events-none absolute inset-0 bg-radial-[at_bottom_right] from-amber-500/6 via-transparent to-transparent to-60%" />
             <div className="relative flex-1 min-h-0 flex flex-col">

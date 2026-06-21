@@ -65,7 +65,8 @@ func (s *service) GetHistory(userID int64, limit, offset int) (items []continueW
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			hydrated[i].Progress = rows[i]
-			if t, err := s.titles.GetTitle(rows[i].ImdbID); err == nil {
+			// userID 0: fetch raw title detail; favorites are flagged in batch below.
+			if t, err := s.titles.GetTitle(0, rows[i].ImdbID); err == nil {
 				hydrated[i].Title = t
 			}
 		}(i)

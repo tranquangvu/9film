@@ -225,7 +225,6 @@ export function usePlayerSession(
     [resolvedSubs, selectedSubId],
   );
 
-  // Handlers
   function handleEpisodeChange(nextSeason: number, nextEpisode: number) {
     setSelected({ season: nextSeason, episode: nextEpisode });
     setStreamUrl(null);
@@ -284,12 +283,10 @@ export function usePlayerSession(
     subError: subtitleQuery.error instanceof Error ? subtitleQuery.error.message : null,
     handleEpisodeChange,
     handleSubtitleTrackChange,
-    // Watch progress
     resumeAt,
     saveProgress,
     nextEpisode,
     autoplayNext: settings.autoplayNext,
-    // Learning
     cues,
     learningMode: settings.learningMode,
     learningLang: settings.learningLang,

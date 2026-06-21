@@ -33,9 +33,7 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
       className={cn('relative flex-shrink-0 cursor-pointer w-72 group/card transition-transform duration-200 ease-out hover:scale-[1.04] hover:z-10', className)}
       onClick={handleClick}
     >
-      {/* 16:9 backdrop container */}
       <div className="relative w-full rounded-xl overflow-hidden bg-[#1a1a1a]" style={{ aspectRatio: '16/9' }}>
-        {/* Backdrop image */}
         {!imgError ? (
           <img
             src={sizedImage(movie.backdrop, 640)}
@@ -49,10 +47,8 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
           </div>
         )}
 
-        {/* Permanent bottom gradient — strong enough to work on bright images */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
 
-        {/* Title + progress text over image */}
         <div className="absolute bottom-3 left-3 right-3 z-10">
           <p className="text-white text-sm font-semibold truncate leading-snug"
             style={{ textShadow: '0 1px 6px rgba(0,0,0,1), 0 2px 12px rgba(0,0,0,0.9)' }}>
@@ -65,14 +61,12 @@ export function ContinueWatchingCard({ movie, className }: ContinueWatchingCardP
           </p>
         </div>
 
-        {/* Hover play overlay (CSS-only) */}
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
           <div className="w-14 h-14 rounded-full bg-orange-500 flex items-center justify-center shadow-xl shadow-orange-500/50 transition-transform hover:scale-110 active:scale-95">
             <Play className="w-6 h-6 fill-white text-white ml-0.5" />
           </div>
         </div>
 
-        {/* Progress bar at very bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
           <div
             className="h-full bg-orange-500 transition-all duration-300"

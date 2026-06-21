@@ -36,7 +36,6 @@ import type { Word, WordStat } from '@/services/user';
 const INPUT_COUNT = 8;
 const REQUIRED_CORRECT = INPUT_COUNT;
 
-// ── Date helpers ───────────────────────────────────────────────────────────────
 // SQLite stamps are UTC "YYYY-MM-DD HH:MM:SS"; optimistic stamps are ISO. Parse
 // both, then bucket by the viewer's local calendar day.
 function parseDate(s?: string): Date | null {
@@ -69,7 +68,6 @@ function sceneLink(w: Word): string {
   return `/watch/${w.imdbId}${qs ? `?${qs}` : ''}`;
 }
 
-// ── Progress chart ─────────────────────────────────────────────────────────────
 // Two lines across every day of the selected month: words added that day
 // ("to learn", blue) and words completed that day ("completed", green).
 const TO_LEARN_COLOR = '#3b82f6'; // blue-500
@@ -110,7 +108,6 @@ function ProgressChart({ words }: { words: WordStat[] }) {
 
   return (
     <div className="bg-surface border border-zinc-800 rounded-2xl p-5">
-      {/* Month navigation */}
       <div className="mb-4 flex items-center justify-between">
         <button
           onClick={() => step(-1)}
@@ -213,7 +210,6 @@ function ProgressChart({ words }: { words: WordStat[] }) {
   );
 }
 
-// ── Spelling drill ─────────────────────────────────────────────────────────────
 function SpellingDrill({
   word,
   onComplete,
@@ -285,7 +281,6 @@ function SpellingDrill({
   );
 }
 
-// ── Word detail dialog ─────────────────────────────────────────────────────────
 function WordDialog({
   word,
   onOpenChange,
@@ -363,7 +358,6 @@ function WordDialog({
               </Link>
             )}
 
-            {/* Dictionary definitions */}
             {dict.isLoading && (
               <p className="mt-4 text-sm text-zinc-600">Loading definitions…</p>
             )}
@@ -409,7 +403,6 @@ function WordDialog({
   );
 }
 
-// ── Day grouping ───────────────────────────────────────────────────────────────
 interface DayGroup {
   key: string;
   date: Date;
@@ -464,7 +457,6 @@ function WordGroupList({
   );
 }
 
-// ── Word badge ───────────────────────────────────────────────────────────────
 // Each word carries its own stable, translucent color (derived from the word
 // text) so the "To Learn" and "Completed" lists read as soft, colorful chips.
 function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
@@ -480,7 +472,6 @@ function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default function MyLearningPage() {
   const { isAuthenticated } = useAuth();
   // Lightweight full vocabulary powers the chart and the header counts; the
@@ -539,7 +530,6 @@ export default function MyLearningPage() {
   return (
     <div className="min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
       <div>
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white tracking-tight">My Learning</h1>
           <p className="text-sm text-zinc-400">
@@ -557,10 +547,8 @@ export default function MyLearningPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Chart */}
             <ProgressChart words={all} />
 
-            {/* Tabs */}
             <div className="flex items-center gap-2 flex-wrap">
               {([
                 { id: 'learn', label: 'To Learn', icon: <BookOpen className="w-3.5 h-3.5" /> },
@@ -573,7 +561,6 @@ export default function MyLearningPage() {
               ))}
             </div>
 
-            {/* Tab content */}
             {tab === 'learn' && addedCount === 0 ? (
               <div className="bg-surface border border-zinc-800 rounded-2xl p-8 text-center">
                 <Trophy className="w-9 h-9 text-orange-400 mx-auto mb-2" />

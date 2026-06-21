@@ -47,7 +47,6 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
     onUnauthorized();
   }
 
-  // 204 No Content
   if (res.status === 204) return undefined as T;
 
   const json = (await res.json().catch(() => ({}))) as T & { error?: string };

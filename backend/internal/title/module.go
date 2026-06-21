@@ -5,12 +5,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Module wires the title feature (repository → service → handler) and registers
-// its routes. enricher is injected (not built here) because title must not
-// import the user package.
+// Module's enricher is injected (not built here) because title must not import
+// the user package.
 func Module(rg *gin.RouterGroup, cfg *config.Config, enricher Enricher) {
 	repo := NewRepository()
-	svc := NewService(repo)
-	h := NewHandler(svc, enricher)
+	svc := NewService(repo, enricher)
+	h := NewHandler(svc)
 	RegisterRoutes(rg, h, cfg)
 }

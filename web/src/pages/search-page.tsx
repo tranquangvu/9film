@@ -56,7 +56,6 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
       onClick={() => navigate(`/movie/${movie.id}`)}
       className="flex gap-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors"
     >
-      {/* Thumbnail */}
       <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-surface-2">
         {!imgError ? (
           <img
@@ -72,7 +71,6 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
         )}
       </div>
 
-      {/* Info */}
       <div className="min-w-0 grow py-1">
         <h3 className="text-white font-semibold text-sm leading-tight line-clamp-1">
           {highlightMatch(movie.title, query)}
@@ -111,7 +109,6 @@ function SearchResultRow({ movie, query }: SearchResultRowProps) {
         </p>
       </div>
 
-      {/* Type badge */}
       <div className="shrink-0 self-start mt-1">
         <span
           className={cn(
@@ -171,7 +168,6 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-background pb-16">
       <div className="pt-24 px-4 md:px-8 lg:px-12 max-w-4xl mx-auto">
-        {/* Search input */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -202,10 +198,8 @@ export default function SearchPage() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Content */}
         <AnimatePresence mode="wait">
           {!isSearching ? (
-            /* Recommended searches */
             <motion.div
               key="trending"
               initial={{ opacity: 0, y: 12 }}
@@ -234,7 +228,6 @@ export default function SearchPage() {
                 ))}
               </div>
 
-              {/* Browse prompt */}
               <div className="mt-12 text-center">
                 <p className="text-zinc-600 text-sm">
                   Looking for something specific? Start typing above.
@@ -242,7 +235,6 @@ export default function SearchPage() {
               </div>
             </motion.div>
           ) : search.isLoading || search.isError ? (
-            /* Loading results */
             <motion.div
               key="searching"
               initial={{ opacity: 0 }}
@@ -255,7 +247,6 @@ export default function SearchPage() {
               <SearchResultsSkeleton />
             </motion.div>
           ) : (
-            /* Search results */
             <motion.div
               key="results"
               initial={{ opacity: 0 }}
@@ -264,7 +255,6 @@ export default function SearchPage() {
               transition={{ duration: 0.25 }}
               className="mt-6"
             >
-              {/* Result count */}
               <motion.p
                 key={totalCount}
                 initial={{ opacity: 0 }}
@@ -295,7 +285,6 @@ export default function SearchPage() {
                 />
               ) : (
                 <div className="space-y-8">
-                  {/* Movies section */}
                   {results.films.length > 0 && (
                     <section>
                       <div className="flex items-center gap-2 mb-3">
@@ -312,7 +301,6 @@ export default function SearchPage() {
                     </section>
                   )}
 
-                  {/* TV Series section */}
                   {results.series.length > 0 && (
                     <section>
                       <div className="flex items-center gap-2 mb-3">

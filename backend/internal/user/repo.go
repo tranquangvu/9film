@@ -24,7 +24,6 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-// CreateUser inserts a new user and returns it with its assigned id.
 func (r *repository) CreateUser(username, avatar string) (*User, error) {
 	res, err := r.db.Exec(
 		`INSERT INTO users (username, avatar) VALUES (?, ?)`,

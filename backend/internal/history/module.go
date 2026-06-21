@@ -9,13 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Module wires the history feature (repository → service → handler) and
-// registers its routes. It owns the title service it uses to hydrate
-// continue-watching, and reads the favorited set from the favorite module to
-// flag those items.
+// Module owns the title service it uses to hydrate continue-watching, and reads
+// the favorited set from the favorite module to flag those items.
 func Module(rg *gin.RouterGroup, db *sql.DB, cfg *config.Config) {
 	repo := NewRepository(db)
-	svc := NewService(repo, title.NewService(title.NewRepository()), favorite.NewEnricher(db))
+	// title.NoEnrichment: history wants raw title detail and does its own
+	// favorite flagging in batch, so it skips per-title enrichment.
+	svc := NewService(repo, title.NewService(title.NewRepository(), title.NoEnrichment), favorite.NewEnricher(db))
 	h := NewHandler(svc)
 	RegisterRoutes(rg, h, cfg)
 }

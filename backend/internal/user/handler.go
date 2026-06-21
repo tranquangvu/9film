@@ -10,8 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Handler serves the auth endpoints (signup/login) and the per-user account
-// endpoints (profile, settings).
 type Handler struct {
 	svc Service
 }
@@ -20,7 +18,6 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// Signup creates a new account and returns a token.
 func (h *Handler) Signup(c *gin.Context) {
 	var req signupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -69,7 +66,6 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
-// GetMe returns the authenticated user's profile.
 func (h *Handler) GetMe(c *gin.Context) {
 	u, err := h.svc.GetUser(middleware.UserID(c))
 	if err != nil {

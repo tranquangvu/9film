@@ -27,7 +27,6 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
         className,
       )}
     >
-      {/* Big rank number */}
       <span
         className="relative select-none font-black text-[clamp(4rem,9vw,7rem)] leading-none tracking-tighter z-10"
         style={{
@@ -42,7 +41,6 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
         {rankStr}
       </span>
 
-      {/* Poster */}
       <div
         className="relative flex-shrink-0 w-32 rounded-xl overflow-hidden cursor-pointer"
         style={{ aspectRatio: '2/3', zIndex: 2 }}
@@ -62,7 +60,6 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
           </div>
         )}
 
-        {/* Favorite indicator — always visible when favorited (default style) */}
         {favorite.active && (
           <button
             onClick={(e) => { e.stopPropagation(); favorite.onToggle(); }}
@@ -75,7 +72,6 @@ export function Top10Card({ movie, rank, className }: Top10CardProps) {
           </button>
         )}
 
-        {/* Hover overlay (CSS-only) — centered play button */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-200">
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
           <button

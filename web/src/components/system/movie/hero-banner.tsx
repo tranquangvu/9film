@@ -163,10 +163,8 @@ export function HeroBanner({ movies }: HeroBannerProps) {
         )}
       </div>
 
-      {/* Gradient overlays */}
       <div className="gradient-overlay-right absolute inset-0 z-10" />
       <div className="gradient-overlay absolute inset-0 z-10" />
-      {/* Top vignette */}
       <div
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
@@ -176,10 +174,8 @@ export function HeroBanner({ movies }: HeroBannerProps) {
       />
 
 
-      {/* Content */}
       <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
         <div className="w-full md:max-w-[58%]">
-            {/* Status badges */}
             <div className="flex items-center gap-2 mb-4">
               {activeMovie.isTrending && (
                 <Badge variant="orange" className="px-3 py-1 gap-1 normal-case tracking-normal">
@@ -199,19 +195,16 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               )}
             </div>
 
-            {/* Title */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-3 tracking-tight drop-shadow-2xl">
               {activeMovie.title}
             </h1>
 
-            {/* Tagline */}
             {activeMovie.tagline && (
               <p className="text-base md:text-lg italic text-zinc-300 mb-4 font-medium">
                 "{activeMovie.tagline}"
               </p>
             )}
 
-            {/* Metadata row */}
             <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
               <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
                 <Calendar className="w-3.5 h-3.5 text-zinc-500" />
@@ -249,12 +242,10 @@ export function HeroBanner({ movies }: HeroBannerProps) {
               </div>
             </div>
 
-            {/* Description */}
             <p className="text-zinc-400 text-sm md:text-base leading-relaxed mb-6 line-clamp-3 max-w-xl">
               {activeMovie.description}
             </p>
 
-            {/* CTA Buttons */}
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => { if (!isDragging.current) navigate(`/watch/${activeMovie.id}`); }}
@@ -275,7 +266,6 @@ export function HeroBanner({ movies }: HeroBannerProps) {
             </div>
         </div>
 
-        {/* Indicator dots — centered */}
         {movies.length > 1 && (
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
             {movies.map((_, index) => (

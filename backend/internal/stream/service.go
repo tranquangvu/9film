@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // embedReferer is the Referer the upstream CDNs require. Injecting it server-side
@@ -15,11 +16,6 @@ const embedReferer = "https://nextgencloudfabric.com/"
 
 const streamAPIURL = "https://streamdata.vaplayer.ru/api.php"
 
-// ---------------------------------------------------------------------------
-// Stream
-// ---------------------------------------------------------------------------
-
-// Stream proxies the upstream stream-resolution API.
 type Stream interface {
 	ProxyStreamRequest(rawQuery string) (*StreamResult, error)
 }
@@ -29,7 +25,8 @@ type stream struct {
 }
 
 func NewStream() Stream {
-	return &stream{client: http.DefaultClient}
+	// Whole-response timeout is fine here: the upstream returns a small JSON body.
+	return &stream{client: &http.Client{Timeout: 15 * time.Second}}
 }
 
 func (s *stream) ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
@@ -102,10 +99,6 @@ func extractJSON(body []byte) ([]byte, bool) {
 	return body[start : end+1], true
 }
 
-// ---------------------------------------------------------------------------
-// HLS
-// ---------------------------------------------------------------------------
-
 func toAbsoluteURL(baseRaw, ref string) string {
 	if strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") {
 		return ref
@@ -175,7 +168,19 @@ type hls struct {
 }
 
 func NewHLS() HLS {
-	return &hls{client: http.DefaultClient}
+	// No whole-request timeout — segment bodies stream and may be large/slow.
+	// ResponseHeaderTimeout bounds a stuck upstream without truncating transfers,
+	// and a raised MaxIdleConnsPerHost lets concurrent segment fetches reuse
+	// connections to the same CDN host (the default of 2 throttles playback).
+	return &hls{client: &http.Client{
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   16,
+			IdleConnTimeout:       90 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+		},
+	}}
 }
 
 func (s *hls) ProxyHLS(targetURL string) (*HLSResult, error) {
@@ -189,39 +194,38 @@ func (s *hls) ProxyHLS(targetURL string) (*HLSResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("HLS upstream failed: %w", err)
 	}
-	defer resp.Body.Close()
 
 	ct := resp.Header.Get("Content-Type")
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read HLS body: %w", err)
-	}
-
 	isM3U8 := strings.Contains(targetURL, ".m3u8") ||
 		strings.Contains(ct, "mpegurl") ||
 		strings.Contains(ct, "m3u8")
 
-	isTSSegment := !isM3U8 && (strings.Contains(targetURL, ".ts") ||
-		strings.Contains(ct, "mp2t"))
-
-	var finalBody []byte
+	// Only manifests need rewriting, so only manifests are read into memory.
+	// Segments (the bulk of the bytes) stream straight through — the caller
+	// io.Copy's and closes resp.Body, so memory stays flat per viewer.
 	if resp.StatusCode == http.StatusOK && isM3U8 {
-		rewritten := rewriteM3U8(string(body), targetURL)
-		finalBody = []byte(rewritten)
-	} else {
-		finalBody = body
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("read HLS manifest: %w", err)
+		}
+		return &HLSResult{
+			Body:        []byte(rewriteM3U8(string(body), targetURL)),
+			Status:      resp.StatusCode,
+			ContentType: "application/vnd.apple.mpegurl",
+		}, nil
 	}
 
 	if isM3U8 {
 		ct = "application/vnd.apple.mpegurl"
-	} else if isTSSegment {
+	} else if strings.Contains(targetURL, ".ts") || strings.Contains(ct, "mp2t") {
 		ct = "video/mp2t"
 	} else if ct == "" {
 		ct = "application/octet-stream"
 	}
 
 	return &HLSResult{
-		Body:        finalBody,
+		Stream:      resp.Body,
 		Status:      resp.StatusCode,
 		ContentType: ct,
 	}, nil
