@@ -58,6 +58,34 @@ export function getSettings(): Promise<UserSettings> {
   return apiFetch<UserSettings>('/api/me/settings');
 }
 
+// Secret-free status of the per-user integration keys. `*Configured` reflects
+// the user's key OR the server's .env fallback; `*Set` is whether the user
+// stored their own.
+export interface CredentialStatus {
+  geminiKeySet: boolean;
+  geminiConfigured: boolean;
+  openSubtitlesApiKeySet: boolean;
+  openSubtitlesUsername: string;
+  openSubtitlesPasswordSet: boolean;
+  openSubtitlesConfigured: boolean;
+}
+
+export interface CredentialPatch {
+  geminiApiKey?: string;
+  openSubtitlesApiKey?: string;
+  openSubtitlesUsername?: string;
+  openSubtitlesPassword?: string;
+}
+
+export function getCredentials(): Promise<CredentialStatus> {
+  return apiFetch<CredentialStatus>('/api/me/credentials');
+}
+
+// Saves keys; blank fields are left unchanged server-side.
+export function saveCredentials(patch: CredentialPatch): Promise<CredentialStatus> {
+  return apiFetch<CredentialStatus>('/api/me/credentials', { method: 'PUT', body: patch });
+}
+
 export function putSettings(body: Partial<UserSettings>): Promise<UserSettings> {
   return apiFetch<UserSettings>('/api/me/settings', { method: 'PUT', body });
 }

@@ -15,6 +15,8 @@ type Repository interface {
 	UpdateUser(id int64, username, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	UpsertSettings(userID int64, st Settings) error
+	GetCredentials(userID int64) (Credentials, error)
+	SetCredentials(userID int64, c Credentials) error
 }
 
 type repository struct {
@@ -126,6 +128,37 @@ func (r *repository) UpsertSettings(userID int64, st Settings) error {
 		     learning_lang = excluded.learning_lang,
 		     updated_at = datetime('now')`,
 		userID, autoplay, st.DefaultSubtitleLang, learning, st.LearningLang,
+	)
+	return err
+}
+
+func (r *repository) GetCredentials(userID int64) (Credentials, error) {
+	var c Credentials
+	err := r.db.QueryRow(
+		`SELECT gemini_api_key, opensubtitles_api_key, opensubtitles_username, opensubtitles_password
+		   FROM credentials WHERE user_id = ?`,
+		userID,
+	).Scan(&c.GeminiAPIKey, &c.OpenSubtitlesAPIKey, &c.OpenSubtitlesUsername, &c.OpenSubtitlesPassword)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Credentials{}, nil
+	}
+	if err != nil {
+		return Credentials{}, err
+	}
+	return c, nil
+}
+
+func (r *repository) SetCredentials(userID int64, c Credentials) error {
+	_, err := r.db.Exec(
+		`INSERT INTO credentials (user_id, gemini_api_key, opensubtitles_api_key, opensubtitles_username, opensubtitles_password, updated_at)
+		   VALUES (?, ?, ?, ?, ?, datetime('now'))
+		   ON CONFLICT(user_id) DO UPDATE SET
+		     gemini_api_key = excluded.gemini_api_key,
+		     opensubtitles_api_key = excluded.opensubtitles_api_key,
+		     opensubtitles_username = excluded.opensubtitles_username,
+		     opensubtitles_password = excluded.opensubtitles_password,
+		     updated_at = datetime('now')`,
+		userID, c.GeminiAPIKey, c.OpenSubtitlesAPIKey, c.OpenSubtitlesUsername, c.OpenSubtitlesPassword,
 	)
 	return err
 }

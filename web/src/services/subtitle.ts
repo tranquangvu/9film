@@ -1,5 +1,6 @@
 import type { SubtitleOption, SubtitleSearchContext } from '@/utils/subtitle';
 import { isImdb } from '@/utils/stream';
+import { apiFetch } from '@/lib/api-fetch';
 
 function buildSearchQuery(ctx: SubtitleSearchContext): string | null {
   const { params, imdbId, languages = 'en' } = ctx;
@@ -33,15 +34,7 @@ export async function getSubtitles(
   const query = buildSearchQuery(ctx);
   if (!query) return [];
 
-  const res = await fetch(`/api/subtitle/search?${query}`, { signal });
-  const json = (await res.json()) as {
-    subtitles?: SubtitleOption[];
-    error?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(json.error ?? `Subtitle search failed (${res.status})`);
-  }
-
+  // Authed so the user's own OpenSubtitles key is used (falls back to .env).
+  const json = await apiFetch<{ subtitles?: SubtitleOption[] }>(`/api/subtitle/search?${query}`, { signal });
   return json.subtitles ?? [];
 }

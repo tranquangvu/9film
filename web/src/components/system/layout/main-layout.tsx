@@ -5,6 +5,7 @@ import Navbar from '@/components/system/common/navbar';
 import Sidebar from '@/components/system/common/sidebar';
 import Footer from '@/components/system/common/footer';
 import SearchOverlay from '@/components/system/common/searching';
+import { SetupPrompt } from '@/components/system/common/setup-prompt';
 
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
@@ -48,6 +49,7 @@ export default function MainLayout() {
         </AnimatePresence>
       </main>
       <Footer />
+      <SetupPrompt />
     </div>
   );
 }

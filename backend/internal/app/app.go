@@ -61,13 +61,49 @@ func NewApp() *App {
 func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	api := r.Group("/api")
 
+	// Per-user API keys (with the .env keys as fallback) for the optional
+	// integrations, resolved at request time.
+	creds := user.NewCredentialStore(db)
+
 	user.Module(api, db, cfg)
 	favorite.Module(api, db, cfg)
 	history.Module(api, db, cfg)
 	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
-	learning.Module(api, db, cfg)
+	learning.Module(api, db, cfg, geminiKeys{store: creds, cfg: cfg.Gemini})
 	stream.Module(r, api)
-	subtitle.Module(api, cfg)
+	subtitle.Module(api, cfg, openSubtitlesCreds{store: creds, cfg: cfg.OpenSubtitles})
+}
+
+// geminiKeys resolves a user's Gemini key (then the .env key) for the learning module.
+type geminiKeys struct {
+	store *user.CredentialStore
+	cfg   *config.GeminiConfig
+}
+
+func (g geminiKeys) Resolve(userID int64) (apiKey, model string) {
+	if key := g.store.Get(userID).GeminiAPIKey; key != "" {
+		return key, "" // user key → generator's default model
+	}
+	if g.cfg != nil {
+		return g.cfg.APIKey, g.cfg.Model
+	}
+	return "", ""
+}
+
+// openSubtitlesCreds resolves a user's OpenSubtitles credentials (then .env).
+type openSubtitlesCreds struct {
+	store *user.CredentialStore
+	cfg   *config.OpenSubtitlesConfig
+}
+
+func (o openSubtitlesCreds) For(userID int64) subtitle.Creds {
+	if c := o.store.Get(userID); c.OpenSubtitlesAPIKey != "" {
+		return subtitle.Creds{APIKey: c.OpenSubtitlesAPIKey, Username: c.OpenSubtitlesUsername, Password: c.OpenSubtitlesPassword}
+	}
+	if o.cfg != nil {
+		return subtitle.Creds{APIKey: o.cfg.APIKey, Username: o.cfg.Username, Password: o.cfg.Password}
+	}
+	return subtitle.Creds{}
 }
 
 func (a *App) Run() error {

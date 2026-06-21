@@ -19,6 +19,9 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  // The raw JWT, for browser-loaded URLs (a <track> can't send headers) that
+  // append it as ?token=. Tracks login/logout via re-render.
+  token: string | null;
   login: (username: string) => Promise<void>;
   signup: (username: string) => Promise<void>;
   updateUser: (user: AuthUser) => void;
@@ -31,11 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const tokenRef = useRef<string | null>(localStorage.getItem(TOKEN_KEY));
+  // Mirror of the token ref as state, so consumers can read it during render
+  // (the ref stays the source apiFetch's getter reads).
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const bootstrapped = useRef(false);
   const queryClient = useQueryClient();
 
   const logout = useCallback(() => {
     tokenRef.current = null;
+    setToken(null);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     // Drop any per-user cached data (lists, progress, settings).
@@ -62,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applyAuth = useCallback((res: AuthResponse) => {
     tokenRef.current = res.token;
+    setToken(res.token);
     localStorage.setItem(TOKEN_KEY, res.token);
     setUser(res.user);
   }, []);
@@ -85,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, signup, updateUser, logout }}
+      value={{ user, isAuthenticated: !!user, isLoading, token, login, signup, updateUser, logout }}
     >
       {children}
     </AuthContext.Provider>

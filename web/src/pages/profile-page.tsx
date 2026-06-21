@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, Pencil, Check } from 'lucide-react';
+import { LogOut, Pencil, Check, Sparkles, Captions, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,9 @@ import { ApiError } from '@/lib/api-fetch';
 import { useAuth } from '@/context/auth-context';
 import { updateMe } from '@/services/user';
 import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
+import { useCredentialsQuery, useSaveCredentials } from '@/hooks/queries/use-credentials-query';
+
+const inputClass = 'px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-orange-500/50';
 
 // Avatar choices: a few DiceBear styles seeded by the username, so the picker
 // shows variations of "you" without any image upload.
@@ -255,6 +258,142 @@ function PreferencesCard() {
   );
 }
 
+function ConfiguredBadge({ on }: { on: boolean }) {
+  return on ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-400/25 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+      <Check className="w-3 h-3" /> Set
+    </span>
+  ) : (
+    <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] font-medium text-zinc-500">
+      Not set
+    </span>
+  );
+}
+
+// Per-user API keys for the optional integrations, with an explanation of why
+// each is needed. Keys are write-only — the form shows status, never the secret.
+function ConnectionsCard() {
+  const { data: status } = useCredentialsQuery();
+  const save = useSaveCredentials();
+  const { toast } = useToast();
+
+  const [gemini, setGemini] = useState('');
+  const [osKey, setOsKey] = useState('');
+  const [osUser, setOsUser] = useState('');
+  const [osPass, setOsPass] = useState('');
+
+  // Prefill the (non-secret) username once status loads.
+  const savedUsername = status?.openSubtitlesUsername ?? '';
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOsUser(savedUsername);
+  }, [savedUsername]);
+
+  const onSave = () => {
+    save.mutate(
+      {
+        geminiApiKey: gemini || undefined,
+        openSubtitlesApiKey: osKey || undefined,
+        openSubtitlesUsername: osUser || undefined,
+        openSubtitlesPassword: osPass || undefined,
+      },
+      {
+        onSuccess: () => {
+          setGemini('');
+          setOsKey('');
+          setOsPass('');
+          toast({ title: 'Connections saved' });
+        },
+        onError: () => toast({ title: 'Could not save', description: 'Please try again.', variant: 'destructive' }),
+      },
+    );
+  };
+
+  return (
+    <Card>
+      <CardTitle>Connections</CardTitle>
+      <p className="text-sm text-zinc-400 -mt-2 mb-5">
+        NiceFilm uses your own API keys for these optional features. Keys are stored on your account and never shown again — leave a field blank to keep the current value.
+      </p>
+
+      {/* Gemini */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-orange-400" />
+          <h3 className="text-sm font-semibold text-white">Word illustrations</h3>
+          <span className="text-xs text-zinc-500">· Gemini</span>
+          {status && <span className="ml-auto"><ConfiguredBadge on={status.geminiKeySet} /></span>}
+        </div>
+        <p className="text-xs text-zinc-500">
+          Generates a small picture for each saved vocabulary word so it's easier to remember.{' '}
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
+            Get a free key <ExternalLink className="w-3 h-3" />
+          </a>
+        </p>
+        <Input
+          type="password"
+          value={gemini}
+          onChange={(e) => setGemini(e.target.value)}
+          placeholder={status?.geminiKeySet ? '•••••••••• (set — type to replace)' : 'Gemini API key'}
+          autoComplete="off"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="h-px bg-zinc-800 my-5" />
+
+      {/* OpenSubtitles */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Captions className="w-4 h-4 text-orange-400" />
+          <h3 className="text-sm font-semibold text-white">Subtitles</h3>
+          <span className="text-xs text-zinc-500">· OpenSubtitles</span>
+          {status && <span className="ml-auto"><ConfiguredBadge on={status.openSubtitlesApiKeySet} /></span>}
+        </div>
+        <p className="text-xs text-zinc-500">
+          Finds and downloads subtitles for any title — needed for captions and Learn-English mode.{' '}
+          <a href="https://www.opensubtitles.com/en/consumers" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
+            Get an API key <ExternalLink className="w-3 h-3" />
+          </a>
+        </p>
+        <Input
+          type="password"
+          value={osKey}
+          onChange={(e) => setOsKey(e.target.value)}
+          placeholder={status?.openSubtitlesApiKeySet ? '•••••••••• (set — type to replace)' : 'OpenSubtitles API key'}
+          autoComplete="off"
+          className={inputClass}
+        />
+        <div className="grid sm:grid-cols-2 gap-2">
+          <Input
+            type="text"
+            value={osUser}
+            onChange={(e) => setOsUser(e.target.value)}
+            placeholder="Username"
+            autoComplete="off"
+            className={inputClass}
+          />
+          <Input
+            type="password"
+            value={osPass}
+            onChange={(e) => setOsPass(e.target.value)}
+            placeholder={status?.openSubtitlesPasswordSet ? '•••••• (set)' : 'Password'}
+            autoComplete="off"
+            className={inputClass}
+          />
+        </div>
+        <p className="text-[11px] text-zinc-600">Username &amp; password are only needed to download subtitle files (not just search).</p>
+      </div>
+
+      <div className="flex justify-end mt-5">
+        <Button variant="primary" className="rounded-lg text-sm" onClick={onSave} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save keys'}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export default function ProfilePage() {
   const { logout } = useAuth();
 
@@ -278,6 +417,7 @@ export default function ProfilePage() {
         </motion.div>
 
         <ProfileCard />
+        <ConnectionsCard />
         <PreferencesCard />
       </div>
     </div>

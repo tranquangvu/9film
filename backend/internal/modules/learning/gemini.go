@@ -8,35 +8,24 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/bentran/nicefilm/backend/internal/config"
 )
 
 const geminiAPIBase = "https://generativelanguage.googleapis.com/v1beta/models"
+const defaultGeminiModel = "gemini-2.5-flash"
 
 // Generator produces an AI "memory image" illustration (SVG markup) for a
-// vocabulary word. The no-op implementation (when GEMINI_API_KEY is unset)
-// reports Configured() false so the learning module degrades gracefully.
+// vocabulary word, using the API key + model resolved per user.
 type Generator interface {
-	Configured() bool
-	GenerateWordImage(word, translation, sentence string) ([]byte, error)
+	GenerateWordImage(apiKey, model, word, translation, sentence string) ([]byte, error)
 }
 
 type geminiGenerator struct {
-	cfg    *config.GeminiConfig
 	client *http.Client
 }
 
-// NewGenerator returns a Gemini-backed generator, or a not-configured no-op when
-// cfg is nil.
-func NewGenerator(cfg *config.GeminiConfig) Generator {
-	if cfg == nil {
-		return notConfigured{}
-	}
-	return &geminiGenerator{cfg: cfg, client: &http.Client{Timeout: 30 * time.Second}}
+func NewGenerator() Generator {
+	return &geminiGenerator{client: &http.Client{Timeout: 30 * time.Second}}
 }
-
-func (g *geminiGenerator) Configured() bool { return true }
 
 // svgPrompt asks a text model to draw the word as a self-contained, script-free
 // SVG so it can be stored cheaply and scaled crisply. It forbids text in the art
@@ -57,7 +46,10 @@ func svgPrompt(word, translation, sentence string) string {
 	return b.String()
 }
 
-func (g *geminiGenerator) GenerateWordImage(word, translation, sentence string) ([]byte, error) {
+func (g *geminiGenerator) GenerateWordImage(apiKey, model, word, translation, sentence string) ([]byte, error) {
+	if model == "" {
+		model = defaultGeminiModel
+	}
 	reqBody := geminiRequest{
 		Contents: []geminiContent{{
 			Parts: []geminiPart{{Text: svgPrompt(word, translation, sentence)}},
@@ -68,13 +60,13 @@ func (g *geminiGenerator) GenerateWordImage(word, translation, sentence string) 
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/%s:generateContent", geminiAPIBase, g.cfg.Model)
+	url := fmt.Sprintf("%s/%s:generateContent", geminiAPIBase, model)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-goog-api-key", g.cfg.APIKey)
+	req.Header.Set("x-goog-api-key", apiKey)
 
 	resp, err := g.client.Do(req)
 	if err != nil {
@@ -151,12 +143,4 @@ type geminiResponse struct {
 	Candidates []struct {
 		Content geminiContent `json:"content"`
 	} `json:"candidates"`
-}
-
-// notConfigured is the no-op generator used when no API key is set.
-type notConfigured struct{}
-
-func (notConfigured) Configured() bool { return false }
-func (notConfigured) GenerateWordImage(string, string, string) ([]byte, error) {
-	return nil, fmt.Errorf("gemini not configured")
 }

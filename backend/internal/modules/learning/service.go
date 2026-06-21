@@ -64,13 +64,20 @@ type Service interface {
 	ImportWordList(userID int64, list string) (int, error)
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
-	// ImageEnabled reports whether AI illustrations are configured.
-	ImageEnabled() bool
+	// ImageEnabled reports whether AI illustrations are configured for this user.
+	ImageEnabled(userID int64) bool
 	// RegenerateWordImage (re)generates the illustration for an existing word —
 	// backfills legacy words and retries failures.
 	RegenerateWordImage(userID int64, word string) error
-	// WordImage returns a word's stored PNG bytes, or (nil, false) when none.
+	// WordImage returns a word's stored SVG bytes, or (nil, false) when none.
 	WordImage(userID int64, word string) ([]byte, bool)
+}
+
+// GeminiKeys resolves the Gemini API key + model for a user. An empty key means
+// generation is off for that user. The .env fallback is applied by the
+// composition root, so the service just trusts what it's given.
+type GeminiKeys interface {
+	Resolve(userID int64) (apiKey, model string)
 }
 
 // maxConcurrentImageGen bounds in-flight Gemini calls across all background
@@ -82,15 +89,17 @@ type service struct {
 	dictClient      *http.Client
 	translateClient *http.Client
 	gen             Generator
+	keys            GeminiKeys
 	imgSem          chan struct{}
 }
 
-func NewService(repo Repository, gen Generator) Service {
+func NewService(repo Repository, gen Generator, keys GeminiKeys) Service {
 	return &service{
 		repo:            repo,
 		dictClient:      &http.Client{Timeout: 8 * time.Second},
 		translateClient: &http.Client{Timeout: 8 * time.Second},
 		gen:             gen,
+		keys:            keys,
 		imgSem:          make(chan struct{}, maxConcurrentImageGen),
 	}
 }
@@ -256,7 +265,10 @@ func (s *service) CompleteWord(userID int64, word string) error {
 	return s.repo.CompleteWord(userID, word)
 }
 
-func (s *service) ImageEnabled() bool { return s.gen.Configured() }
+func (s *service) ImageEnabled(userID int64) bool {
+	apiKey, _ := s.keys.Resolve(userID)
+	return apiKey != ""
+}
 
 func (s *service) WordImage(userID int64, word string) ([]byte, bool) {
 	return s.repo.GetImage(userID, word)
@@ -265,7 +277,7 @@ func (s *service) WordImage(userID int64, word string) ([]byte, bool) {
 // RegenerateWordImage marks an existing word pending and kicks off generation
 // again — used to backfill legacy words and retry failures on demand.
 func (s *service) RegenerateWordImage(userID int64, word string) error {
-	if !s.gen.Configured() {
+	if !s.ImageEnabled(userID) {
 		return fmt.Errorf("gemini not configured")
 	}
 	w, err := s.repo.GetWord(userID, word)
@@ -280,11 +292,12 @@ func (s *service) RegenerateWordImage(userID int64, word string) error {
 }
 
 // generateAsync marks the word pending and fires a bounded background goroutine
-// that calls Gemini and persists the result. The slow API call holds no DB
-// connection; only the tiny status/blob writes touch the (single-connection)
-// DB. No-op when unconfigured.
+// that calls Gemini with the user's key and persists the result. The slow API
+// call holds no DB connection; only the tiny status/blob writes touch the
+// (single-connection) DB. No-op when the user has no key.
 func (s *service) generateAsync(userID int64, word, translation, sentence string) {
-	if !s.gen.Configured() {
+	apiKey, model := s.keys.Resolve(userID)
+	if apiKey == "" {
 		return
 	}
 	// Synchronous so an immediate refetch already sees the shimmer state.
@@ -293,13 +306,13 @@ func (s *service) generateAsync(userID int64, word, translation, sentence string
 		s.imgSem <- struct{}{}
 		defer func() { <-s.imgSem }()
 
-		png, err := s.gen.GenerateWordImage(word, translation, sentence)
+		svg, err := s.gen.GenerateWordImage(apiKey, model, word, translation, sentence)
 		if err != nil {
 			logger.Get().Warn("word image generation failed", zap.String("word", word), zap.Error(err))
 			_ = s.repo.SetImageStatus(userID, word, "failed")
 			return
 		}
-		if err := s.repo.SaveImage(userID, word, png); err != nil {
+		if err := s.repo.SaveImage(userID, word, svg); err != nil {
 			logger.Get().Warn("word image save failed", zap.String("word", word), zap.Error(err))
 			_ = s.repo.SetImageStatus(userID, word, "failed")
 		}

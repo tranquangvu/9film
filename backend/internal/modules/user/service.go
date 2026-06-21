@@ -26,6 +26,8 @@ type Service interface {
 	UpdateUser(id int64, username, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	SaveSettings(userID int64, st Settings) (Settings, error)
+	CredentialStatus(userID int64) (CredentialStatus, error)
+	SaveCredentials(userID int64, patch Credentials) (CredentialStatus, error)
 }
 
 type service struct {
@@ -108,6 +110,52 @@ func (s *service) SaveSettings(userID int64, st Settings) (Settings, error) {
 		return Settings{}, err
 	}
 	return st, nil
+}
+
+func (s *service) CredentialStatus(userID int64) (CredentialStatus, error) {
+	c, err := s.repo.GetCredentials(userID)
+	if err != nil {
+		return CredentialStatus{}, err
+	}
+	return s.statusOf(c), nil
+}
+
+// SaveCredentials merges only the non-empty fields over the user's existing
+// credentials (so a blank field keeps the current value), then returns status.
+func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialStatus, error) {
+	cur, err := s.repo.GetCredentials(userID)
+	if err != nil {
+		return CredentialStatus{}, err
+	}
+	if patch.GeminiAPIKey != "" {
+		cur.GeminiAPIKey = patch.GeminiAPIKey
+	}
+	if patch.OpenSubtitlesAPIKey != "" {
+		cur.OpenSubtitlesAPIKey = patch.OpenSubtitlesAPIKey
+	}
+	if patch.OpenSubtitlesUsername != "" {
+		cur.OpenSubtitlesUsername = patch.OpenSubtitlesUsername
+	}
+	if patch.OpenSubtitlesPassword != "" {
+		cur.OpenSubtitlesPassword = patch.OpenSubtitlesPassword
+	}
+	if err := s.repo.SetCredentials(userID, cur); err != nil {
+		return CredentialStatus{}, err
+	}
+	return s.statusOf(cur), nil
+}
+
+// statusOf folds in the .env fallback so "configured" means the integration is
+// usable from either the user's key or the server default.
+func (s *service) statusOf(c Credentials) CredentialStatus {
+	return CredentialStatus{
+		GeminiKeySet:             c.GeminiAPIKey != "",
+		GeminiConfigured:         c.GeminiAPIKey != "" || s.cfg.Gemini != nil,
+		OpenSubtitlesAPIKeySet:   c.OpenSubtitlesAPIKey != "",
+		OpenSubtitlesUsername:    c.OpenSubtitlesUsername,
+		OpenSubtitlesPasswordSet: c.OpenSubtitlesPassword != "",
+		OpenSubtitlesConfigured:  c.OpenSubtitlesAPIKey != "" || s.cfg.OpenSubtitles != nil,
+	}
 }
 
 // normalizeUsername lower-cases and trims a username; an empty result is a

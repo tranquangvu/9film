@@ -5,23 +5,36 @@ import (
 	"strconv"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/nicefilm/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-type Handler struct {
-	subs Subtitles
+// CredsResolver returns the OpenSubtitles credentials to use for a user — the
+// user's own keys, or the .env fallback — composed at the root.
+type CredsResolver interface {
+	For(userID int64) Creds
 }
 
-func NewHandler(subs Subtitles) *Handler {
-	return &Handler{subs: subs}
+type Handler struct {
+	subs  Subtitles
+	creds CredsResolver
+}
+
+func NewHandler(subs Subtitles, creds CredsResolver) *Handler {
+	return &Handler{subs: subs, creds: creds}
+}
+
+func notConfigured(c *gin.Context) {
+	c.JSON(http.StatusServiceUnavailable, gin.H{
+		"error": "OpenSubtitles is not configured. Add your API key in Connections.",
+	})
 }
 
 func (h *Handler) SearchSubtitles(c *gin.Context) {
-	if !h.subs.Configured() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "OpenSubtitles not configured. Set OPENSUBTITLES_API_KEY in .env",
-		})
+	creds := h.creds.For(middleware.UserID(c))
+	if !creds.Configured() {
+		notConfigured(c)
 		return
 	}
 
@@ -58,7 +71,7 @@ func (h *Handler) SearchSubtitles(c *gin.Context) {
 		params.Episode = &n
 	}
 
-	subs, err := h.subs.SearchSubtitles(params)
+	subs, err := h.subs.SearchSubtitles(creds, params)
 	if err != nil {
 		logger.Get().Warn("subtitle search failed", zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
@@ -69,10 +82,9 @@ func (h *Handler) SearchSubtitles(c *gin.Context) {
 }
 
 func (h *Handler) GetSubtitleVTT(c *gin.Context) {
-	if !h.subs.Configured() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "OpenSubtitles not configured. Set OPENSUBTITLES_API_KEY in .env",
-		})
+	creds := h.creds.For(middleware.UserID(c))
+	if !creds.Configured() {
+		notConfigured(c)
 		return
 	}
 
@@ -83,7 +95,7 @@ func (h *Handler) GetSubtitleVTT(c *gin.Context) {
 		return
 	}
 
-	vtt, err := h.subs.DownloadSubtitleVTT(fileID)
+	vtt, err := h.subs.DownloadSubtitleVTT(creds, fileID)
 	if err != nil {
 		logger.Get().Warn("subtitle VTT failed", zap.Int("file_id", fileID), zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})

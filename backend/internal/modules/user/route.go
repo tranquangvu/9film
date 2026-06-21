@@ -16,4 +16,6 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
 	me.PUT("", h.UpdateMe)
 	me.GET("/settings", h.GetSettings)
 	me.PUT("/settings", h.PutSettings)
+	me.GET("/credentials", h.GetCredentials)
+	me.PUT("/credentials", h.PutCredentials)
 }

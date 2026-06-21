@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -121,4 +122,34 @@ func (h *Handler) PutSettings(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, saved)
+}
+
+// GetCredentials returns the per-user integration key status (never the secrets).
+func (h *Handler) GetCredentials(c *gin.Context) {
+	st, err := h.svc.CredentialStatus(middleware.UserID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load credentials"})
+		return
+	}
+	c.JSON(http.StatusOK, st)
+}
+
+// PutCredentials saves the user's integration keys (blank fields are kept).
+func (h *Handler) PutCredentials(c *gin.Context) {
+	var req updateCredentialsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	st, err := h.svc.SaveCredentials(middleware.UserID(c), Credentials{
+		GeminiAPIKey:          strings.TrimSpace(req.GeminiApiKey),
+		OpenSubtitlesAPIKey:   strings.TrimSpace(req.OpenSubtitlesApiKey),
+		OpenSubtitlesUsername: strings.TrimSpace(req.OpenSubtitlesUsername),
+		OpenSubtitlesPassword: strings.TrimSpace(req.OpenSubtitlesPassword),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save credentials"})
+		return
+	}
+	c.JSON(http.StatusOK, st)
 }

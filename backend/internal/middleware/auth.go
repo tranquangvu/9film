@@ -13,18 +13,29 @@ import (
 
 const userIDKey = "userID"
 
-// AuthRequired rejects requests without a valid `Authorization: Bearer <jwt>`
-// header and stashes the authenticated user id in the gin context.
+// bearerToken pulls the JWT from the Authorization header, falling back to a
+// `?token=` query param for browser-loaded resources (a <track>/<img> element
+// can't send custom headers).
+func bearerToken(c *gin.Context) string {
+	if t, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer "); ok {
+		if t = strings.TrimSpace(t); t != "" {
+			return t
+		}
+	}
+	return strings.TrimSpace(c.Query("token"))
+}
+
+// AuthRequired rejects requests without a valid bearer token and stashes the
+// authenticated user id in the gin context.
 func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		token, ok := strings.CutPrefix(header, "Bearer ")
-		if !ok || strings.TrimSpace(token) == "" {
+		token := bearerToken(c)
+		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid Authorization header"})
 			return
 		}
 
-		id, err := Parse(strings.TrimSpace(token), cfg.JWTSecret)
+		id, err := Parse(token, cfg.JWTSecret)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 			return
@@ -36,17 +47,12 @@ func AuthRequired(cfg *config.Config) gin.HandlerFunc {
 }
 
 // AuthOptional stashes the user id when a valid bearer token is present but,
-// unlike AuthRequired, never rejects the request. Used by public title
-// endpoints that enrich responses for signed-in users (e.g. the `isFavorite` flag)
-// while staying open to anonymous callers.
+// unlike AuthRequired, never rejects the request.
 func AuthOptional(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if token, ok := strings.CutPrefix(header, "Bearer "); ok {
-			if token = strings.TrimSpace(token); token != "" {
-				if id, err := Parse(token, cfg.JWTSecret); err == nil {
-					c.Set(userIDKey, id)
-				}
+		if token := bearerToken(c); token != "" {
+			if id, err := Parse(token, cfg.JWTSecret); err == nil {
+				c.Set(userIDKey, id)
 			}
 		}
 		c.Next()

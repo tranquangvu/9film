@@ -97,6 +97,16 @@ func Migrate(db *sql.DB) error {
 			learning_lang         TEXT NOT NULL DEFAULT 'vi',
 			updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
+		// Per-user API credentials for the optional integrations. Each account
+		// supplies its own keys; the backend .env keys are a fallback.
+		`CREATE TABLE IF NOT EXISTS credentials (
+			user_id                INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			gemini_api_key         TEXT NOT NULL DEFAULT '',
+			opensubtitles_api_key  TEXT NOT NULL DEFAULT '',
+			opensubtitles_username TEXT NOT NULL DEFAULT '',
+			opensubtitles_password TEXT NOT NULL DEFAULT '',
+			updated_at             TEXT NOT NULL DEFAULT (datetime('now'))
+		)`,
 		`CREATE TABLE IF NOT EXISTS words (
 			user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			word        TEXT NOT NULL,

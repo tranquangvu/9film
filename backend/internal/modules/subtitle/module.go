@@ -5,18 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Module(api *gin.RouterGroup, cfg *config.Config) {
-	h := NewHandler(NewSubtitles(subtitleConfig(cfg)))
-	RegisterRoutes(api, h)
-}
-
-func subtitleConfig(cfg *config.Config) *SubtitleConfig {
-	if cfg.OpenSubtitles == nil {
-		return nil
-	}
-	return &SubtitleConfig{
-		APIKey:   cfg.OpenSubtitles.APIKey,
-		Username: cfg.OpenSubtitles.Username,
-		Password: cfg.OpenSubtitles.Password,
-	}
+func Module(api *gin.RouterGroup, cfg *config.Config, creds CredsResolver) {
+	h := NewHandler(NewSubtitles(), creds)
+	RegisterRoutes(api, h, cfg)
 }

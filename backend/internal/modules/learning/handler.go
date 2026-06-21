@@ -127,19 +127,14 @@ func (h *Handler) AddWord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save word"})
 		return
 	}
-	if h.svc.ImageEnabled() {
+	if h.svc.ImageEnabled(middleware.UserID(c)) {
 		w.ImageStatus = "pending"
 	}
 	c.JSON(http.StatusCreated, w)
 }
 
-// GetWordImage streams a word's generated PNG. 503 when illustrations are
-// disabled, 404 when the word has no image yet.
+// GetWordImage streams a word's generated SVG; 404 when the word has no image.
 func (h *Handler) GetWordImage(c *gin.Context) {
-	if !h.svc.ImageEnabled() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "illustrations are not configured"})
-		return
-	}
 	word := strings.ToLower(strings.TrimSpace(c.Query("word")))
 	if word == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
@@ -158,7 +153,7 @@ func (h *Handler) GetWordImage(c *gin.Context) {
 // RegenerateWordImage (re)triggers generation for an existing word — backfills
 // legacy words and retries failures.
 func (h *Handler) RegenerateWordImage(c *gin.Context) {
-	if !h.svc.ImageEnabled() {
+	if !h.svc.ImageEnabled(middleware.UserID(c)) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "illustrations are not configured"})
 		return
 	}
