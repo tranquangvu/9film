@@ -54,11 +54,6 @@ export interface TitleDetail {
   progress?: TitleProgress[];
 }
 
-export interface OriginalLanguage {
-  code: string;
-  label: string;
-}
-
 export interface BrowseResult {
   titles: TitleDetail[];
   hasNextPage: boolean;
@@ -72,11 +67,6 @@ export function normId(id: string): string {
 export function embedParams(title: TitleDetail, mediaId: string) {
   const mediaType: MediaType = title.type === 'series' ? 'tv' : 'movie';
   return { mediaType, mediaId: title.id || normId(mediaId) };
-}
-
-export function origLang(title: TitleDetail): OriginalLanguage {
-  if (!title.languageCode) throw new Error('No original language found on IMDb');
-  return { code: title.languageCode, label: title.language ?? title.languageCode.toUpperCase() };
 }
 
 // The largest landscape image for a title — what the hero banner displays.

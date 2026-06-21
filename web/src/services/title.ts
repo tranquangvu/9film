@@ -1,5 +1,5 @@
 import type { BrowseResult, TitleDetail } from '@/utils/title';
-import { normId, origLang } from '@/utils/title';
+import { normId } from '@/utils/title';
 import { apiFetch, ApiError } from '@/lib/api-fetch';
 
 /** Thrown when an IMDb id doesn't resolve to a title (unknown or malformed). */
@@ -58,7 +58,3 @@ export async function getSimilarTitles(imdbId: string, limit = 6, signal?: Abort
   return json.titles ?? [];
 }
 
-export async function getOriginalLanguage(imdbId: string, signal?: AbortSignal) {
-  const title = await getTitle(imdbId, signal);
-  return origLang(title);
-}

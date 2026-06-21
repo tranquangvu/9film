@@ -178,7 +178,8 @@ export function usePlayerSession(
     return null;
   }, [eps, season, episode]);
 
-  // 3. Subtitles — depends on resolved stream params + title language
+  // 3. Subtitles — searched in the user's preferred subtitle language (setting),
+  // not the title's original language.
   const resolvedStreamParams = useMemo<EmbedParams | null>(
     () => (streamData && streamParams ? mergeEpisode(streamParams, streamData) : null),
     [streamData, streamParams],
@@ -188,7 +189,7 @@ export function usePlayerSession(
     streamData?.imdb_id ??
     (baseParams && isImdb(baseParams.mediaId) ? baseParams.mediaId : null);
 
-  const subtitleQuery = useSubtitlesQuery(resolvedStreamParams, imdbId, titleData);
+  const subtitleQuery = useSubtitlesQuery(resolvedStreamParams, imdbId, settings.defaultSubtitleLang);
 
   const resolvedSubs = useMemo(() => {
     if (!subtitleQuery.data || !titleData || !resolvedStreamParams) return null;
