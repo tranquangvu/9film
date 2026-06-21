@@ -20,4 +20,6 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
 	me.PUT("/words/complete", h.CompleteWord)
 	me.GET("/words/image", h.GetWordImage)
 	me.POST("/words/image", h.RegenerateWordImage)
+	me.POST("/tests", h.SubmitTest)
+	me.GET("/tests", h.GetTests)
 }

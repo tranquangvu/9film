@@ -32,6 +32,43 @@ type WordStat struct {
 	List        string `json:"list"`
 }
 
+// TestSubmissionItem is one word's raw answers as submitted by the client: the
+// spelling attempts (the word is hidden, then retyped N times) and the learner's
+// stated meaning (free text, any language). Graded server-side.
+type TestSubmissionItem struct {
+	Word      string
+	Spellings []string
+	Meaning   string
+}
+
+// TestItem is one graded word in a stored test result.
+type TestItem struct {
+	Word string `json:"word"`
+	// The retyped spelling attempts, in order.
+	Spellings []string `json:"spellings"`
+	// How many attempts exactly matched the word (0..len(Spellings)).
+	SpellingScore int `json:"spellingScore"`
+	// The learner's stated meaning and the AI/heuristic verdict on it.
+	Meaning        string `json:"meaning"`
+	MeaningCorrect bool   `json:"meaningCorrect"`
+	Feedback       string `json:"feedback"`
+	// The saved translation used as the grading reference (may be empty).
+	Translation string `json:"translation"`
+}
+
+// TestResult is a completed self-test over a completed-date word group.
+type TestResult struct {
+	ID         int64  `json:"id"`
+	List       string `json:"list"`
+	GroupLabel string `json:"groupLabel"`
+	Total      int    `json:"total"`
+	// Words spelled perfectly (every attempt correct) and meanings judged correct.
+	SpellingCorrect int        `json:"spellingCorrect"`
+	MeaningCorrect  int        `json:"meaningCorrect"`
+	Items           []TestItem `json:"items"`
+	CreatedAt       string     `json:"createdAt"`
+}
+
 // Definition is the flattened shape the frontend consumes for a single word.
 type Definition struct {
 	Word     string    `json:"word"`

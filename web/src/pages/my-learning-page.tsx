@@ -13,6 +13,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
 import { FlashcardDeck } from '@/components/system/learn/flashcard-deck';
+import { WordTest } from '@/components/system/learn/word-test';
 import { parseDate, dayKey } from '@/utils/word-date';
 import type { Word, WordStat } from '@/services/user';
 
@@ -292,7 +294,15 @@ function groupByDay(words: Word[], dateOf: (w: Word) => string | undefined): Day
   return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
-function WordGroupList({ groups, onSelect }: { groups: DayGroup[]; onSelect: (w: Word) => void }) {
+function WordGroupList({
+  groups,
+  onSelect,
+  onTest,
+}: {
+  groups: DayGroup[];
+  onSelect: (w: Word) => void;
+  onTest?: (g: DayGroup) => void;
+}) {
   return (
     <div className="space-y-5">
       {groups.map((g) => (
@@ -303,6 +313,14 @@ function WordGroupList({ groups, onSelect }: { groups: DayGroup[]; onSelect: (w:
               <span className="mr-2">|</span>
               {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
             </span>
+            {onTest && (
+              <button
+                onClick={() => onTest(g)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25 transition-colors"
+              >
+                <GraduationCap className="w-3.5 h-3.5" /> Test
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {g.words.map((w) => (
@@ -387,6 +405,8 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   const [selected, setSelected] = useState<Word | null>(null);
   const [tab, setTab] = useState<'learn' | 'completed'>('learn');
   const [studying, setStudying] = useState(false);
+  // The completed-date group currently being self-tested (null = no test open).
+  const [testGroup, setTestGroup] = useState<{ words: Word[]; label: string } | null>(null);
 
   // Stats cover the whole vocabulary; this page only shows its own list.
   const all = useMemo(
@@ -522,6 +542,12 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
                   {t.label}
                 </Badge>
               ))}
+              <Link
+                to="/my-learning/tests"
+                className="ml-auto inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                <ClipboardList className="w-4 h-4" /> Test results
+              </Link>
             </div>
 
             {tab === 'learn' && addedCount === 0 ? (
@@ -546,7 +572,17 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
                         ))}
                       </div>
                     )
-                  : groups.length > 0 && <WordGroupList groups={groups} onSelect={setSelected} />}
+                  : groups.length > 0 && (
+                      <WordGroupList
+                        groups={groups}
+                        onSelect={setSelected}
+                        onTest={
+                          tab === 'completed'
+                            ? (g) => setTestGroup({ words: g.words, label: friendlyDay(g.date) })
+                            : undefined
+                        }
+                      />
+                    )}
                 {(tabQuery.isLoading || isFetchingNextPage) && <LoadMoreIndicator className="mt-2" />}
                 <div ref={sentinelRef} className="h-1" />
               </>
@@ -574,6 +610,17 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
             hasMore={!!learnList.hasNextPage}
             fetchMore={learnList.fetchNextPage}
             onClose={() => setStudying(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {testGroup && (
+          <WordTest
+            words={testGroup.words}
+            list={list}
+            groupLabel={testGroup.label}
+            onClose={() => setTestGroup(null)}
           />
         )}
       </AnimatePresence>

@@ -137,6 +137,22 @@ func Migrate(db *sql.DB) error {
 			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, word)
 		)`,
+		// A completed vocabulary self-test over a completed-date group: per-word
+		// spelling attempts + AI-graded meaning answers. The per-word breakdown is
+		// stored as a JSON blob in `items` (read-mostly, never queried by field).
+		`CREATE TABLE IF NOT EXISTS word_tests (
+			id               INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			list             TEXT NOT NULL DEFAULT '',
+			group_label      TEXT NOT NULL DEFAULT '',
+			total            INTEGER NOT NULL DEFAULT 0,
+			spelling_correct INTEGER NOT NULL DEFAULT 0,
+			meaning_correct  INTEGER NOT NULL DEFAULT 0,
+			items            TEXT NOT NULL DEFAULT '[]',
+			created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+		)`,
+		// Test history: WHERE user_id=? ORDER BY created_at DESC.
+		`CREATE INDEX IF NOT EXISTS idx_word_tests_user_created ON word_tests(user_id, created_at DESC)`,
 	}
 
 	for _, stmt := range stmts {

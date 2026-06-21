@@ -212,3 +212,49 @@ export function removeWord(word: string): Promise<void> {
 export function completeWord(word: string): Promise<void> {
   return apiFetch<void>('/api/me/words/complete', { method: 'PUT', body: { word } });
 }
+
+// --- Self-tests (spelling + AI-graded meaning over a completed-date group) ---
+
+export interface TestItem {
+  word: string;
+  spellings: string[];
+  /** How many retyped attempts exactly matched the word (0..spellings.length). */
+  spellingScore: number;
+  meaning: string;
+  meaningCorrect: boolean;
+  feedback: string;
+  /** The saved translation used as the grading reference (may be empty). */
+  translation: string;
+}
+
+export interface TestResult {
+  id: number;
+  list: string;
+  groupLabel: string;
+  total: number;
+  /** Words spelled perfectly and meanings judged correct. */
+  spellingCorrect: number;
+  meaningCorrect: number;
+  items: TestItem[];
+  createdAt: string;
+}
+
+export interface TestSubmissionItem {
+  word: string;
+  spellings: string[];
+  meaning: string;
+}
+
+// Grades and stores a completed self-test; returns the full graded result.
+export function submitTest(body: {
+  list: string;
+  groupLabel: string;
+  items: TestSubmissionItem[];
+}): Promise<TestResult> {
+  return apiFetch<TestResult>('/api/me/tests', { method: 'POST', body });
+}
+
+export async function getTests(): Promise<TestResult[]> {
+  const res = await apiFetch<{ items: TestResult[] }>('/api/me/tests');
+  return res.items ?? [];
+}

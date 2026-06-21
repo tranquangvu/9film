@@ -1,6 +1,9 @@
 package learning
 
-import "database/sql"
+import (
+	"database/sql"
+	"encoding/json"
+)
 
 // Repository is the persistence contract for saved vocabulary words. The default
 // implementation is SQLite-backed.
@@ -15,6 +18,8 @@ type Repository interface {
 	SetImageStatus(userID int64, word, status string) error
 	SaveImage(userID int64, word string, png []byte) error
 	GetImage(userID int64, word string) ([]byte, bool)
+	SaveTest(userID int64, t TestResult) (int64, error)
+	GetTests(userID int64) ([]TestResult, error)
 }
 
 type repository struct {
@@ -179,6 +184,53 @@ func (r *repository) GetImage(userID int64, word string) ([]byte, bool) {
 		return nil, false
 	}
 	return svg, true
+}
+
+// SaveTest persists a graded self-test (the per-word breakdown as a JSON blob)
+// and returns its new id.
+func (r *repository) SaveTest(userID int64, t TestResult) (int64, error) {
+	itemsJSON, err := json.Marshal(t.Items)
+	if err != nil {
+		return 0, err
+	}
+	res, err := r.db.Exec(
+		`INSERT INTO word_tests (user_id, list, group_label, total, spelling_correct, meaning_correct, items)
+		   VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		userID, t.List, t.GroupLabel, t.Total, t.SpellingCorrect, t.MeaningCorrect, string(itemsJSON),
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// GetTests returns the user's self-test history, newest first, each with its
+// full per-word breakdown decoded from the stored JSON.
+func (r *repository) GetTests(userID int64) ([]TestResult, error) {
+	rows, err := r.db.Query(
+		`SELECT id, list, group_label, total, spelling_correct, meaning_correct, items, created_at
+		   FROM word_tests WHERE user_id = ?
+		   ORDER BY created_at DESC, id DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]TestResult, 0)
+	for rows.Next() {
+		var t TestResult
+		var itemsJSON string
+		if err := rows.Scan(&t.ID, &t.List, &t.GroupLabel, &t.Total, &t.SpellingCorrect, &t.MeaningCorrect, &itemsJSON, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal([]byte(itemsJSON), &t.Items); err != nil {
+			t.Items = []TestItem{}
+		}
+		items = append(items, t)
+	}
+	return items, rows.Err()
 }
 
 // BulkAddWords inserts many bare words (no context, no image) tagged with the

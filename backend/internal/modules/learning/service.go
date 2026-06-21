@@ -71,6 +71,11 @@ type Service interface {
 	RegenerateWordImage(userID int64, word string) error
 	// WordImage returns a word's stored SVG bytes, or (nil, false) when none.
 	WordImage(userID int64, word string) ([]byte, bool)
+	// SubmitTest grades a completed self-test (spelling locally, meanings via AI
+	// when configured, else a heuristic), stores it, and returns the result.
+	SubmitTest(userID int64, list, groupLabel string, items []TestSubmissionItem) (*TestResult, error)
+	// GetTests returns the user's self-test history, newest first.
+	GetTests(userID int64) ([]TestResult, error)
 }
 
 // GeminiKeys resolves the Gemini API key + model for a user. An empty key means
@@ -272,6 +277,129 @@ func (s *service) ImageEnabled(userID int64) bool {
 
 func (s *service) WordImage(userID int64, word string) ([]byte, bool) {
 	return s.repo.GetImage(userID, word)
+}
+
+// SubmitTest grades a completed self-test and persists it. Spelling is scored
+// locally (each retyped attempt vs the word); meanings are graded by Gemini in a
+// single batch call when the user has a key, otherwise by a string heuristic
+// against the saved translation so the feature still works fully offline.
+func (s *service) SubmitTest(userID int64, list, groupLabel string, in []TestSubmissionItem) (*TestResult, error) {
+	if len(in) == 0 {
+		return nil, fmt.Errorf("no test items")
+	}
+
+	items := make([]TestItem, 0, len(in))
+	checks := make([]MeaningCheck, 0, len(in))
+	for _, it := range in {
+		word := strings.ToLower(strings.TrimSpace(it.Word))
+		if word == "" {
+			continue
+		}
+		spellings := make([]string, 0, len(it.Spellings))
+		score := 0
+		for _, raw := range it.Spellings {
+			attempt := strings.TrimSpace(raw)
+			spellings = append(spellings, attempt)
+			if strings.EqualFold(attempt, word) {
+				score++
+			}
+		}
+		// The saved translation is the grading reference for the meaning answer.
+		translation := ""
+		if w, _ := s.repo.GetWord(userID, word); w != nil {
+			translation = w.Translation
+		}
+		meaning := strings.TrimSpace(it.Meaning)
+		items = append(items, TestItem{
+			Word:          word,
+			Spellings:     spellings,
+			SpellingScore: score,
+			Meaning:       meaning,
+			Translation:   translation,
+		})
+		checks = append(checks, MeaningCheck{Word: word, Translation: translation, Answer: meaning})
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no valid test items")
+	}
+
+	// Grade the meanings: AI when configured, heuristic otherwise/on failure.
+	apiKey, model := s.keys.Resolve(userID)
+	if apiKey != "" {
+		if verdicts, err := s.gen.VerifyMeanings(apiKey, model, checks); err != nil {
+			logger.Get().Warn("meaning verification failed; using offline check", zap.Error(err))
+			applyFallbackVerdicts(items)
+		} else {
+			applyVerdicts(items, verdicts)
+		}
+	} else {
+		applyFallbackVerdicts(items)
+	}
+
+	result := TestResult{List: list, GroupLabel: groupLabel, Total: len(items), Items: items}
+	for _, it := range items {
+		if len(it.Spellings) > 0 && it.SpellingScore == len(it.Spellings) {
+			result.SpellingCorrect++
+		}
+		if it.MeaningCorrect {
+			result.MeaningCorrect++
+		}
+	}
+
+	id, err := s.repo.SaveTest(userID, result)
+	if err != nil {
+		return nil, err
+	}
+	result.ID = id
+	// Mirror SQLite's datetime('now') format so the immediate return matches what
+	// a later GetTests read would show.
+	result.CreatedAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	return &result, nil
+}
+
+func (s *service) GetTests(userID int64) ([]TestResult, error) {
+	return s.repo.GetTests(userID)
+}
+
+// applyVerdicts folds AI judgements back onto the items by word, falling back to
+// the heuristic for any item the model omitted.
+func applyVerdicts(items []TestItem, verdicts []MeaningVerdict) {
+	byWord := make(map[string]MeaningVerdict, len(verdicts))
+	for _, v := range verdicts {
+		byWord[strings.ToLower(strings.TrimSpace(v.Word))] = v
+	}
+	for i := range items {
+		if v, ok := byWord[items[i].Word]; ok {
+			items[i].MeaningCorrect = v.Correct
+			items[i].Feedback = strings.TrimSpace(v.Feedback)
+		} else {
+			items[i].MeaningCorrect, items[i].Feedback = heuristicVerdict(items[i].Translation, items[i].Meaning)
+		}
+	}
+}
+
+func applyFallbackVerdicts(items []TestItem) {
+	for i := range items {
+		items[i].MeaningCorrect, items[i].Feedback = heuristicVerdict(items[i].Translation, items[i].Meaning)
+	}
+}
+
+// heuristicVerdict grades a meaning answer without AI: a non-empty answer that
+// overlaps the saved translation passes; with no reference we accept it but note
+// it wasn't verified, so an offline user is never unfairly marked wrong.
+func heuristicVerdict(translation, answer string) (bool, string) {
+	a := strings.ToLower(strings.TrimSpace(answer))
+	if a == "" {
+		return false, "No answer given."
+	}
+	t := strings.ToLower(strings.TrimSpace(translation))
+	if t == "" {
+		return true, "Saved (no AI check available)."
+	}
+	if strings.Contains(t, a) || strings.Contains(a, t) {
+		return true, "Matches your saved meaning."
+	}
+	return false, "Expected something like: " + translation
 }
 
 // RegenerateWordImage marks an existing word pending and kicks off generation

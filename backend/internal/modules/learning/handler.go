@@ -207,6 +207,40 @@ func (h *Handler) RemoveWord(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// SubmitTest grades and stores a completed self-test, returning the full result.
+func (h *Handler) SubmitTest(c *gin.Context) {
+	var req submitTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if len(req.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no test items"})
+		return
+	}
+	items := make([]TestSubmissionItem, 0, len(req.Items))
+	for _, it := range req.Items {
+		items = append(items, TestSubmissionItem{Word: it.Word, Spellings: it.Spellings, Meaning: it.Meaning})
+	}
+	result, err := h.svc.SubmitTest(middleware.UserID(c), req.List, req.GroupLabel, items)
+	if err != nil {
+		logger.Get().Warn("submit test failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not grade test"})
+		return
+	}
+	c.JSON(http.StatusCreated, result)
+}
+
+// GetTests returns the user's self-test history, newest first.
+func (h *Handler) GetTests(c *gin.Context) {
+	items, err := h.svc.GetTests(middleware.UserID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load test history"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
 func (h *Handler) CompleteWord(c *gin.Context) {
 	var req completeWordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
