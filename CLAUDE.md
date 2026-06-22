@@ -60,7 +60,7 @@ Cross-module seams are kept thin:
 
 1. **IMDb metadata** (`modules/title/`) — GraphQL against `api.graphql.imdb.com`.
 
-2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting a hard-coded `Referer` (`embedReferer`). Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map.
+2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting the upstream `Referer`. Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map. The Referer is discovered at runtime by `refererResolver`: it scrapes the embed page (`vaplayer.ru/embed/movie/...`) for its first `<iframe>` host, caches it (1h TTL, background refresh), and falls back to `embedRefererDefault` when discovery fails. One resolver is shared by `Stream` and `HLS`.
 
 3. **HLS proxy** (`modules/stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the engine root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
 
