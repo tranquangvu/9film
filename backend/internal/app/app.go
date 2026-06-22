@@ -94,7 +94,7 @@ func (o openSubtitlesCreds) For(userID int64) subtitle.Creds {
 		return subtitle.Creds{APIKey: c.OpenSubtitlesAPIKey, Username: c.OpenSubtitlesUsername, Password: c.OpenSubtitlesPassword}
 	}
 	if o.cfg != nil {
-		return subtitle.Creds{APIKey: o.cfg.APIKey, Username: o.cfg.Username, Password: o.cfg.Password}
+		return subtitle.Creds{APIKey: o.cfg.APIKey, Username: o.cfg.Username, Password: o.cfg.Password, Shared: true}
 	}
 	return subtitle.Creds{}
 }

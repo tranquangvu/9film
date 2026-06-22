@@ -20,6 +20,7 @@ import { useSubtitleCues } from './queries/use-subtitle-cues';
 import { useSaveProgress } from './queries/use-progress-query';
 import { useSaveSubtitle } from './queries/use-subtitle-query';
 import { useSettings } from './queries/use-settings-query';
+import { ApiError } from '@/lib/api-fetch';
 
 export function usePlayerSession(
   titleId: string,
@@ -254,6 +255,11 @@ export function usePlayerSession(
   const cuesQuery = useSubtitleCues(settings.learningMode ? selectedSubId : null);
   const cues = useMemo(() => cuesQuery.data ?? [], [cuesQuery.data]);
 
+  // The shared OpenSubtitles account got rate-limited and the user has no key of
+  // their own — drives the "add your own credentials" prompt on the watch page.
+  const subtitleRateLimited =
+    cuesQuery.error instanceof ApiError && cuesQuery.error.code === 'shared_rate_limited';
+
   const poster = streamData?.backdrop ?? titleData?.poster;
   // Prefer the clean IMDb title (just the name) — the upstream stream title often
   // bakes in the release year (e.g. "Silicon Valley 2014").
@@ -289,6 +295,7 @@ export function usePlayerSession(
     nextEpisode,
     autoplayNext: settings.autoplayNext,
     cues,
+    subtitleRateLimited,
     learningMode: settings.learningMode,
     learningLang: settings.learningLang,
   };

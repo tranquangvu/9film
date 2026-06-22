@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,12 @@ import (
 
 const openSubsAPIBase = "https://api.opensubtitles.com/api/v1"
 const openSubsUserAgent = "NiceFilm/1.0"
+
+// ErrRateLimited is returned when OpenSubtitles rejects a request because the
+// account hit its rate limit (HTTP 429) or exhausted its daily download quota
+// (HTTP 406). The handler surfaces it specially when the shared .env account is
+// the one being throttled, so the user can be nudged to add their own key.
+var ErrRateLimited = errors.New("OpenSubtitles rate limit reached or download quota exceeded")
 
 // SRT-parsing regexes, compiled once (they were previously recompiled per call
 // and per cue block inside srtToVTT's loop — pure overhead on every download).
@@ -32,6 +39,10 @@ type Creds struct {
 	APIKey   string
 	Username string
 	Password string
+	// Shared is true when these came from the server's .env fallback rather than
+	// the user's own stored keys — used to nudge the user to add their own when
+	// the shared account gets rate-limited.
+	Shared bool
 }
 
 func (c Creds) Configured() bool { return c.APIKey != "" }
@@ -236,6 +247,10 @@ func (s *subtitles) DownloadSubtitleVTT(creds Creds, fileID int) (string, error)
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		// 429 = rate-limited; 406 = daily download quota exhausted.
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNotAcceptable {
+			return "", fmt.Errorf("%w: %s", ErrRateLimited, strings.TrimSpace(string(body)))
+		}
 		return "", fmt.Errorf("OpenSubtitles download failed (%d): %s", resp.StatusCode, string(body))
 	}
 

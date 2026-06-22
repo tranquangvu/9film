@@ -1,6 +1,7 @@
 package subtitle
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -98,6 +99,15 @@ func (h *Handler) GetSubtitleVTT(c *gin.Context) {
 	vtt, err := h.subs.DownloadSubtitleVTT(creds, fileID)
 	if err != nil {
 		logger.Get().Warn("subtitle VTT failed", zap.Int("file_id", fileID), zap.Error(err))
+		// When the shared .env account is the one being throttled, tell the client
+		// so it can prompt the user to add their own OpenSubtitles credentials.
+		if errors.Is(err, ErrRateLimited) && creds.Shared {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "The shared OpenSubtitles account hit its rate limit. Add your own OpenSubtitles API key, username, and password in Connections to keep downloading subtitles.",
+				"code":  "shared_rate_limited",
+			})
+			return
+		}
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}

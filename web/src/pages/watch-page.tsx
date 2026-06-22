@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CloudCog, Captions, Film, FileText, AlertCircle, ListVideo, CirclePlay } from 'lucide-react';
 import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
+import { SubtitleRateLimitDialog } from '@/components/system/player/subtitle-rate-limit-dialog';
 import { MediaProvider } from '@/components/system/player/media-context';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { WatchTour } from '@/components/system/player/watch-tour';
@@ -53,11 +54,14 @@ export function WatchPage() {
     nextEpisode,
     autoplayNext,
     cues,
+    subtitleRateLimited,
     learningMode,
     learningLang,
   } = usePlayerSession(id, initialEpisode);
 
   const [showTranscript, setShowTranscript] = useState(false);
+  // The shared-account rate-limit prompt, dismissable for this watch session.
+  const [rateLimitDismissed, setRateLimitDismissed] = useState(false);
   const watchedEpisodes = useWatchedEpisodes(id);
   const isSeries = eps !== null;
   const availableSeasons = eps ? seasons(eps) : [];
@@ -290,6 +294,11 @@ export function WatchPage() {
           </aside>
         )}
       </div>
+
+      <SubtitleRateLimitDialog
+        open={subtitleRateLimited && !rateLimitDismissed}
+        onClose={() => setRateLimitDismissed(true)}
+      />
     </div>
     </MediaProvider>
   );

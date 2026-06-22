@@ -12,9 +12,12 @@ export function registerAuth(tokenGetter: () => string | null, unauthorized: () 
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Optional machine-readable code from the JSON body (e.g. 'shared_rate_limited'). */
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = 'ApiError';
   }
 }
@@ -49,9 +52,10 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
 
   if (res.status === 204) return undefined as T;
 
-  const json = (await res.json().catch(() => ({}))) as T & { error?: string };
+  const json = (await res.json().catch(() => ({}))) as T & { error?: string; code?: string };
   if (!res.ok) {
-    throw new ApiError(res.status, (json as { error?: string }).error ?? `Request failed (${res.status})`);
+    const { error, code } = json as { error?: string; code?: string };
+    throw new ApiError(res.status, error ?? `Request failed (${res.status})`, code);
   }
   return json as T;
 }
@@ -66,6 +70,11 @@ export async function apiFetchBlob(path: string, signal?: AbortSignal): Promise<
 
   const res = await fetch(path, { headers, signal });
   if (res.status === 401) onUnauthorized();
-  if (!res.ok) throw new ApiError(res.status, `Request failed (${res.status})`);
+  if (!res.ok) {
+    // Parse the JSON error body (if any) so callers can branch on `code` — e.g.
+    // the subtitle download surfaces 'shared_rate_limited'.
+    const { error, code } = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    throw new ApiError(res.status, error ?? `Request failed (${res.status})`, code);
+  }
   return res.blob();
 }
