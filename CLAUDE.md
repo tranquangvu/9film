@@ -44,7 +44,7 @@ Shared infrastructure lives directly under `internal/`: `config/`, `database/`, 
 
 Cross-module seams are kept thin:
 - `title.Module` receives a `title.Enricher` so per-user state (favorites, watch progress, chosen subtitle) folds into title responses. `app.go` injects `history.NewEnricher(db)`, which satisfies the interface directly and forwards `FavoritedIds` to the `favorite` module — no adapter needed.
-- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `openSubtitlesCreds`) that try the user's stored key first, then the `.env` fallback.
+- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `openSubtitlesCreds`). `geminiKeys` resolves the user's stored key only (no `.env` fallback); `openSubtitlesCreds` tries the user's stored key first, then the `.env` fallback.
 
 ### Modules
 
@@ -66,11 +66,8 @@ Cross-module seams are kept thin:
 
 ### Optional integrations (degrade gracefully)
 
-Both are gated in `config.Load` and disabled when their key is unset:
-- **OpenSubtitles** (`OPENSUBTITLES_API_KEY`) — `subtitle/` handler returns 503 when unconfigured.
-- **Gemini** (`GEMINI_API_KEY`, default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests (`modules/learning/gemini.go`).
-
-A per-user key (stored via `user.CredentialStore`) takes precedence over the `.env` key at request time.
+- **OpenSubtitles** (`OPENSUBTITLES_API_KEY`, gated in `config.Load`) — `subtitle/` handler returns 503 when unconfigured. A per-user key (stored via `user.CredentialStore`) takes precedence over the `.env` key; otherwise the `.env` key is the fallback.
+- **Gemini** (default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests (`modules/learning/gemini.go`). **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
 
 ### Learning module
 

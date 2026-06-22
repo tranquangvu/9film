@@ -145,12 +145,12 @@ func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialSt
 	return s.statusOf(cur), nil
 }
 
-// statusOf folds in the .env fallback so "configured" means the integration is
-// usable from either the user's key or the server default.
+// statusOf reports usability. Gemini is per-user only (no .env fallback);
+// OpenSubtitles is usable from either the user's key or the server default.
 func (s *service) statusOf(c Credentials) CredentialStatus {
 	return CredentialStatus{
 		GeminiKeySet:             c.GeminiAPIKey != "",
-		GeminiConfigured:         c.GeminiAPIKey != "" || s.cfg.Gemini != nil,
+		GeminiConfigured:         c.GeminiAPIKey != "",
 		OpenSubtitlesAPIKeySet:   c.OpenSubtitlesAPIKey != "",
 		OpenSubtitlesUsername:    c.OpenSubtitlesUsername,
 		OpenSubtitlesPasswordSet: c.OpenSubtitlesPassword != "",

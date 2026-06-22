@@ -75,13 +75,9 @@ JWT_SECRET=your_secret
 OPENSUBTITLES_API_KEY=your_key
 OPENSUBTITLES_USERNAME=your_username
 OPENSUBTITLES_PASSWORD=your_password
-
-# Optional — AI learning features (definitions, translations, graded tests)
-GEMINI_API_KEY=your_key
-GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Signed-in users can also supply their own OpenSubtitles / Gemini keys in their profile; those take precedence over the `.env` values.
+AI learning features (definitions, translations, graded tests) are configured per-user: each signed-in user supplies their own Gemini key in their profile. OpenSubtitles can also be set per-user, taking precedence over the `.env` values.
 
 ### Frontend
 

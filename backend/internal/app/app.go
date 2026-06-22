@@ -52,7 +52,6 @@ func NewApp() *App {
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),
 		zap.Bool("subtitles_configured", cfg.OpenSubtitles != nil),
-		zap.Bool("gemini_configured", cfg.Gemini != nil),
 	)
 
 	return &App{Config: cfg, Router: engine, DB: db}
@@ -61,33 +60,27 @@ func NewApp() *App {
 func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	api := r.Group("/api")
 
-	// Per-user API keys (with the .env keys as fallback) for the optional
-	// integrations, resolved at request time.
+	// Per-user API keys for the optional integrations, resolved at request time.
+	// Gemini is per-user only; OpenSubtitles falls back to the .env key.
 	creds := user.NewCredentialStore(db)
 
 	user.Module(api, db, cfg)
 	favorite.Module(api, db, cfg)
 	history.Module(api, db, cfg)
 	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
-	learning.Module(api, db, cfg, geminiKeys{store: creds, cfg: cfg.Gemini})
+	learning.Module(api, db, cfg, geminiKeys{store: creds})
 	stream.Module(r, api)
 	subtitle.Module(api, cfg, openSubtitlesCreds{store: creds, cfg: cfg.OpenSubtitles})
 }
 
-// geminiKeys resolves a user's Gemini key (then the .env key) for the learning module.
+// geminiKeys resolves a user's Gemini key for the learning module. There is no
+// .env fallback — AI features require the user to supply their own key.
 type geminiKeys struct {
 	store *user.CredentialStore
-	cfg   *config.GeminiConfig
 }
 
 func (g geminiKeys) Resolve(userID int64) (apiKey, model string) {
-	if key := g.store.Get(userID).GeminiAPIKey; key != "" {
-		return key, "" // user key → generator's default model
-	}
-	if g.cfg != nil {
-		return g.cfg.APIKey, g.cfg.Model
-	}
-	return "", ""
+	return g.store.Get(userID).GeminiAPIKey, "" // user key → generator's default model
 }
 
 // openSubtitlesCreds resolves a user's OpenSubtitles credentials (then .env).
