@@ -19,29 +19,27 @@ const streamAPIURL = "https://streamdata.vaplayer.ru/api.php"
 
 // The Referer the upstream CDNs require is the host of the embed page's first
 // iframe. Injecting it server-side is the whole reason these endpoints proxy
-// instead of the browser calling direct. It's discovered at runtime (the host
-// changes from time to time) and cached, with this known-good value as the
-// fallback when discovery fails.
+// instead of the browser calling direct. It's discovered once at startup (the
+// host changes from time to time) and re-discovered every refreshInterval, with
+// this known-good value as the fallback when discovery fails.
 const (
 	embedRefererDefault = "https://nextgencloudfabric.com/"
 	embedDiscoveryURL   = "https://vaplayer.ru/embed/movie/tt0371746"
-	refererTTL          = time.Hour
+	refreshInterval     = 6 * time.Hour
 	discoveryUA         = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 
 // iframeSrcRe captures the src of the first <iframe> in the embed page HTML.
 var iframeSrcRe = regexp.MustCompile(`(?i)<iframe[^>]*\bsrc=["']([^"']+)["']`)
 
-// refererResolver discovers and caches the upstream Referer by scraping the embed
-// page's first iframe host. Refreshes run in the background so request handlers
-// never block on the upstream fetch; on any failure the last known good value is
-// kept (seeded with embedRefererDefault).
+// refererResolver holds the upstream Referer, discovered by scraping the embed
+// page's first iframe host. It's resolved once synchronously at startup, then
+// refreshed on a fixed interval by a background ticker. On any failure the last
+// known good value is kept (seeded with embedRefererDefault).
 type refererResolver struct {
-	client     *http.Client
-	mu         sync.RWMutex
-	value      string
-	expiry     time.Time
-	refreshing bool
+	client *http.Client
+	mu     sync.RWMutex
+	value  string
 }
 
 func newRefererResolver() *refererResolver {
@@ -49,54 +47,44 @@ func newRefererResolver() *refererResolver {
 		client: &http.Client{Timeout: 10 * time.Second},
 		value:  embedRefererDefault,
 	}
-	// Warm the cache once at startup so the first stream uses a fresh value.
-	r.refreshing = true
-	go r.refresh()
+	// Resolve once at startup so streaming uses a fresh value from the first
+	// request, then keep it current with a periodic background refresh.
+	r.refresh()
+	go r.refreshLoop()
 	return r
 }
 
-// Referer returns the current upstream Referer, kicking off a single background
-// refresh when the cached value has expired.
+// Referer returns the current cached upstream Referer.
 func (r *refererResolver) Referer() string {
 	r.mu.RLock()
-	val, exp, refreshing := r.value, r.expiry, r.refreshing
-	r.mu.RUnlock()
-	if refreshing || time.Now().Before(exp) {
-		return val
-	}
+	defer r.mu.RUnlock()
+	return r.value
+}
 
-	r.mu.Lock()
-	// Re-check under the write lock — another goroutine may have started refreshing.
-	if r.refreshing || time.Now().Before(r.expiry) {
-		val = r.value
-		r.mu.Unlock()
-		return val
+// refreshLoop re-discovers the Referer every refreshInterval for the life of the
+// process.
+func (r *refererResolver) refreshLoop() {
+	ticker := time.NewTicker(refreshInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		r.refresh()
 	}
-	r.refreshing = true
-	val = r.value
-	r.mu.Unlock()
-
-	go r.refresh()
-	return val
 }
 
 func (r *refererResolver) refresh() {
 	v, err := r.discover()
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.refreshing = false
 	if err != nil || v == "" {
-		// Keep the last good value; back off briefly before retrying.
-		r.expiry = time.Now().Add(time.Minute)
 		logger.Get().Warn("embed Referer discovery failed; using cached value",
-			zap.String("referer", r.value), zap.Error(err))
+			zap.String("referer", r.Referer()), zap.Error(err))
 		return
 	}
-	if v != r.value {
-		logger.Get().Info("embed Referer updated", zap.String("from", r.value), zap.String("to", v))
-	}
+	r.mu.Lock()
+	prev := r.value
 	r.value = v
-	r.expiry = time.Now().Add(refererTTL)
+	r.mu.Unlock()
+	if v != prev {
+		logger.Get().Info("embed Referer updated", zap.String("from", prev), zap.String("to", v))
+	}
 }
 
 // discover fetches the embed page and returns "scheme://host/" of its first iframe.
