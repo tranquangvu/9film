@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-NiceFilm streams real HLS video for any IMDb title ID. A Go/Gin backend acts as a proxy layer that hides upstream sources and credentials from the browser; a React 19 frontend (Vite) consumes it. Two independent apps in `backend/` and `web/` — there is no root `package.json`.
+NiceFilm streams real HLS video for any IMDb title ID and layers an English-learning toolkit on top (vocabulary, spelling/meaning self-tests, spaced-repetition review). A Go/Gin backend acts as a proxy that hides upstream sources and credentials from the browser; a React 19 frontend (Vite) consumes it. Two independent apps in `backend/` and `web/` — there is no root `package.json`.
 
 ## Commands
 
@@ -12,7 +12,7 @@ Backend (`cd backend`):
 - `make dev` — run API on `:8081` (`go run ./cmd/server/main.go`)
 - `make build` / `make run` — build to `bin/server` and run
 - `make tidy` — `go mod tidy`
-- Single test: `go test ./internal/service -run TestName` (no tests exist yet)
+- Test: `go test ./...` (e.g. `internal/modules/learning/srs_test.go`); single: `go test ./internal/modules/learning -run TestName`
 
 Frontend (`cd web`, uses **pnpm**):
 - `pnpm dev` — Vite dev server on `:5173`
@@ -22,34 +22,78 @@ Frontend (`cd web`, uses **pnpm**):
 
 Run both apps simultaneously for development; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`), so the browser never calls the backend directly.
 
-## Architecture
+## Backend architecture
 
-### Backend is a proxy, not a content store
+### A proxy, not a content store
 
-The backend owns three upstream integrations and exists to add auth headers, rewrite responses, and dodge browser CORS/Referer restrictions. Each integration lives in a vertical-slice module under `internal/modules/` (e.g. `modules/stream/`, `modules/title/`) following a layered layout: `repo.go` (data access — an interface plus its impl), `service.go` (business logic — also interface + impl), `handler.go` (HTTP only), `route.go` (the route table, takes a `*Handler`), and `module.go` (the `Module(...)` entry point that wires repository → service → handler and calls `RegisterRoutes`). `Repository`/`Service` are interfaces (unexported impls) so the layer above can be tested against a mock. Shared infrastructure (`config/`, `database/`, `logger/`, `middleware/`, `app/`) stays directly under `internal/`. `internal/app/app.go` is the composition root: it builds the engine with global middleware and calls each module's `Module(...)`. The cross-module seam is the `title.Enricher` (per-user favorite/progress state — including each episode's chosen subtitle — folded into title responses): `title` imports nothing of it; instead `app.go` injects `history.NewEnricher(db)` into `title.Module`. The `history.Enricher` satisfies `title.Enricher` directly — it supplies progress/subtitle itself and forwards `FavoritedIds` to the `favorite` module (which `history` already depends on), so no adapter lives in `app.go`. Per-user concerns are split across modules — `user/` (accounts + settings), `favorite/` (watchlist), `history/` (watch progress, continue-watching, subtitle preference; it imports `title` to hydrate and `favorite` to flag favorites). The proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go` — they're stateless with no DB.
+The backend hides upstream sources, adds auth headers, rewrites responses, and dodges browser CORS/Referer restrictions. Each feature is a vertical-slice module under `internal/modules/` following a layered layout:
+- `repo.go` — data access (interface + unexported impl)
+- `service.go` — business logic (interface + unexported impl)
+- `handler.go` — HTTP only
+- `route.go` — the route table (`RegisterRoutes`, takes a `*Handler`)
+- `module.go` — the `Module(...)` entry point that wires repo → service → handler
+- `model.go` / `dto.go` — DB rows and frontend-facing shapes
 
-1. **IMDb metadata** (`service/imdb.go`) — queries `api.graphql.imdb.com` with hand-written GraphQL. `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail queries. Go structs mirror the GraphQL shape, then flatten into a `Title` DTO for the frontend.
+`Repository`/`Service` are interfaces so the layer above can be tested against a mock. Stateless proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go`.
 
-2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting a hard-coded `Referer` (`embedReferer` in the same file). Returns JSON containing `stream_urls` and, for TV, an `eps` season→episode map.
+Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`.
 
-3. **HLS proxy** (`modules/stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` segment with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) to point back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the entire HLS playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
+### Composition root
 
-The `subtitle/` module (OpenSubtitles) is optional — disabled entirely when `OPENSUBTITLES_API_KEY` is unset (see `config.Load`); `subtitle.Module` builds its `SubtitleConfig` from `cfg`, and the handler returns 503 when not configured.
+`internal/app/app.go` loads config, opens the SQLite DB, builds the Gin engine with global middleware (`Logger`, `Recovery`, `CORS`), and calls each module's `Module(...)`. It also builds a `user.NewCredentialStore(db)` and passes per-user-key resolvers into the optional integrations (see below).
 
-### Frontend data flow
+Cross-module seams are kept thin:
+- `title.Module` receives a `title.Enricher` so per-user state (favorites, watch progress, chosen subtitle) folds into title responses. `app.go` injects `history.NewEnricher(db)`, which satisfies the interface directly and forwards `FavoritedIds` to the `favorite` module — no adapter needed.
+- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `openSubtitlesCreds`) that try the user's stored key first, then the `.env` fallback.
 
-`utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`. Key utilities in `utils/stream.ts`:
+### Modules
+
+- `user/` — accounts, settings, and per-user API keys (`credentials.go` / `CredentialStore`) for the optional integrations
+- `favorite/` — watchlist
+- `history/` — watch progress, continue-watching, subtitle preference; imports `title` to hydrate and `favorite` to flag favorites; provides the `title.Enricher`
+- `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO.
+- `stream/` — stream resolution + HLS proxy (see below)
+- `subtitle/` — OpenSubtitles (optional)
+- `learning/` — vocabulary, AI definitions/translations, self-tests, spaced repetition (see below)
+
+### The three upstream integrations
+
+1. **IMDb metadata** (`modules/title/`) — GraphQL against `api.graphql.imdb.com`.
+
+2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting a hard-coded `Referer` (`embedReferer`). Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map.
+
+3. **HLS proxy** (`modules/stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the engine root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
+
+### Optional integrations (degrade gracefully)
+
+Both are gated in `config.Load` and disabled when their key is unset:
+- **OpenSubtitles** (`OPENSUBTITLES_API_KEY`) — `subtitle/` handler returns 503 when unconfigured.
+- **Gemini** (`GEMINI_API_KEY`, default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests (`modules/learning/gemini.go`).
+
+A per-user key (stored via `user.CredentialStore`) takes precedence over the `.env` key at request time.
+
+### Learning module
+
+Routes under `/api/learn` (public dictionary/translate helpers) and `/api/me/*` (auth-required): word list CRUD + import, per-word stats, AI word images, phrase/idiom explanation, test submission/history, and SRS reviews. Spaced repetition uses the SM-2 algorithm in `srs.go` (covered by `srs_test.go`).
+
+Config (`internal/config/config.go`): `Port` (8081), `Host` (`0.0.0.0`), `DBPath` (`./nicefilm.db`), required `JWTSecret`, and the optional `OpenSubtitles`/`Gemini` sub-configs. Auth is JWT via `middleware.AuthRequired(cfg)`.
+
+## Frontend architecture
+
+Data flow: `utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`.
+
+Key utilities in `utils/stream.ts`:
 - `streamQuery` builds the `/api/stream` query, auto-detecting IMDb (`tt…`) vs TMDB ids.
 - `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`).
 - `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from the `eps` map.
 
 `components/system/player/video-player.tsx` decides playback: HLS sources (`.m3u8`) route through `/hls` **only in dev** (`import.meta.env.DEV`); otherwise the raw src is used. This mirrors the backend HLS rewriting and is the seam to check when streams play locally but not in production.
 
-Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `movie/`, `player/`, `common/`). Path alias `@/` → `web/src/`.
+Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend: `auth.ts`, `title.ts`, `stream.ts`, `subtitle.ts`, `user.ts`, `learn.ts`, `dictionary.ts`. Path alias `@/` → `web/src/`.
 
-### Routing note
+### Routing
 
-App routes use `:id` (`/watch/:id`, `/movie/:id`) — the README's `/watch/:imdb` examples still work since the id *is* an IMDb id, but the param name in code is `id`.
+Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`; `/login` and `/signup` stand alone. Detail pages use `/title/:id` where the `:id` is an IMDb id. Auth-only routes (`/my-list`, `/my-learning*`, `/profile`) are wrapped in `<RequireAuth>`.
 
 ## Conventions
 
