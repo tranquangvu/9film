@@ -6,6 +6,14 @@ export interface FavoriteItem {
   imdbId: string;
   mediaType: 'movie' | 'series';
   createdAt?: string;
+  /** IMDb detail embedded by the backend so the My List grid needs no per-title lookup. */
+  title?: TitleDetail;
+}
+
+export interface FavoritesPage {
+  items: FavoriteItem[];
+  hasMore: boolean;
+  nextOffset: number;
 }
 
 export interface ProgressItem {
@@ -115,9 +123,13 @@ export function putSettings(body: Partial<UserSettings>): Promise<UserSettings> 
   return apiFetch<UserSettings>('/api/me/settings', { method: 'PUT', body });
 }
 
-export async function getFavorites(): Promise<FavoriteItem[]> {
-  const res = await apiFetch<{ items: FavoriteItem[] }>('/api/me/favorites');
-  return res.items ?? [];
+// Paginated favorites with title detail embedded per item (mirrors the
+// continue-watching shape), so the My List grid infinite-scrolls without a
+// separate /api/title/:id call per favorite.
+export async function getFavorites(offset = 0, limit = 20): Promise<FavoritesPage> {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+  const res = await apiFetch<Partial<FavoritesPage>>(`/api/me/favorites?${params}`);
+  return { items: res.items ?? [], hasMore: res.hasMore ?? false, nextOffset: res.nextOffset ?? offset };
 }
 
 export function addFavorite(body: { imdbId: string; mediaType: 'movie' | 'series' }): Promise<FavoriteItem> {

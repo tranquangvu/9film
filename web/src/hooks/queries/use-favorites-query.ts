@@ -1,11 +1,15 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFavorites, addFavorite, removeFavorite, type FavoriteItem } from '@/services/user';
+import { useQuery, useMutation, useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { getFavorites, addFavorite, removeFavorite, type FavoritesPage } from '@/services/user';
+import { toTitle } from '@/utils/title';
+import type { Title } from '@/types';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
 
 const FAVORITES_KEY = ['favorites'] as const;
+// Favorites grid loads this many titles per page as you scroll.
+const FAVORITES_PAGE = 20;
 
 // Session map of titles toggled this session: imdbId → favorited?. The backend
 // now stamps each title with `isFavorite` (see Title.isFavorite), so cards seed
@@ -16,14 +20,28 @@ const FAVORITES_KEY = ['favorites'] as const;
 const OVERRIDES_KEY = ['favorite-overrides'] as const;
 type Overrides = Record<string, boolean>;
 
-export function useFavorites() {
+export function useFavoritesInfinite() {
   const { isAuthenticated } = useAuth();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: FAVORITES_KEY,
-    queryFn: getFavorites,
+    queryFn: ({ pageParam }) => getFavorites(pageParam, FAVORITES_PAGE),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: isAuthenticated,
     staleTime: 60 * 1000,
   });
+}
+
+// Favorites as ready-to-render Title cards. The backend embeds each title's
+// detail (flagged isFavorite), so we map straight to Titles here — no per-title
+// /api/title/:id lookup. Used by the My List grid.
+export function useFavorites() {
+  const q = useFavoritesInfinite();
+  const titles = useMemo<Title[]>(() => {
+    const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+    return items.flatMap((it) => (it.title ? [{ ...toTitle(it.title), isFavorite: true }] : []));
+  }, [q.data]);
+  return { ...q, titles };
 }
 
 // Heart state for one title: a session toggle override wins; otherwise the
@@ -63,12 +81,22 @@ export function useToggleFavorite() {
       const prevOverrides = qc.getQueryData<Overrides>(OVERRIDES_KEY);
       qc.setQueryData<Overrides>(OVERRIDES_KEY, (m = {}) => ({ ...m, [imdbId]: !active }));
       // Keep the My List grid's favorites cache in sync when it's loaded.
-      const prevFavorites = qc.getQueryData<FavoriteItem[]>(FAVORITES_KEY);
+      const prevFavorites = qc.getQueryData<InfiniteData<FavoritesPage>>(FAVORITES_KEY);
       if (prevFavorites) {
-        qc.setQueryData<FavoriteItem[]>(
-          FAVORITES_KEY,
-          active ? prevFavorites.filter((i) => i.imdbId !== imdbId) : [{ imdbId, mediaType }, ...prevFavorites],
-        );
+        qc.setQueryData<InfiniteData<FavoritesPage>>(FAVORITES_KEY, (data) => {
+          if (!data) return data;
+          if (active) {
+            // Optimistically drop the removed title from every page.
+            return {
+              ...data,
+              pages: data.pages.map((p) => ({ ...p, items: p.items.filter((i) => i.imdbId !== imdbId) })),
+            };
+          }
+          // Optimistically prepend; the embedded title fills in on the refetch.
+          const pages = data.pages.slice();
+          if (pages[0]) pages[0] = { ...pages[0], items: [{ imdbId, mediaType }, ...pages[0].items] };
+          return { ...data, pages };
+        });
       }
       return { prevOverrides, prevFavorites };
     },

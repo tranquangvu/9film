@@ -2,6 +2,7 @@ package favorite
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -16,13 +17,31 @@ func NewHandler(svc Service) *Handler {
 	return &Handler{svc: svc}
 }
 
+// GetFavorites returns a paginated page of the user's favorites with each
+// title's detail embedded, so the My List grid renders without per-title lookups.
 func (h *Handler) GetFavorites(c *gin.Context) {
-	items, err := h.svc.Favorites(middleware.UserID(c))
+	limit := 20
+	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
+		limit = v
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	offset := 0
+	if v, err := strconv.Atoi(c.Query("offset")); err == nil && v > 0 {
+		offset = v
+	}
+
+	items, hasMore, nextOffset, err := h.svc.Favorites(middleware.UserID(c), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load favorites"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, gin.H{
+		"items":      items,
+		"hasMore":    hasMore,
+		"nextOffset": nextOffset,
+	})
 }
 
 func (h *Handler) AddFavorite(c *gin.Context) {

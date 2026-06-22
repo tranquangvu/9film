@@ -5,7 +5,7 @@ import "database/sql"
 // Repository is the persistence contract for a user's favorites/watchlist. The
 // default implementation is SQLite-backed (the physical table is `favorites`).
 type Repository interface {
-	Favorites(userID int64) ([]Favorite, error)
+	Favorites(userID int64, limit, offset int) ([]Favorite, error)
 	FavoritedIds(userID int64) (map[string]struct{}, error)
 	IsFavorited(userID int64, imdbID string) (bool, error)
 	AddFavorite(userID int64, imdbID, mediaType string) error
@@ -20,13 +20,14 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-// Favorites returns a user's favorited titles, newest first.
-func (r *repository) Favorites(userID int64) ([]Favorite, error) {
+// Favorites returns a page of a user's favorited titles, newest first.
+func (r *repository) Favorites(userID int64, limit, offset int) ([]Favorite, error) {
 	rows, err := r.db.Query(
 		`SELECT imdb_id, media_type, created_at
 		   FROM favorites WHERE user_id = ?
-		   ORDER BY created_at DESC`,
-		userID,
+		   ORDER BY created_at DESC
+		   LIMIT ? OFFSET ?`,
+		userID, limit, offset,
 	)
 	if err != nil {
 		return nil, err

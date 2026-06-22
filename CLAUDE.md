@@ -49,7 +49,7 @@ Cross-module seams are kept thin:
 ### Modules
 
 - `user/` — accounts, settings, and per-user API keys (`credentials.go` / `CredentialStore`) for the optional integrations
-- `favorite/` — watchlist
+- `favorite/` — watchlist; `GET /me/favorites` is paginated and embeds each title's detail server-side (imports `title`, hydrates concurrently bounded — same shape as continue-watching) so the My List grid needs no per-title lookups
 - `history/` — watch progress, continue-watching, subtitle preference; imports `title` to hydrate and `favorite` to flag favorites; provides the `title.Enricher`
 - `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO. The repo caches raw IMDb responses (single title, search/trending lists, browse pages) with a 1h TTL — *before* the service folds in per-user favorites/progress, so the cache stays user-independent.
 - `stream/` — stream resolution + HLS proxy (see below)

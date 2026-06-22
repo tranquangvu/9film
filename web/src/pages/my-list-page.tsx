@@ -1,9 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FolderHeart, HeartPlus, Play } from 'lucide-react';
 import type { Title } from '@/types';
-import { useTitlesQuery } from '@/hooks/queries/use-titles-query';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
 import { useContinueWatching } from '@/hooks/queries/use-progress-query';
 import { TitleCard } from '@/components/system/title/title-card';
@@ -24,8 +23,6 @@ const isTabId = (v: string | null): v is TabId => v !== null && (TAB_IDS as stri
 // The "All" tab previews this many Continue Watching titles in the carousel;
 // "View all" switches to the Continue Watching tab's full infinite grid.
 const CONTINUE_CAROUSEL_MAX = 20;
-// Favorites grid loads this many titles at a time as you scroll.
-const FAVORITES_PAGE = 20;
 
 interface Tab {
   id: TabId
@@ -73,15 +70,10 @@ export default function MyListPage() {
       { replace: true },
     );
   };
-  const [favVisible, setFavVisible] = useState(FAVORITES_PAGE);
-
-  // Server-backed favorites, hydrated into Title objects via the IMDb queries.
+  // Server-backed favorites — backend-paginated with each title's detail
+  // embedded, so the grid renders without a per-title lookup.
   const favoritesQ = useFavorites();
-
-  // Infinite scroll: only hydrate the first favVisible favorite ids; more are
-  // fetched as the user scrolls near the bottom (each id is its own request).
-  const favIds = useMemo(() => (favoritesQ.data ?? []).map((i) => i.imdbId), [favoritesQ.data]);
-  const favTitles = useTitlesQuery(favIds.slice(0, favVisible));
+  const gridTitles = favoritesQ.titles;
 
   // Continue Watching — backend-paginated (one deduped row per title, newest
   // first) with title detail embedded, so no per-title lookup is needed.
@@ -90,7 +82,7 @@ export default function MyListPage() {
 
   const toggleFavorite = useToggleFavorite();
 
-  const hasError = favoritesQ.isError || continueQ.isError || favTitles.isError;
+  const hasError = favoritesQ.isError || continueQ.isError;
 
   useEffect(() => {
     if (hasError) {
@@ -102,13 +94,10 @@ export default function MyListPage() {
     }
   }, [hasError, toast]);
 
-  // The grid shows favorites (All / Favorites tabs).
-  const gridTitles = favTitles.data;
   // Full-grid skeleton only on the first load; later pages get a bottom spinner.
-  const gridInitialLoading =
-    favoritesQ.isLoading || (favTitles.loading && gridTitles.length === 0);
-  const favHasMore = favVisible < favIds.length;
-  const favLoadingMore = favHasMore && favTitles.loading && gridTitles.length > 0;
+  const gridInitialLoading = favoritesQ.isLoading;
+  const favHasMore = !!favoritesQ.hasNextPage;
+  const favLoadingMore = favoritesQ.isFetchingNextPage;
 
   const handleRemove = (title: Title) => {
     toggleFavorite.mutate({ imdbId: title.id, mediaType: title.type, active: true });
@@ -123,18 +112,18 @@ export default function MyListPage() {
   const continueHasOverflow =
     continueWatching.length > CONTINUE_CAROUSEL_MAX || !!continueQ.hasNextPage;
 
-  // Reveal more favorites as the window nears the bottom.
+  // Fetch the next favorites page as the window nears the bottom.
   useEffect(() => {
-    if (!showFavGrid || !favHasMore) return;
+    if (!showFavGrid || !favHasMore || favLoadingMore) return;
     const onScroll = () => {
       const nearBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600;
-      if (nearBottom) setFavVisible((n) => Math.min(n + FAVORITES_PAGE, favIds.length));
+      if (nearBottom) favoritesQ.fetchNextPage();
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll(); // top up if the page is shorter than the viewport
     return () => window.removeEventListener('scroll', onScroll);
-  }, [showFavGrid, favHasMore, favVisible, favIds.length]);
+  }, [showFavGrid, favHasMore, favLoadingMore, favoritesQ]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
