@@ -28,9 +28,10 @@ export function SetupPrompt() {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent>
-        <DialogTitle>Finish setting up NiceFilm</DialogTitle>
+        <DialogTitle>Optional: unlock more of NiceFilm</DialogTitle>
         <DialogDescription>
-          A couple of features use your own free API keys. Add them to unlock:
+          These two features use your own free API keys. They're completely optional — NiceFilm works
+          without them, and you can add them anytime from your profile.
         </DialogDescription>
 
         <div className="mt-4 space-y-3">
@@ -38,9 +39,14 @@ export function SetupPrompt() {
             <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <Captions className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-white">Subtitles</p>
+                <p className="text-sm font-semibold text-white">
+                  Subtitles &amp; Learn-English mode <span className="font-normal text-zinc-500">· optional</span>
+                </p>
                 <p className="text-xs text-zinc-400">
-                  An OpenSubtitles key lets NiceFilm find captions for any title — required for Learn-English mode.
+                  An OpenSubtitles key lets NiceFilm find and download captions for any title. It also powers
+                  Learn-English mode, where each subtitle line becomes clickable to look up words, save
+                  vocabulary, and translate sentences. Without it, video still plays — you just won't have
+                  captions or the interactive transcript.
                 </p>
               </div>
             </div>
@@ -49,9 +55,14 @@ export function SetupPrompt() {
             <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <Sparkles className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-white">Word illustrations</p>
+                <p className="text-sm font-semibold text-white">
+                  Word illustrations <span className="font-normal text-zinc-500">· optional</span>
+                </p>
                 <p className="text-xs text-zinc-400">
-                  A Gemini key generates a memory picture for each vocabulary word you save.
+                  A Gemini key generates a small AI "memory picture" for each vocabulary word you save, making
+                  it easier to recall during flashcard review. Everything else in the learning toolkit —
+                  definitions, translations, spelling and meaning tests, spaced repetition — works without it;
+                  your saved words simply won't have a picture.
                 </p>
               </div>
             </div>
@@ -60,7 +71,7 @@ export function SetupPrompt() {
 
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="ghost" size="sm" className="rounded-lg" onClick={close}>
-            Maybe later
+            Skip for now
           </Button>
           <Button
             variant="primary"

@@ -313,7 +313,7 @@ function ConnectionsCard() {
     <Card>
       <CardTitle>Connections</CardTitle>
       <p className="text-sm text-zinc-400 -mt-2 mb-5">
-        NiceFilm uses your own API keys for these optional features. Keys are stored on your account and never shown again — leave a field blank to keep the current value.
+        Both keys below are <span className="text-zinc-300 font-medium">optional</span> — NiceFilm works without them. Add your own (both are free) to unlock the extra features described under each. Keys are stored on your account and never shown again; leave a field blank to keep the current value.
       </p>
 
       {/* Gemini */}
@@ -321,11 +321,11 @@ function ConnectionsCard() {
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-orange-400" />
           <h3 className="text-sm font-semibold text-white">Word illustrations</h3>
-          <span className="text-xs text-zinc-500">· Gemini</span>
+          <span className="text-xs text-zinc-500">· Gemini · optional</span>
           {status && <span className="ml-auto"><ConfiguredBadge on={status.geminiKeySet} /></span>}
         </div>
         <p className="text-xs text-zinc-500">
-          Generates a small picture for each saved vocabulary word so it's easier to remember.{' '}
+          When you save a vocabulary word, Gemini draws a small AI "memory picture" for it so it's easier to recall during flashcard review. The rest of the learning toolkit — definitions, translations, spelling and meaning tests, spaced repetition — works without a key; your saved words just won't have a picture.{' '}
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
             Get a free key <ExternalLink className="w-3 h-3" />
           </a>
@@ -347,11 +347,11 @@ function ConnectionsCard() {
         <div className="flex items-center gap-2">
           <Captions className="w-4 h-4 text-orange-400" />
           <h3 className="text-sm font-semibold text-white">Subtitles</h3>
-          <span className="text-xs text-zinc-500">· OpenSubtitles</span>
+          <span className="text-xs text-zinc-500">· OpenSubtitles · optional</span>
           {status && <span className="ml-auto"><ConfiguredBadge on={status.openSubtitlesApiKeySet} /></span>}
         </div>
         <p className="text-xs text-zinc-500">
-          Finds and downloads subtitles for any title — needed for captions and Learn-English mode.{' '}
+          Finds and downloads captions for any title, and powers Learn-English mode — where each subtitle line becomes clickable to look up words, save vocabulary, and translate sentences. Video still plays without a key; you just won't have captions or the interactive transcript. Your own key also avoids the rate limits of the shared account.{' '}
           <a href="https://www.opensubtitles.com/en/consumers" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
             Get an API key <ExternalLink className="w-3 h-3" />
           </a>
