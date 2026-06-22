@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Volume2, X, BookmarkPlus, BookmarkCheck, Languages, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Volume2, X, BookmarkPlus, BookmarkCheck, Languages, Loader2, ImageOff } from 'lucide-react';
 import { useDefineQuery } from '@/hooks/queries/use-define-query';
 import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { useAddWord, useIsWordSaved } from '@/hooks/queries/use-words-query';
+import { useCredentialsQuery } from '@/hooks/queries/use-credentials-query';
 import { useAuth } from '@/context/auth-context';
 import { translate } from '@/services/learn';
 
@@ -31,6 +33,10 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
   const explain = useExplainPhrase(isPhrase ? word : null, sentence, context.learningLang);
   const saved = useIsWordSaved(word);
   const addWord = useAddWord();
+  const { data: creds } = useCredentialsQuery();
+  // Words (not phrases) get an AI flashcard image — only when a Gemini key is set.
+  // Warn once the word is saved so the user knows why no picture is generated.
+  const showNoImageWarning = isAuthenticated && saved && !isPhrase && creds && !creds.geminiConfigured;
   const [sentenceVi, setSentenceVi] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
 
@@ -156,6 +162,19 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
           <span className="text-xs text-white/40">Sign in to save words</span>
         )}
       </div>
+
+      {showNoImageWarning && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-400/25 bg-amber-400/10 p-2.5">
+          <ImageOff className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-200/90">
+            No flashcard image for this word. Add a Gemini API key in{' '}
+            <Link to="/profile" className="font-semibold underline hover:text-amber-100">
+              profile settings
+            </Link>{' '}
+            to generate memory pictures.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
