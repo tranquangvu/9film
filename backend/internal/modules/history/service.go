@@ -1,13 +1,8 @@
 package history
 
 import (
-	"sync"
-
 	"github.com/bentran/nicefilm/backend/internal/modules/title"
 )
-
-// Bound concurrent IMDb lookups per request so a page doesn't fan out 50 calls.
-const continueDetailConcurrency = 8
 
 // Favorites supplies the user's favorited-id set so continue-watching items can
 // be flagged. Implemented by favorite.Enricher.
@@ -54,37 +49,30 @@ func (s *service) GetHistory(userID int64, limit, offset int) (items []continueW
 		rows = rows[:limit]
 	}
 
-	// Hydrate each row's title detail concurrently (bounded).
-	hydrated := make([]continueWatchingItem, len(rows))
-	sem := make(chan struct{}, continueDetailConcurrency)
-	var wg sync.WaitGroup
+	// Hydrate every row's title detail in one batched request (userID 0: raw
+	// detail; favorites are flagged in batch below).
+	ids := make([]string, len(rows))
 	for i := range rows {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			hydrated[i].Progress = rows[i]
-			// userID 0: fetch raw title detail; favorites are flagged in batch below.
-			if t, err := s.titles.GetTitle(0, rows[i].ImdbID); err == nil {
-				hydrated[i].Title = t
-			}
-		}(i)
+		ids[i] = rows[i].ImdbID
 	}
-	wg.Wait()
+	titlesByID, err := s.titles.GetTitles(0, ids)
+	if err != nil {
+		return nil, false, 0, err
+	}
 
-	// Drop rows whose title couldn't be resolved so the UI never shows blanks,
-	// and flag the ones the user has favorited.
+	// Keep the rows' order; drop those whose title couldn't be resolved so the UI
+	// never shows blanks, and flag the ones the user has favorited.
 	fav := s.favorites.FavoritedIds(userID)
-	items = make([]continueWatchingItem, 0, len(hydrated))
-	for _, it := range hydrated {
-		if it.Title == nil {
+	items = make([]continueWatchingItem, 0, len(rows))
+	for _, row := range rows {
+		t, ok := titlesByID[row.ImdbID]
+		if !ok {
 			continue
 		}
-		if _, ok := fav[it.Title.ID]; ok {
-			it.Title.IsFavorite = true
+		if _, ok := fav[t.ID]; ok {
+			t.IsFavorite = true
 		}
-		items = append(items, it)
+		items = append(items, continueWatchingItem{Progress: row, Title: t})
 	}
 
 	return items, hasMore, offset + len(rows), nil

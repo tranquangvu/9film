@@ -19,10 +19,15 @@ import (
 // detail cache, so a single instance keeps the cache coherent across callers.
 type Repository interface {
 	FetchTitle(imdbID string) (*ImdbTitle, error)
+	FetchTitles(imdbIDs []string) (map[string]*ImdbTitle, error)
 	SearchTitles(term string, limit int) ([]ImdbTitle, error)
 	TrendingTitles(limit int) ([]ImdbTitle, error)
 	BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 }
+
+// titleBatchSize caps how many ids go into one IMDb `titles(ids:[...])` request;
+// larger id sets are chunked. Comfortably within what the endpoint accepts.
+const titleBatchSize = 25
 
 type repository struct {
 	client  *http.Client
@@ -111,6 +116,76 @@ func (r *repository) FetchTitle(imdbID string) (*ImdbTitle, error) {
 	}
 	r.titles.Set(id, data.Title)
 	return data.Title, nil
+}
+
+// FetchTitles resolves many titles at once, keyed by their canonical IMDb id.
+// Cached titles are served from memory; only the misses are fetched, in batched
+// `titles(ids:[...])` requests. Ids that don't resolve are simply absent from the
+// returned map. A single shared cache means batch and single lookups hydrate each
+// other.
+func (r *repository) FetchTitles(imdbIDs []string) (map[string]*ImdbTitle, error) {
+	out := make(map[string]*ImdbTitle, len(imdbIDs))
+	var misses []string
+	seen := make(map[string]struct{}, len(imdbIDs))
+	for _, raw := range imdbIDs {
+		id := normalizeImdbID(raw)
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		if t, ok := r.titles.Get(id); ok {
+			out[t.ID] = t
+			continue
+		}
+		misses = append(misses, id)
+	}
+
+	for start := 0; start < len(misses); start += titleBatchSize {
+		end := start + titleBatchSize
+		if end > len(misses) {
+			end = len(misses)
+		}
+		fetched, err := r.fetchTitlesBatch(misses[start:end])
+		if err != nil {
+			return nil, err
+		}
+		for _, t := range fetched {
+			if t == nil || t.ID == "" {
+				continue
+			}
+			r.titles.Set(t.ID, t)
+			out[t.ID] = t
+		}
+	}
+	return out, nil
+}
+
+// fetchTitlesBatch issues one `titles(ids:[...])` query for the given ids.
+func (r *repository) fetchTitlesBatch(ids []string) ([]*ImdbTitle, error) {
+	query := fmt.Sprintf(`
+	  query BatchTitles($ids: [ID!]!) {
+	    titles(ids: $ids) {
+	      %s
+	    }
+	  }
+	`, titleDetailFields)
+
+	var data struct {
+		Titles []*ImdbTitle `json:"titles"`
+	}
+	if err := r.imdbRequest(query, map[string]any{"ids": ids}, &data); err != nil {
+		// A GraphQL error here is treated as "none resolved" rather than failing the
+		// whole page; the caller drops unresolved ids.
+		var gqlErr *graphQLError
+		if errors.As(err, &gqlErr) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return data.Titles, nil
 }
 
 func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {

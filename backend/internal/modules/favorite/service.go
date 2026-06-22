@@ -1,13 +1,8 @@
 package favorite
 
 import (
-	"sync"
-
 	"github.com/bentran/nicefilm/backend/internal/modules/title"
 )
-
-// Bound concurrent IMDb lookups per request so a page doesn't fan out 50 calls.
-const favoriteDetailConcurrency = 8
 
 type Service interface {
 	Favorites(userID int64, limit, offset int) (items []favoriteItem, hasMore bool, nextOffset int, err error)
@@ -38,32 +33,26 @@ func (s *service) Favorites(userID int64, limit, offset int) (items []favoriteIt
 		rows = rows[:limit]
 	}
 
-	hydrated := make([]favoriteItem, len(rows))
-	sem := make(chan struct{}, favoriteDetailConcurrency)
-	var wg sync.WaitGroup
+	// Hydrate every row's title detail in one batched request.
+	ids := make([]string, len(rows))
 	for i := range rows {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			hydrated[i].Favorite = rows[i]
-			// userID 0: fetch raw title detail; it's a favorite by definition.
-			if t, err := s.titles.GetTitle(0, rows[i].ImdbID); err == nil {
-				t.IsFavorite = true
-				hydrated[i].Title = t
-			}
-		}(i)
+		ids[i] = rows[i].ImdbID
 	}
-	wg.Wait()
+	titlesByID, err := s.titles.GetTitles(0, ids)
+	if err != nil {
+		return nil, false, 0, err
+	}
 
-	// Drop rows whose title couldn't be resolved so the UI never shows blanks.
-	items = make([]favoriteItem, 0, len(hydrated))
-	for _, it := range hydrated {
-		if it.Title == nil {
+	// Keep the rows' order; drop those whose title couldn't be resolved so the UI
+	// never shows blanks. Every item here is a favorite by definition.
+	items = make([]favoriteItem, 0, len(rows))
+	for _, row := range rows {
+		t, ok := titlesByID[row.ImdbID]
+		if !ok {
 			continue
 		}
-		items = append(items, it)
+		t.IsFavorite = true
+		items = append(items, favoriteItem{Favorite: row, Title: t})
 	}
 
 	return items, hasMore, offset + len(rows), nil

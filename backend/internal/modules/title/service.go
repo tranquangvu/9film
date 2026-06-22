@@ -35,6 +35,7 @@ func (noopEnricher) Progress(int64, string) []TitleProgress { return nil }
 // stay thin.
 type Service interface {
 	GetTitle(userID int64, imdbID string) (*Title, error)
+	GetTitles(userID int64, imdbIDs []string) (map[string]*Title, error)
 	SearchTitles(userID int64, term string, limit int) ([]Title, error)
 	TrendingTitles(userID int64, limit int) ([]Title, error)
 	BrowseTitles(userID int64, params BrowseParams) (*BrowseResult, error)
@@ -60,6 +61,34 @@ func (s *service) GetTitle(userID int64, imdbID string) (*Title, error) {
 	out := toTitle(*raw)
 	s.enrichDetail(userID, &out)
 	return &out, nil
+}
+
+// GetTitles flattens many titles at once (one batched IMDb request for the cache
+// misses), keyed by IMDb id, folding in the user's favorite flag and resume
+// points. Callers that do their own per-user flagging pass userID 0.
+func (s *service) GetTitles(userID int64, imdbIDs []string) (map[string]*Title, error) {
+	raws, err := s.repo.FetchTitles(imdbIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*Title, len(raws))
+	var set map[string]struct{}
+	if userID != 0 {
+		set = s.enricher.FavoritedIds(userID)
+	}
+	for id, raw := range raws {
+		t := toTitle(*raw)
+		if userID != 0 {
+			if _, ok := set[t.ID]; ok {
+				t.IsFavorite = true
+			}
+			if rows := s.enricher.Progress(userID, t.ID); rows != nil {
+				t.Progress = rows
+			}
+		}
+		out[id] = &t
+	}
+	return out, nil
 }
 
 func (s *service) SearchTitles(userID int64, term string, limit int) ([]Title, error) {
