@@ -11,11 +11,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bentran/nicefilm/backend/internal/cache"
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"go.uber.org/zap"
 )
 
 const streamAPIURL = "https://streamdata.vaplayer.ru/api.php"
+
+// streamCacheTTL bounds how long a resolved stream payload is reused. Stream
+// resolution is public and user-independent, so it's cached by query.
+const streamCacheTTL = time.Hour
 
 // The Referer the upstream CDNs require is the host of the embed page's first
 // iframe. Injecting it server-side is the whole reason these endpoints proxy
@@ -132,11 +137,16 @@ type Stream interface {
 type stream struct {
 	client  *http.Client
 	referer *refererResolver
+	cache   *cache.TTL[*StreamResult]
 }
 
 func NewStream(referer *refererResolver) Stream {
 	// Whole-response timeout is fine here: the upstream returns a small JSON body.
-	return &stream{client: &http.Client{Timeout: 15 * time.Second}, referer: referer}
+	return &stream{
+		client:  &http.Client{Timeout: 15 * time.Second},
+		referer: referer,
+		cache:   cache.NewTTL[*StreamResult](streamCacheTTL),
+	}
 }
 
 func (s *stream) ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
@@ -149,7 +159,12 @@ func (s *stream) ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid query string: %w", err)
 	}
+	// Encode() sorts the params, giving a stable key regardless of incoming order.
 	target.RawQuery = incoming.Encode()
+
+	if cached, ok := s.cache.Get(target.RawQuery); ok {
+		return cached, nil
+	}
 
 	req, err := http.NewRequest(http.MethodGet, target.String(), nil)
 	if err != nil {
@@ -183,11 +198,16 @@ func (s *stream) ProxyStreamRequest(rawQuery string) (*StreamResult, error) {
 		ct = "application/json"
 	}
 
-	return &StreamResult{
+	result := &StreamResult{
 		Body:        body,
 		Status:      resp.StatusCode,
 		ContentType: ct,
-	}, nil
+	}
+	// Only cache successful resolutions — don't pin upstream errors for an hour.
+	if resp.StatusCode == http.StatusOK {
+		s.cache.Set(target.RawQuery, result)
+	}
+	return result, nil
 }
 
 // extractJSON pulls the outermost JSON object out of a response body that may be

@@ -36,7 +36,7 @@ The backend hides upstream sources, adds auth headers, rewrites responses, and d
 
 `Repository`/`Service` are interfaces so the layer above can be tested against a mock. Stateless proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go`.
 
-Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`.
+Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (a generic `cache.TTL[T]` in-memory cache with per-entry expiry, used for public user-independent upstream responses).
 
 ### Composition root
 
@@ -51,7 +51,7 @@ Cross-module seams are kept thin:
 - `user/` — accounts, settings, and per-user API keys (`credentials.go` / `CredentialStore`) for the optional integrations
 - `favorite/` — watchlist
 - `history/` — watch progress, continue-watching, subtitle preference; imports `title` to hydrate and `favorite` to flag favorites; provides the `title.Enricher`
-- `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO.
+- `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO. The repo caches raw IMDb responses (single title, search/trending lists, browse pages) with a 1h TTL — *before* the service folds in per-user favorites/progress, so the cache stays user-independent.
 - `stream/` — stream resolution + HLS proxy (see below)
 - `subtitle/` — OpenSubtitles (optional)
 - `learning/` — vocabulary, AI definitions/translations, self-tests, spaced repetition (see below)
@@ -60,7 +60,7 @@ Cross-module seams are kept thin:
 
 1. **IMDb metadata** (`modules/title/`) — GraphQL against `api.graphql.imdb.com`.
 
-2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting the upstream `Referer`. Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map. The Referer is discovered by `refererResolver`: it scrapes the embed page (`vaplayer.ru/embed/movie/...`) for its first `<iframe>` host once at startup (synchronously), then refreshes every 6h via a background ticker, falling back to `embedRefererDefault` when discovery fails. One resolver is shared by `Stream` and `HLS`.
+2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting the upstream `Referer`. Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map. The Referer is discovered by `refererResolver`: it scrapes the embed page (`vaplayer.ru/embed/movie/...`) for its first `<iframe>` host once at startup (synchronously), then refreshes every 6h via a background ticker, falling back to `embedRefererDefault` when discovery fails. One resolver is shared by `Stream` and `HLS`. Successful stream resolutions are cached by query (sorted) with a 1h TTL.
 
 3. **HLS proxy** (`modules/stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the engine root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
 

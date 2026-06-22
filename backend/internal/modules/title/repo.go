@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/bentran/nicefilm/backend/internal/cache"
 )
 
 // Repository serves the IMDb GraphQL integration. Methods return the raw,
@@ -24,14 +26,17 @@ type Repository interface {
 
 type repository struct {
 	client  *http.Client
-	cacheMu sync.RWMutex
-	cache   map[string]titleCacheEntry
+	titles  *cache.TTL[*ImdbTitle]       // single-title detail, keyed by IMDb id
+	lists   *cache.TTL[[]ImdbTitle]      // search/trending results, keyed per query
+	browses *cache.TTL[*rawBrowseResult] // browse pages, keyed by params
 }
 
 func NewRepository() Repository {
 	return &repository{
-		client: &http.Client{Timeout: 12 * time.Second},
-		cache:  make(map[string]titleCacheEntry),
+		client:  &http.Client{Timeout: 12 * time.Second},
+		titles:  cache.NewTTL[*ImdbTitle](titleCacheTTL),
+		lists:   cache.NewTTL[[]ImdbTitle](titleCacheTTL),
+		browses: cache.NewTTL[*rawBrowseResult](titleCacheTTL),
 	}
 }
 
@@ -76,25 +81,9 @@ func (r *repository) imdbRequest(query string, variables map[string]any, dataTar
 	return json.Unmarshal(raw.Data, dataTarget)
 }
 
-func (r *repository) cachedTitle(id string) *ImdbTitle {
-	r.cacheMu.RLock()
-	e, ok := r.cache[id]
-	r.cacheMu.RUnlock()
-	if ok && time.Now().Before(e.exp) {
-		return e.title
-	}
-	return nil
-}
-
-func (r *repository) storeTitle(id string, t *ImdbTitle) {
-	r.cacheMu.Lock()
-	r.cache[id] = titleCacheEntry{title: t, exp: time.Now().Add(titleCacheTTL)}
-	r.cacheMu.Unlock()
-}
-
 func (r *repository) FetchTitle(imdbID string) (*ImdbTitle, error) {
 	id := normalizeImdbID(imdbID)
-	if t := r.cachedTitle(id); t != nil {
+	if t, ok := r.titles.Get(id); ok {
 		return t, nil
 	}
 	query := fmt.Sprintf(`
@@ -120,7 +109,7 @@ func (r *repository) FetchTitle(imdbID string) (*ImdbTitle, error) {
 	if data.Title == nil || data.Title.ID == "" {
 		return nil, ErrTitleNotFound
 	}
-	r.storeTitle(id, data.Title)
+	r.titles.Set(id, data.Title)
 	return data.Title, nil
 }
 
@@ -131,6 +120,11 @@ func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 	}
 	if limit <= 0 {
 		limit = 20
+	}
+
+	cacheKey := "search:" + strconv.Itoa(limit) + ":" + strings.ToLower(term)
+	if titles, ok := r.lists.Get(cacheKey); ok {
+		return titles, nil
 	}
 
 	constraints := map[string]any{
@@ -177,12 +171,18 @@ func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 			titles = append(titles, edge.Node.Title)
 		}
 	}
+	r.lists.Set(cacheKey, titles)
 	return titles, nil
 }
 
 func (r *repository) TrendingTitles(limit int) ([]ImdbTitle, error) {
 	if limit <= 0 {
 		limit = 10
+	}
+
+	cacheKey := "trending:" + strconv.Itoa(limit)
+	if titles, ok := r.lists.Get(cacheKey); ok {
+		return titles, nil
 	}
 
 	query := fmt.Sprintf(`
@@ -209,6 +209,7 @@ func (r *repository) TrendingTitles(limit int) ([]ImdbTitle, error) {
 			titles = append(titles, title)
 		}
 	}
+	r.lists.Set(cacheKey, titles)
 	return titles, nil
 }
 
@@ -222,6 +223,11 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 	first := params.First
 	if first <= 0 {
 		first = 20
+	}
+
+	cacheKey := browseCacheKey(params, first)
+	if res, ok := r.browses.Get(cacheKey); ok {
+		return res, nil
 	}
 
 	typeConstraint := []string{"movie", "tvSeries", "tvMiniSeries"}
@@ -319,5 +325,18 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 			result.Titles = append(result.Titles, edge.Node.Title)
 		}
 	}
+	r.browses.Set(cacheKey, result)
 	return result, nil
+}
+
+// browseCacheKey builds a stable cache key from the browse parameters that affect
+// the upstream query (including the resolved `first`).
+func browseCacheKey(p BrowseParams, first int) string {
+	rating := ""
+	if p.MinRating != nil {
+		rating = strconv.FormatFloat(*p.MinRating, 'f', -1, 64)
+	}
+	return strings.Join([]string{
+		"browse", p.Type, p.Genre, p.Sort, p.After, rating, strconv.Itoa(first),
+	}, "|")
 }

@@ -207,12 +207,7 @@ func releaseCutoff() time.Time {
 	return time.Now().UTC().AddDate(0, -6, 0)
 }
 
-// Title detail is public, user-independent, and rarely changes — cache it
-// briefly so hot paths (the Continue Watching list embeds detail per title)
-// don't re-query IMDb for every render.
-const titleCacheTTL = 10 * time.Minute
-
-type titleCacheEntry struct {
-	title *ImdbTitle
-	exp   time.Time
-}
+// IMDb data is public, user-independent, and rarely changes — cache both single
+// titles and list results so hot paths (home-page lists, the Continue Watching
+// cards that embed detail per title) don't re-query IMDb for every render.
+const titleCacheTTL = time.Hour
