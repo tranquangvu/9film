@@ -43,10 +43,12 @@ export function SetupPrompt() {
                   Subtitles &amp; Learn-English mode <span className="font-normal text-zinc-500">· optional</span>
                 </p>
                 <p className="text-xs text-zinc-400">
-                  An OpenSubtitles key lets NiceFilm find and download captions for any title. It also powers
-                  Learn-English mode, where each subtitle line becomes clickable to look up words, save
-                  vocabulary, and translate sentences. Without it, video still plays — you just won't have
-                  captions or the interactive transcript.
+                  An OpenSubtitles key lets NiceFilm find and download captions for any title, and powers
+                  Learn-English mode — where each subtitle line becomes clickable to look up words, save
+                  vocabulary, and translate sentences.
+                </p>
+                <p className="mt-1.5 text-xs text-amber-300/80">
+                  Without it: no captions and Learn-English mode is unavailable. Video still plays normally.
                 </p>
               </div>
             </div>
@@ -56,13 +58,16 @@ export function SetupPrompt() {
               <Sparkles className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-white">
-                  Word illustrations <span className="font-normal text-zinc-500">· optional</span>
+                  Word illustrations &amp; smarter learning <span className="font-normal text-zinc-500">· optional</span>
                 </p>
                 <p className="text-xs text-zinc-400">
-                  A Gemini key generates a small AI "memory picture" for each vocabulary word you save, making
-                  it easier to recall during flashcard review. Everything else in the learning toolkit —
-                  definitions, translations, spelling and meaning tests, spaced repetition — works without it;
-                  your saved words simply won't have a picture.
+                  A Gemini key generates a small AI "memory picture" for each vocabulary word, explains
+                  idioms and phrasal verbs, and grades your meaning self-tests with real feedback.
+                </p>
+                <p className="mt-1.5 text-xs text-amber-300/80">
+                  Without it: saved words have no picture, phrase breakdowns fall back to a plain translation,
+                  and meaning tests use offline grading. Definitions, translations, spelling tests and review
+                  still work.
                 </p>
               </div>
             </div>

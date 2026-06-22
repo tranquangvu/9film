@@ -325,10 +325,13 @@ function ConnectionsCard() {
           {status && <span className="ml-auto"><ConfiguredBadge on={status.geminiKeySet} /></span>}
         </div>
         <p className="text-xs text-zinc-500">
-          When you save a vocabulary word, Gemini draws a small AI "memory picture" for it so it's easier to recall during flashcard review. The rest of the learning toolkit — definitions, translations, spelling and meaning tests, spaced repetition — works without a key; your saved words just won't have a picture.{' '}
+          When you save a vocabulary word, Gemini draws a small AI "memory picture" for it, explains idioms and phrasal verbs, and grades your meaning self-tests with real feedback.{' '}
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
             Get a free key <ExternalLink className="w-3 h-3" />
           </a>
+        </p>
+        <p className="text-[11px] text-amber-300/70">
+          Without a key: saved words have no picture, phrase breakdowns fall back to a plain translation, and meaning tests use offline grading. Definitions, translations, spelling tests and spaced-repetition review still work.
         </p>
         <Input
           type="password"
@@ -351,10 +354,13 @@ function ConnectionsCard() {
           {status && <span className="ml-auto"><ConfiguredBadge on={status.openSubtitlesApiKeySet} /></span>}
         </div>
         <p className="text-xs text-zinc-500">
-          Finds and downloads captions for any title, and powers Learn-English mode — where each subtitle line becomes clickable to look up words, save vocabulary, and translate sentences. Video still plays without a key; you just won't have captions or the interactive transcript. Your own key also avoids the rate limits of the shared account.{' '}
+          Finds and downloads captions for any title, and powers Learn-English mode — where each subtitle line becomes clickable to look up words, save vocabulary, and translate sentences. Your own key also avoids the rate limits of the shared account.{' '}
           <a href="https://www.opensubtitles.com/en/consumers" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
             Get an API key <ExternalLink className="w-3 h-3" />
           </a>
+        </p>
+        <p className="text-[11px] text-amber-300/70">
+          Without a key: no captions and Learn-English mode is unavailable. Video still plays normally.
         </p>
         <Input
           type="password"
