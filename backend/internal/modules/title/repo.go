@@ -300,9 +300,14 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		first = 20
 	}
 
+	// Only the unfiltered feed (paginated by first/after) is cached. Filtered
+	// browses — type, genre, sort, minRating — bypass the cache entirely.
+	cacheable := params.Type == "" && params.Genre == "" && params.Sort == "" && params.MinRating == nil
 	cacheKey := browseCacheKey(params, first)
-	if res, ok := r.browses.Get(cacheKey); ok {
-		return res, nil
+	if cacheable {
+		if res, ok := r.browses.Get(cacheKey); ok {
+			return res, nil
+		}
 	}
 
 	typeConstraint := []string{"movie", "tvSeries", "tvMiniSeries"}
@@ -400,10 +405,12 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 			result.Titles = append(result.Titles, edge.Node.Title)
 		}
 	}
-	// Cache only the first maxBrowsePagesCached pages of each filter combo so a
+	// Cache only the first maxBrowsePagesCached pages of the unfiltered feed so a
 	// long infinite scroll (unbounded `after` cursors) can't grow the cache
 	// without limit; deeper pages pass through to IMDb each time.
-	r.browses.SetBounded(browseGroupKey(params, first), cacheKey, result, maxBrowsePagesCached)
+	if cacheable {
+		r.browses.SetBounded(browseGroupKey(params, first), cacheKey, result, maxBrowsePagesCached)
+	}
 	return result, nil
 }
 
