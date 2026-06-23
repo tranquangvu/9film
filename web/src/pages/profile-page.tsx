@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LogOut, Pencil, Check, Sparkles, Captions, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -282,13 +282,6 @@ function ConnectionsCard() {
   const [osUser, setOsUser] = useState('');
   const [osPass, setOsPass] = useState('');
 
-  // Prefill the (non-secret) username once status loads.
-  const savedUsername = status?.openSubtitlesUsername ?? '';
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOsUser(savedUsername);
-  }, [savedUsername]);
-
   const onSave = () => {
     save.mutate(
       {
@@ -301,6 +294,7 @@ function ConnectionsCard() {
         onSuccess: () => {
           setGemini('');
           setOsKey('');
+          setOsUser('');
           setOsPass('');
           toast({ title: 'Connections saved' });
         },
@@ -361,7 +355,7 @@ function ConnectionsCard() {
             type="text"
             value={osUser}
             onChange={(e) => setOsUser(e.target.value)}
-            placeholder="Username"
+            placeholder={status?.openSubtitlesUsernameSet ? 'Username (set — type to replace)' : 'Username'}
             autoComplete="off"
             className={inputClass}
           />

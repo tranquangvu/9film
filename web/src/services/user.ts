@@ -98,7 +98,7 @@ export interface CredentialStatus {
   geminiKeySet: boolean;
   geminiConfigured: boolean;
   openSubtitlesApiKeySet: boolean;
-  openSubtitlesUsername: string;
+  openSubtitlesUsernameSet: boolean;
   openSubtitlesPasswordSet: boolean;
   openSubtitlesConfigured: boolean;
 }

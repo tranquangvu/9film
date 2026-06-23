@@ -152,7 +152,7 @@ func (s *service) statusOf(c Credentials) CredentialStatus {
 		GeminiKeySet:             c.GeminiAPIKey != "",
 		GeminiConfigured:         c.GeminiAPIKey != "",
 		OpenSubtitlesAPIKeySet:   c.OpenSubtitlesAPIKey != "",
-		OpenSubtitlesUsername:    c.OpenSubtitlesUsername,
+		OpenSubtitlesUsernameSet: c.OpenSubtitlesUsername != "",
 		OpenSubtitlesPasswordSet: c.OpenSubtitlesPassword != "",
 		OpenSubtitlesConfigured:  c.OpenSubtitlesAPIKey != "" || s.cfg.OpenSubtitles != nil,
 	}
