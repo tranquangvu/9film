@@ -300,9 +300,11 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		first = 20
 	}
 
-	// Only feeds paginated by first/after (optionally narrowed by type) are
-	// cached. Genre, sort, and minRating browses bypass the cache entirely.
-	cacheable := params.Genre == "" && params.Sort == "" && params.MinRating == nil
+	// Cache only the first page (no `after` cursor) of the unfiltered feed,
+	// optionally narrowed to movie/tv. Any other params — a cursor, genre, sort,
+	// minRating, or an unknown type — bypass the cache entirely.
+	cacheable := params.After == "" && params.Genre == "" && params.Sort == "" && params.MinRating == nil &&
+		(params.Type == "" || params.Type == "movie" || params.Type == "tv")
 	cacheKey := browseCacheKey(params, first)
 	if cacheable {
 		if res, ok := r.browses.Get(cacheKey); ok {
@@ -405,18 +407,11 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 			result.Titles = append(result.Titles, edge.Node.Title)
 		}
 	}
-	// Cache only the first maxBrowsePagesCached pages of the unfiltered feed so a
-	// long infinite scroll (unbounded `after` cursors) can't grow the cache
-	// without limit; deeper pages pass through to IMDb each time.
 	if cacheable {
-		r.browses.SetBounded(browseGroupKey(params, first), cacheKey, result, maxBrowsePagesCached)
+		r.browses.Set(cacheKey, result)
 	}
 	return result, nil
 }
-
-// maxBrowsePagesCached caps how many pages (the base page plus the next four) of
-// any one browse filter combo are held in cache at once.
-const maxBrowsePagesCached = 5
 
 // browseCacheKey builds a stable cache key from the browse parameters that affect
 // the upstream query (including the resolved `first`).
@@ -427,18 +422,5 @@ func browseCacheKey(p BrowseParams, first int) string {
 	}
 	return strings.Join([]string{
 		"browse", p.Type, p.Genre, p.Sort, p.After, rating, strconv.Itoa(first),
-	}, "|")
-}
-
-// browseGroupKey identifies a single infinite-scroll stream: the same browse
-// filters minus the `after` cursor, so every page of one scroll shares it and
-// the per-group cache cap applies across the scroll.
-func browseGroupKey(p BrowseParams, first int) string {
-	rating := ""
-	if p.MinRating != nil {
-		rating = strconv.FormatFloat(*p.MinRating, 'f', -1, 64)
-	}
-	return strings.Join([]string{
-		"browse", p.Type, p.Genre, p.Sort, rating, strconv.Itoa(first),
 	}, "|")
 }
