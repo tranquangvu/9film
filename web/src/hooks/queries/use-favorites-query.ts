@@ -106,8 +106,13 @@ export function useToggleFavorite() {
       toast({ title: 'Could not update your favorites', description: 'Please try again.', variant: 'destructive' });
     },
     onSettled: () => {
-      // Refresh the authoritative list only when it's actually in use (My List).
-      if (qc.getQueryData(FAVORITES_KEY)) qc.invalidateQueries({ queryKey: FAVORITES_KEY });
+      // Refresh the authoritative list whenever it's cached — even if My List is
+      // unmounted. `refetchType: 'all'` makes the inactive query refetch in the
+      // background now (while we're on another page), so the embedded title detail
+      // is ready before My List remounts. Without it the list would refetch only on
+      // remount, flashing the stale count (e.g. 3 → 4) seconds after navigating back.
+      if (qc.getQueryData(FAVORITES_KEY))
+        qc.invalidateQueries({ queryKey: FAVORITES_KEY, refetchType: 'all' });
     },
   });
 }
