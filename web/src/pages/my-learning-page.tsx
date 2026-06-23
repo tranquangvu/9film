@@ -227,7 +227,7 @@ function WordDialog({
               </div>
             )}
             <div className="flex items-center gap-3 pr-8">
-              <DialogTitle className="capitalize" style={{ color: wordColor(word.word).color }}>
+              <DialogTitle className="capitalize">
                 {word.word}
               </DialogTitle>
               {canSpeak() && (
