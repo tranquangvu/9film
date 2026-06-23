@@ -18,7 +18,11 @@ export function useSettingsQuery() {
     queryKey: SETTINGS_KEY,
     queryFn: getSettings,
     enabled: isAuthenticated,
-    staleTime: 5 * 60 * 1000,
+    // Settings rarely change and only ever from the profile page, where the
+    // mutation below invalidates this key. Treat the fetched value as
+    // permanently fresh so it never refetches on remount/reconnect on its own.
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 
@@ -46,12 +50,14 @@ export function useUpdateSettings() {
       qc.setQueryData<UserSettings>(SETTINGS_KEY, { ...(prev ?? DEFAULT_SETTINGS), ...patch });
       return { prev };
     },
+    // The PUT returns the authoritative settings, so write them straight into
+    // cache instead of invalidating — no extra GET round-trip.
+    onSuccess: (settings) => {
+      qc.setQueryData(SETTINGS_KEY, settings);
+    },
     onError: (_err, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(SETTINGS_KEY, ctx.prev);
       toast({ title: 'Could not save settings', description: 'Please try again.', variant: 'destructive' });
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: SETTINGS_KEY });
     },
   });
 }
