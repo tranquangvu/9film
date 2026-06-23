@@ -129,8 +129,10 @@ func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	return &w, nil
 }
 
-// AddWord upserts a word (idempotent on the user_id+word PK). Re-saving a word
-// refreshes its context/scene but leaves its completed state untouched.
+// AddWord upserts a word (idempotent on the user_id+word PK). Explicitly adding
+// a word moves it into the personal "To Learn" list: re-saving refreshes its
+// context/scene and resets membership (list, completed state, SRS schedule) so a
+// previously completed or imported-list word reappears under "To Learn".
 func (r *repository) AddWord(userID int64, w Word) error {
 	// Re-saving an existing word leaves its image columns untouched (the service
 	// decides whether to (re)generate); a new row defaults image_status to ''.
@@ -149,7 +151,13 @@ func (r *repository) AddWord(userID int64, w Word) error {
 		     season = excluded.season,
 		     episode = excluded.episode,
 		     timestamp = excluded.timestamp,
-		     kind = excluded.kind`,
+		     kind = excluded.kind,
+		     list = '',
+		     completed_at = '',
+		     due_at = '',
+		     ease = 2.5,
+		     interval = 0,
+		     reps = 0`,
 		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp, kind,
 	)
 	return err

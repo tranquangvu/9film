@@ -306,9 +306,6 @@ function ConnectionsCard() {
   return (
     <Card>
       <CardTitle>Connections</CardTitle>
-      <p className="text-sm text-zinc-400 -mt-2 mb-5">
-        Optional keys that unlock extra features. Leave a field blank to keep the current value.
-      </p>
 
       {/* Gemini */}
       <div className="space-y-2.5">
@@ -337,7 +334,7 @@ function ConnectionsCard() {
         <ConnectionHeader
           icon={Captions}
           title="Subtitles"
-          provider="OpenSubtitles"
+          provider="Open Subtitles"
           desc="Captions for any title + clickable Learn-English mode."
           href="https://www.opensubtitles.com/en/consumers"
           badge={status && <ConfiguredBadge on={status.openSubtitlesApiKeySet} />}
@@ -346,7 +343,7 @@ function ConnectionsCard() {
           type="password"
           value={osKey}
           onChange={(e) => setOsKey(e.target.value)}
-          placeholder={status?.openSubtitlesApiKeySet ? '•••••••••• (set — type to replace)' : 'OpenSubtitles API key'}
+          placeholder={status?.openSubtitlesApiKeySet ? '•••••••••• (set — type to replace)' : 'Open Subtitles API key'}
           autoComplete="off"
           className={inputClass}
         />
@@ -371,9 +368,9 @@ function ConnectionsCard() {
         <p className="text-[11px] text-zinc-600">Username &amp; password only needed to download files.</p>
       </div>
 
-      <div className="flex justify-end mt-5">
-        <Button variant="primary" className="rounded-lg text-sm" onClick={onSave} disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save keys'}
+      <div className="flex mt-5">
+        <Button variant="primary" className="rounded-full" onClick={onSave} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </Card>
