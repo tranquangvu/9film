@@ -32,7 +32,7 @@ export function Top10Card({ title, rank, className }: Top10CardProps) {
         style={{
           color: 'transparent',
           WebkitTextStroke: '2px rgba(255,255,255,0.15)',
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "'Lato', sans-serif",
           marginRight: '-0.5rem',
           zIndex: 1,
           flexShrink: 0,
