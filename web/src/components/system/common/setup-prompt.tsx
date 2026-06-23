@@ -28,55 +28,31 @@ export function SetupPrompt() {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent>
-        <DialogTitle>Optional: unlock more of NiceFilm</DialogTitle>
+        <DialogTitle>Unlock more of NiceFilm</DialogTitle>
         <DialogDescription>
-          These two features use your own free API keys. They're completely optional — NiceFilm works
-          without them, and you can add them anytime from your profile.
+          Optional free API keys — add anytime from your profile.
         </DialogDescription>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-2">
           {needsSubs && (
-            <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <Captions className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  Subtitles &amp; Learn-English mode <span className="font-normal text-zinc-500">· optional</span>
-                </p>
-                <p className="text-xs text-zinc-400">
-                  An OpenSubtitles key lets NiceFilm find and download captions for any title, and powers
-                  Learn-English mode — where each subtitle line becomes clickable to look up words, save
-                  vocabulary, and translate sentences.
-                </p>
-                <p className="mt-1.5 text-xs text-amber-300/80">
-                  Without it: no captions and Learn-English mode is unavailable. Video still plays normally.
-                </p>
-              </div>
-            </div>
+            <FeatureRow
+              icon={Captions}
+              title="Subtitles & Learn-English"
+              desc="Clickable captions, word lookups & translation"
+            />
           )}
           {needsGemini && (
-            <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-              <Sparkles className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  Word illustrations &amp; smarter learning <span className="font-normal text-zinc-500">· optional</span>
-                </p>
-                <p className="text-xs text-zinc-400">
-                  A Gemini key generates a small AI "memory picture" for each vocabulary word, explains
-                  idioms and phrasal verbs, and grades your meaning self-tests with real feedback.
-                </p>
-                <p className="mt-1.5 text-xs text-amber-300/80">
-                  Without it: saved words have no picture, phrase breakdowns fall back to a plain translation,
-                  and meaning tests use offline grading. Definitions, translations, spelling tests and review
-                  still work.
-                </p>
-              </div>
-            </div>
+            <FeatureRow
+              icon={Sparkles}
+              title="Smarter learning"
+              desc="AI word pictures, idiom help & graded tests"
+            />
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-2">
           <Button variant="ghost" size="sm" className="rounded-lg" onClick={close}>
-            Skip for now
+            Maybe later
           </Button>
           <Button
             variant="primary"
@@ -92,5 +68,27 @@ export function SetupPrompt() {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FeatureRow({
+  icon: Icon,
+  title,
+  desc,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3">
+      <span className="grid place-items-center w-9 h-9 shrink-0 rounded-lg bg-orange-500/10">
+        <Icon className="w-[18px] h-[18px] text-orange-400" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-white leading-tight">{title}</p>
+        <p className="text-xs text-zinc-400 leading-tight mt-0.5">{desc}</p>
+      </div>
+    </div>
   );
 }

@@ -313,26 +313,19 @@ function ConnectionsCard() {
     <Card>
       <CardTitle>Connections</CardTitle>
       <p className="text-sm text-zinc-400 -mt-2 mb-5">
-        Both keys below are <span className="text-zinc-300 font-medium">optional</span> — NiceFilm works without them. Add your own (both are free) to unlock the extra features described under each. Keys are stored on your account and never shown again; leave a field blank to keep the current value.
+        Optional free keys that unlock extra features. Stored on your account — leave a field blank to keep it.
       </p>
 
       {/* Gemini */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-orange-400" />
-          <h3 className="text-sm font-semibold text-white">Word illustrations</h3>
-          <span className="text-xs text-zinc-500">· Gemini · optional</span>
-          {status && <span className="ml-auto"><ConfiguredBadge on={status.geminiKeySet} /></span>}
-        </div>
-        <p className="text-xs text-zinc-500">
-          When you save a vocabulary word, Gemini draws a small AI "memory picture" for it, explains idioms and phrasal verbs, and grades your meaning self-tests with real feedback.{' '}
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
-            Get a free key <ExternalLink className="w-3 h-3" />
-          </a>
-        </p>
-        <p className="text-[11px] text-amber-300/70">
-          Without a key: saved words have no picture, phrase breakdowns fall back to a plain translation, and meaning tests use offline grading. Definitions, translations, spelling tests and spaced-repetition review still work.
-        </p>
+      <div className="space-y-2.5">
+        <ConnectionHeader
+          icon={Sparkles}
+          title="Smarter learning"
+          provider="Gemini"
+          desc="AI word pictures, idiom breakdowns & graded meaning tests."
+          href="https://aistudio.google.com/app/apikey"
+          badge={status && <ConfiguredBadge on={status.geminiKeySet} />}
+        />
         <Input
           type="password"
           value={gemini}
@@ -346,22 +339,15 @@ function ConnectionsCard() {
       <div className="h-px bg-zinc-800 my-5" />
 
       {/* OpenSubtitles */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Captions className="w-4 h-4 text-orange-400" />
-          <h3 className="text-sm font-semibold text-white">Subtitles</h3>
-          <span className="text-xs text-zinc-500">· OpenSubtitles · optional</span>
-          {status && <span className="ml-auto"><ConfiguredBadge on={status.openSubtitlesApiKeySet} /></span>}
-        </div>
-        <p className="text-xs text-zinc-500">
-          Finds and downloads captions for any title, and powers Learn-English mode — where each subtitle line becomes clickable to look up words, save vocabulary, and translate sentences. Your own key also avoids the rate limits of the shared account.{' '}
-          <a href="https://www.opensubtitles.com/en/consumers" target="_blank" rel="noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
-            Get an API key <ExternalLink className="w-3 h-3" />
-          </a>
-        </p>
-        <p className="text-[11px] text-amber-300/70">
-          Without a key: no captions and Learn-English mode is unavailable. Video still plays normally.
-        </p>
+      <div className="space-y-2.5">
+        <ConnectionHeader
+          icon={Captions}
+          title="Subtitles"
+          provider="OpenSubtitles"
+          desc="Captions for any title + clickable Learn-English mode."
+          href="https://www.opensubtitles.com/en/consumers"
+          badge={status && <ConfiguredBadge on={status.openSubtitlesApiKeySet} />}
+        />
         <Input
           type="password"
           value={osKey}
@@ -388,7 +374,7 @@ function ConnectionsCard() {
             className={inputClass}
           />
         </div>
-        <p className="text-[11px] text-zinc-600">Username &amp; password are only needed to download subtitle files (not just search).</p>
+        <p className="text-[11px] text-zinc-600">Username &amp; password only needed to download files.</p>
       </div>
 
       <div className="flex justify-end mt-5">
@@ -397,6 +383,44 @@ function ConnectionsCard() {
         </Button>
       </div>
     </Card>
+  );
+}
+
+function ConnectionHeader({
+  icon: Icon,
+  title,
+  provider,
+  desc,
+  href,
+  badge,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  provider: string;
+  desc: string;
+  href: string;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <Icon className="w-4 h-4 text-orange-400 shrink-0" />
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <span className="text-xs text-zinc-500">· {provider}</span>
+        {badge && <span className="ml-auto">{badge}</span>}
+      </div>
+      <p className="text-xs text-zinc-500 mt-1.5">
+        {desc}{' '}
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5 whitespace-nowrap"
+        >
+          Get a free key <ExternalLink className="w-3 h-3" />
+        </a>
+      </p>
+    </div>
   );
 }
 
