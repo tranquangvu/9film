@@ -12,7 +12,7 @@ import { updateMe } from '@/services/user';
 import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
 import { useCredentialsQuery, useSaveCredentials } from '@/hooks/queries/use-credentials-query';
 
-const inputClass = 'px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-orange-500/50';
+const inputClass = 'px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 focus:border-orange-500/50';
 
 // Avatar choices: a few DiceBear styles seeded by the username, so the picker
 // shows variations of "you" without any image upload.
