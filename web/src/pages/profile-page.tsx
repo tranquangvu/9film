@@ -307,7 +307,7 @@ function ConnectionsCard() {
     <Card>
       <CardTitle>Connections</CardTitle>
       <p className="text-sm text-zinc-400 -mt-2 mb-5">
-        Optional free keys that unlock extra features. Stored on your account — leave a field blank to keep it.
+        Optional keys that unlock extra features. Leave a field blank to keep the current value.
       </p>
 
       {/* Gemini */}
