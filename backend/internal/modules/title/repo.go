@@ -300,9 +300,9 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		first = 20
 	}
 
-	// Only the unfiltered feed (paginated by first/after) is cached. Filtered
-	// browses — type, genre, sort, minRating — bypass the cache entirely.
-	cacheable := params.Type == "" && params.Genre == "" && params.Sort == "" && params.MinRating == nil
+	// Only feeds paginated by first/after (optionally narrowed by type) are
+	// cached. Genre, sort, and minRating browses bypass the cache entirely.
+	cacheable := params.Genre == "" && params.Sort == "" && params.MinRating == nil
 	cacheKey := browseCacheKey(params, first)
 	if cacheable {
 		if res, ok := r.browses.Get(cacheKey); ok {
