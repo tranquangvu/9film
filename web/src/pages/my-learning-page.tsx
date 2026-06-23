@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Brain,
   Check,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -217,7 +218,7 @@ function WordDialog({
 
   return (
     <Dialog open={!!word} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         {word && (
           <div>
             {word.imageStatus === 'ready' && imageUrl && (
@@ -294,8 +295,9 @@ function WordDialog({
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Type the word {SPELL_TIMES} times to complete
                 </p>
-                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {spellings.map((s, i) => {
+                    const filled = s.trim() !== '';
                     const correct = s.trim().toLowerCase() === target;
                     return (
                       <div key={i} className="relative">
@@ -308,11 +310,17 @@ function WordDialog({
                           autoComplete="off"
                           autoCapitalize="none"
                           spellCheck={false}
-                          placeholder={`${i + 1}`}
-                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-orange-400/60"
+                          placeholder={`#${i + 1}`}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 pr-8 text-sm text-white outline-none transition-colors focus:border-orange-400/60"
                         />
-                        {s.trim() !== '' && correct && (
-                          <Check className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+                        {filled && (
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                            {correct ? (
+                              <Check className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <X className="w-4 h-4 text-rose-400" />
+                            )}
+                          </span>
                         )}
                       </div>
                     );
