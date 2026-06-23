@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ClipboardList,
   Brain,
+  Check,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -171,6 +172,8 @@ function LearningHero({
   );
 }
 
+const SPELL_TIMES = 8; // times the word must be retyped to mark it complete
+
 function WordDialog({
   word,
   onOpenChange,
@@ -201,6 +204,16 @@ function WordDialog({
   }, [openWord]);
 
   const isDone = !!word?.completedAt;
+
+  // To complete a word, the learner retypes it SPELL_TIMES times; each box
+  // pronounces the word on focus. The "Complete" button unlocks only when all
+  // attempts match. State resets whenever a different word is opened.
+  const [spellings, setSpellings] = useState<string[]>(() => Array(SPELL_TIMES).fill(''));
+  useEffect(() => {
+    setSpellings(Array(SPELL_TIMES).fill(''));
+  }, [openWord]);
+  const target = (openWord ?? '').trim().toLowerCase();
+  const allSpelled = target !== '' && spellings.every((s) => s.trim().toLowerCase() === target);
 
   return (
     <Dialog open={!!word} onOpenChange={onOpenChange}>
@@ -276,6 +289,38 @@ function WordDialog({
               </div>
             )}
 
+            {!isDone && (
+              <div className="mt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Type the word {SPELL_TIMES} times to complete
+                </p>
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                  {spellings.map((s, i) => {
+                    const correct = s.trim().toLowerCase() === target;
+                    return (
+                      <div key={i} className="relative">
+                        <input
+                          value={s}
+                          onChange={(e) =>
+                            setSpellings((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))
+                          }
+                          onFocus={() => speak(word.word)}
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          placeholder={`${i + 1}`}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-orange-400/60"
+                        />
+                        {s.trim() !== '' && correct && (
+                          <Check className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex items-center justify-between gap-2">
               <Button variant="ghost" size="sm" className="rounded-full" onClick={onPrev} disabled={!hasPrev}>
                 <ChevronLeft className="w-4 h-4" /> Prev
@@ -285,10 +330,10 @@ function WordDialog({
                   variant="primary"
                   size="sm"
                   className="rounded-full"
-                  disabled={completing}
+                  disabled={completing || !allSpelled}
                   onClick={() => onComplete(word)}
                 >
-                  <CheckCircle2 className="w-4 h-4" /> {completing ? 'Saving…' : 'Got it'}
+                  <CheckCircle2 className="w-4 h-4" /> {completing ? 'Saving…' : 'Complete'}
                 </Button>
               ) : (
                 <span className="text-xs text-orange-400 font-medium">Learned</span>
