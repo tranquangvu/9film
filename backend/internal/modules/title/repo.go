@@ -400,9 +400,16 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 			result.Titles = append(result.Titles, edge.Node.Title)
 		}
 	}
-	r.browses.Set(cacheKey, result)
+	// Cache only the first maxBrowsePagesCached pages of each filter combo so a
+	// long infinite scroll (unbounded `after` cursors) can't grow the cache
+	// without limit; deeper pages pass through to IMDb each time.
+	r.browses.SetBounded(browseGroupKey(params, first), cacheKey, result, maxBrowsePagesCached)
 	return result, nil
 }
+
+// maxBrowsePagesCached caps how many pages (the base page plus the next four) of
+// any one browse filter combo are held in cache at once.
+const maxBrowsePagesCached = 5
 
 // browseCacheKey builds a stable cache key from the browse parameters that affect
 // the upstream query (including the resolved `first`).
@@ -413,5 +420,18 @@ func browseCacheKey(p BrowseParams, first int) string {
 	}
 	return strings.Join([]string{
 		"browse", p.Type, p.Genre, p.Sort, p.After, rating, strconv.Itoa(first),
+	}, "|")
+}
+
+// browseGroupKey identifies a single infinite-scroll stream: the same browse
+// filters minus the `after` cursor, so every page of one scroll shares it and
+// the per-group cache cap applies across the scroll.
+func browseGroupKey(p BrowseParams, first int) string {
+	rating := ""
+	if p.MinRating != nil {
+		rating = strconv.FormatFloat(*p.MinRating, 'f', -1, 64)
+	}
+	return strings.Join([]string{
+		"browse", p.Type, p.Genre, p.Sort, rating, strconv.Itoa(first),
 	}, "|")
 }
