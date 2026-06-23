@@ -125,7 +125,9 @@ export function useRegenerateWordImage() {
 
 export function useIsWordSaved(word: string): boolean {
   const { data } = useWordStatsQuery();
-  return (data ?? []).some((w) => w.word === word.toLowerCase());
+  // Only words the user saved themselves count — imported starter packs
+  // (e.g. oxford3000) carry a non-empty `list` and must not show as "Saved".
+  return (data ?? []).some((w) => w.word === word.toLowerCase() && !w.list);
 }
 
 // The words due for spaced-repetition review right now (small set; no pagination).
