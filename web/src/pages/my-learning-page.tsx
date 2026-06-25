@@ -96,6 +96,7 @@ function LearningHero({
   onStudy,
   onReview,
   insightsTo,
+  testsTo,
 }: {
   title: string;
   subtitle: string;
@@ -106,6 +107,7 @@ function LearningHero({
   onStudy: () => void;
   onReview: () => void;
   insightsTo?: string;
+  testsTo: string;
 }) {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 md:p-8">
@@ -149,6 +151,12 @@ function LearningHero({
             <BarChart3 className="w-4 h-4" /> Insights
           </Link>
         )}
+        <Link
+          to={testsTo}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4" /> Test results
+        </Link>
       </div>
 
       {streak > 0 && (
@@ -612,6 +620,7 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
               onStudy={() => setStudying(true)}
               onReview={() => setReviewing(true)}
               insightsTo={isOxford ? undefined : '/my-learning/insights'}
+              testsTo="/my-learning/tests"
             />
 
             {!isOxford && <StarterPack />}
@@ -626,12 +635,6 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
                   {t.label}
                 </Badge>
               ))}
-              <Link
-                to="/my-learning/tests"
-                className="ml-auto inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                <ClipboardList className="w-4 h-4" /> Test results
-              </Link>
             </div>
 
             {tab === 'learn' && addedCount === 0 ? (
