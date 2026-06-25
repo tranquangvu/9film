@@ -129,25 +129,6 @@ function LearningHero({
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/25 px-3 py-1.5 text-sm font-semibold text-emerald-200">
-          <BookOpen className="w-4 h-4" /> {addedCount} to learn
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 border border-orange-400/25 px-3 py-1.5 text-sm font-semibold text-orange-200">
-          <CheckCircle2 className="w-4 h-4" /> {completedCount} learned
-        </span>
-        {streak > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-sm font-semibold text-white">
-            <Flame className="w-4 h-4 text-orange-400" /> {streak}-day streak
-          </span>
-        )}
-        {dueCount > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 border border-sky-400/25 px-3 py-1.5 text-sm font-semibold text-sky-200">
-            <Brain className="w-4 h-4" /> {dueCount} due for review
-          </span>
-        )}
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-2.5">
         {dueCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button variant="primary" size="sm" onClick={onReview}>
@@ -169,6 +150,17 @@ function LearningHero({
           >
             <BarChart3 className="w-4 h-4" /> Insights
           </Link>
+        )}
+      </div>
+
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-zinc-400">
+        <span className="inline-flex items-center gap-1.5">
+          <CheckCircle2 className="w-4 h-4 text-orange-400" /> {completedCount} learned
+        </span>
+        {streak > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <Flame className="w-4 h-4 text-orange-400" /> {streak}-day streak
+          </span>
         )}
       </div>
     </div>
