@@ -57,18 +57,15 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
     };
   }, [media, cues]);
 
-  // Esc closes the popup (and resumes playback).
+  // Esc closes the popup and resumes playback. (Hover bookkeeping is left to the
+  // pointer handlers — reading the hover refs here would make them effect-bound
+  // and so immutable elsewhere.)
   useEffect(() => {
     if (!selection) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       e.stopPropagation();
       setSelection(null);
-      if (isHovering.current) {
-        pausedByHover.current = true;
-        return;
-      }
-      pausedByHover.current = false;
       if (media?.paused) void media.play().catch(() => {});
     };
     window.addEventListener('keydown', onKey);

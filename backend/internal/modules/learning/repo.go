@@ -18,8 +18,7 @@ type Repository interface {
 	GetDueReviews(userID int64, limit int) ([]Word, error)
 	UpdateSchedule(userID int64, word string, ease float64, interval, reps int, dueAt string) error
 	SetImageStatus(userID int64, word, status string) error
-	SaveImage(userID int64, word string, png []byte) error
-	GetImage(userID int64, word string) ([]byte, bool)
+	SaveImage(userID int64, word, imageURL string) error
 	SaveExplanation(userID int64, word string, e PhraseExplanation) error
 	GetExplanation(userID int64, word string) (*PhraseExplanation, bool)
 	SaveTest(userID int64, t TestResult) (int64, error)
@@ -65,17 +64,19 @@ func (r *repository) GetWordStats(userID int64) ([]WordStat, error) {
 // "to learn" (ordered by when they were added) — newest first either way. Backs
 // the per-tab infinite-scrolling lists on the learning page.
 func (r *repository) GetWords(userID int64, status, list string, limit, offset int) ([]Word, error) {
-	where, order := "completed_at = ''", "created_at DESC"
+	where, order := "w.completed_at = ''", "w.created_at DESC"
 	if status == "completed" {
-		where, order = "completed_at != ''", "completed_at DESC"
+		where, order = "w.completed_at != ''", "w.completed_at DESC"
 	} else if list != "" {
 		// Imported lists (e.g. the Oxford 3000) are studied alphabetically, not
 		// by recency — they're all added at once.
-		order = "word ASC"
+		order = "w.word ASC"
 	}
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
-		   FROM words WHERE user_id = ? AND list = ? AND `+where+`
+		`SELECT `+wordColumns+`
+		   FROM words w
+		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
+		   WHERE w.user_id = ? AND w.list = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
 		userID, list, limit, offset,
@@ -107,17 +108,24 @@ func scanWord(row rowScanner) (Word, error) {
 		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
 		&w.ImageStatus, &w.ImageUpdatedAt, &w.List,
-		&w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind,
+		&w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind, &w.ImageURL,
 	)
 	return w, err
 }
+
+// wordColumns is the shared select list for full word rows: every words column
+// scanWord expects, plus the joined illustration URL (''=none). Each query adds
+// its own LEFT JOIN word_images alias `wi`.
+const wordColumns = `w.word, w.sentence, w.translation, w.imdb_id, w.season, w.episode, w.timestamp, w.created_at, w.completed_at, w.image_status, w.image_updated_at, w.list, w.due_at, w.ease, w.interval, w.reps, w.kind, COALESCE(wi.image_url, '')`
 
 // GetWord returns a single saved word (used to build the image prompt and to
 // confirm ownership before (re)generating). Returns (nil, nil) when not found.
 func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	w, err := scanWord(r.db.QueryRow(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
-		   FROM words WHERE user_id = ? AND word = ?`,
+		`SELECT `+wordColumns+`
+		   FROM words w
+		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
+		   WHERE w.user_id = ? AND w.word = ?`,
 		userID, word,
 	))
 	if err == sql.ErrNoRows {
@@ -173,14 +181,14 @@ func (r *repository) SetImageStatus(userID int64, word, status string) error {
 	return err
 }
 
-// SaveImage stores the generated SVG markup and flips the word to 'ready',
+// SaveImage stores the found illustration URL and flips the word to 'ready',
 // bumping the cache-bust token.
-func (r *repository) SaveImage(userID int64, word string, svg []byte) error {
+func (r *repository) SaveImage(userID int64, word, imageURL string) error {
 	if _, err := r.db.Exec(
-		`INSERT INTO word_images (user_id, word, svg, updated_at)
+		`INSERT INTO word_images (user_id, word, image_url, updated_at)
 		   VALUES (?, ?, ?, datetime('now'))
-		   ON CONFLICT(user_id, word) DO UPDATE SET svg = excluded.svg, updated_at = datetime('now')`,
-		userID, word, svg,
+		   ON CONFLICT(user_id, word) DO UPDATE SET image_url = excluded.image_url, updated_at = datetime('now')`,
+		userID, word, imageURL,
 	); err != nil {
 		return err
 	}
@@ -189,19 +197,6 @@ func (r *repository) SaveImage(userID int64, word string, svg []byte) error {
 		userID, word,
 	)
 	return err
-}
-
-// GetImage returns a word's stored SVG bytes, or (nil, false) when none exists.
-func (r *repository) GetImage(userID int64, word string) ([]byte, bool) {
-	var svg []byte
-	err := r.db.QueryRow(
-		`SELECT svg FROM word_images WHERE user_id = ? AND word = ?`,
-		userID, word,
-	).Scan(&svg)
-	if err != nil {
-		return nil, false
-	}
-	return svg, true
 }
 
 // SaveTest persists a graded self-test (the per-word breakdown as a JSON blob)
@@ -340,9 +335,11 @@ func (r *repository) CompleteWord(userID int64, word string) error {
 // (oldest-due first), as full rows so the review deck can show context/image.
 func (r *repository) GetDueReviews(userID int64, limit int) ([]Word, error) {
 	rows, err := r.db.Query(
-		`SELECT word, sentence, translation, imdb_id, season, episode, timestamp, created_at, completed_at, image_status, image_updated_at, list, due_at, ease, interval, reps, kind
-		   FROM words WHERE user_id = ? AND due_at != '' AND due_at <= datetime('now')
-		   ORDER BY due_at ASC
+		`SELECT `+wordColumns+`
+		   FROM words w
+		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
+		   WHERE w.user_id = ? AND w.due_at != '' AND w.due_at <= datetime('now')
+		   ORDER BY w.due_at ASC
 		   LIMIT ?`,
 		userID, limit,
 	)

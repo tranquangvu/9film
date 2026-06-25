@@ -30,7 +30,6 @@ import { useAuth } from '@/context/auth-context';
 import {
   useWordStatsQuery,
   useInfiniteWordsQuery,
-  useWordImage,
   useImportWordList,
   useCompleteWord,
   useDueCount,
@@ -194,7 +193,6 @@ function WordDialog({
   const isPhrase = word?.kind === 'phrase';
   const dict = useDictionaryQuery(isPhrase ? undefined : word?.word);
   const explain = useExplainPhrase(isPhrase ? (word?.word ?? null) : null, word?.sentence ?? '');
-  const imageUrl = useWordImage(word?.word ?? '', word?.imageStatus, word?.imageUpdatedAt);
 
   const openWord = word?.word;
   useEffect(() => {
@@ -218,9 +216,9 @@ function WordDialog({
       <DialogContent className="max-w-2xl">
         {word && (
           <div>
-            {word.imageStatus === 'ready' && imageUrl && (
+            {word.imageStatus === 'ready' && word.imageUrl && (
               <div className="mb-4 w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white">
-                <img src={imageUrl} alt={word.word} className="w-full h-full object-contain" />
+                <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
               </div>
             )}
             <div className="flex items-center gap-3 pr-8">

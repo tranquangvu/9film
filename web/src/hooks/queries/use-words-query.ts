@@ -4,11 +4,10 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   getWords,
   getWordStats,
-  getWordImageObjectUrl,
   regenerateWordImage,
   importWordList,
   addWord,
@@ -18,7 +17,6 @@ import {
   submitReview,
   type ReviewGrade,
   type Word,
-  type WordImageStatus,
   type WordStat,
   type WordStatus,
 } from '@/services/user';
@@ -64,33 +62,6 @@ export function useInfiniteWordsQuery(status: WordStatus, list = '') {
       return pending ? 2500 : false;
     },
   });
-}
-
-// Resolves a word's AI illustration to an object URL. Enabled only when ready;
-// keyed by the cache-bust token so a regeneration busts it. Revokes on cleanup.
-export function useWordImage(word: string, status: WordImageStatus | undefined, updatedAt?: string) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (status !== 'ready') return;
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    getWordImageObjectUrl(word, updatedAt)
-      .then((u) => {
-        if (cancelled) {
-          URL.revokeObjectURL(u);
-          return;
-        }
-        objectUrl = u;
-        setUrl(u); // async callback, not a synchronous effect body call
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [word, status, updatedAt]);
-  // Gate by status so a stale URL never shows once the word/state changes.
-  return status === 'ready' ? url : null;
 }
 
 // Imports a bundled starter word list (e.g. Oxford 3000). Refreshes the lists

@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchBlob } from '@/lib/api-fetch';
+import { apiFetch } from '@/lib/api-fetch';
 import type { AuthUser } from '@/types';
 import type { TitleDetail } from '@/utils/title';
 
@@ -45,10 +45,12 @@ export interface Word {
   createdAt?: string;
   /** Set once the word has been learned; empty string while still in the added list. */
   completedAt?: string;
-  /** AI illustration state: ''=none/legacy, pending, ready, failed. */
+  /** Illustration state: ''=none/legacy, pending, ready, failed. */
   imageStatus?: WordImageStatus;
-  /** Cache-bust token bumped each time the illustration is (re)generated. */
+  /** Cache-bust token bumped each time the illustration is (re)fetched. */
   imageUpdatedAt?: string;
+  /** Resolved illustration URL (an Openverse image); set once imageStatus is 'ready'. */
+  imageUrl?: string;
   /** '' = personal (saved while watching), 'oxford3000' = imported starter pack. */
   list?: string;
   /** SM-2 review schedule. dueAt='' = not scheduled (seeded once learned). */
@@ -225,20 +227,7 @@ export function importWordList(list: string): Promise<{ added: number }> {
   return apiFetch('/api/me/words/import', { method: 'POST', body: { list } });
 }
 
-// The authed image URL (with cache-bust token); fetched as a blob since an <img>
-// can't send the bearer token.
-export function wordImagePath(word: string, v?: string): string {
-  const p = new URLSearchParams({ word: word.toLowerCase() });
-  if (v) p.set('v', v);
-  return `/api/me/words/image?${p}`;
-}
-
-export async function getWordImageObjectUrl(word: string, v?: string): Promise<string> {
-  const blob = await apiFetchBlob(wordImagePath(word, v));
-  return URL.createObjectURL(blob);
-}
-
-// (Re)generates the illustration for an existing word — backfills legacy words
+// (Re)fetches the illustration for an existing word — backfills legacy words
 // and retries failures.
 export function regenerateWordImage(word: string): Promise<{ imageStatus: WordImageStatus }> {
   return apiFetch('/api/me/words/image', { method: 'POST', body: { word: word.toLowerCase() } });

@@ -45,14 +45,17 @@ func Open(path string) (*sql.DB, error) {
 // Migrate creates the schema if it doesn't exist. Statements are idempotent so
 // it can run on every startup.
 func Migrate(db *sql.DB) error {
-	// word_images briefly stored a raster PNG BLOB; it now holds SVG markup. The
-	// table is regenerated on demand, so dropping the old shape (and its bytes)
-	// is safe — the CREATE below remakes it.
-	if hasPng, err := hasColumn(db, "word_images", "png"); err != nil {
-		return err
-	} else if hasPng {
-		if _, err := db.Exec(`DROP TABLE word_images`); err != nil {
+	// word_images has changed shape twice: a raster PNG BLOB → SVG markup → an
+	// Openverse image URL. The table is regenerated on demand (images re-fetch on
+	// next save), so dropping any old shape is safe — the CREATE below remakes it
+	// with the current `image_url` column.
+	for _, legacyCol := range []string{"png", "svg"} {
+		if has, err := hasColumn(db, "word_images", legacyCol); err != nil {
 			return err
+		} else if has {
+			if _, err := db.Exec(`DROP TABLE word_images`); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -128,12 +131,12 @@ func Migrate(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_favorites_user_created ON favorites(user_id, created_at DESC)`,
 		// Saved words: WHERE user_id=? AND completed_at (?='') ORDER BY created_at/completed_at.
 		`CREATE INDEX IF NOT EXISTS idx_words_user_completed ON words(user_id, completed_at, created_at)`,
-		// Generated AI illustration (SVG markup) for a saved word, kept out of the
-		// words list query so that SELECT stays lean.
+		// The illustration URL (an Openverse image) for a saved word, kept in its
+		// own table and folded into the words list query via a LEFT JOIN.
 		`CREATE TABLE IF NOT EXISTS word_images (
 			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			word       TEXT NOT NULL,
-			svg        TEXT NOT NULL,
+			image_url  TEXT NOT NULL,
 			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, word)
 		)`,

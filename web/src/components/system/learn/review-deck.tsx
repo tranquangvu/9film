@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDueReviewsQuery, useSubmitReview, useWordImage } from '@/hooks/queries/use-words-query';
+import { useDueReviewsQuery, useSubmitReview } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
@@ -199,15 +199,14 @@ function ReviewCard({
 // Front illustration: image when ready, shimmer while generating, emoji-tint
 // fallback otherwise (no "generate" CTA here — reviews aren't the place for it).
 function ReviewImage({ word, tint }: { word: Word; tint: string }) {
-  const url = useWordImage(word.word, word.imageStatus, word.imageUpdatedAt);
-  if (word.imageStatus === 'ready' && url) {
+  if (word.imageStatus === 'ready' && word.imageUrl) {
     return (
       <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white">
-        <img src={url} alt={word.word} className="w-full h-full object-contain" />
+        <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
       </div>
     );
   }
-  if (word.imageStatus === 'pending' || word.imageStatus === 'ready') {
+  if (word.imageStatus === 'pending') {
     return <Skeleton className="w-full aspect-square rounded-2xl" />;
   }
   return (

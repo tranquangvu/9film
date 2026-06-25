@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useCompleteWord,
-  useWordImage,
   useRegenerateWordImage,
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
@@ -210,7 +209,6 @@ function Flashcard({
 // The illustration area: image when ready, shimmer while generating, or an
 // emoji fallback + a "Generate" button (legacy words / failures).
 function CardImage({ word, tint }: { word: Word; tint: string }) {
-  const url = useWordImage(word.word, word.imageStatus, word.imageUpdatedAt);
   const regen = useRegenerateWordImage();
 
   // Phrases/idioms get no illustration — show a calm placeholder, not a "generate"
@@ -226,18 +224,14 @@ function CardImage({ word, tint }: { word: Word; tint: string }) {
   if (word.imageStatus === 'pending') {
     return <Skeleton className="w-full aspect-square rounded-2xl" />;
   }
-  if (word.imageStatus === 'ready' && url) {
+  if (word.imageStatus === 'ready' && word.imageUrl) {
     return (
       <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white">
-        <img src={url} alt={word.word} className="w-full h-full object-contain" />
+        <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
       </div>
     );
   }
-  if (word.imageStatus === 'ready') {
-    // Ready but the blob is still loading.
-    return <Skeleton className="w-full aspect-square rounded-2xl" />;
-  }
-  // '' (legacy) or 'failed' — offer to generate.
+  // '' (legacy), 'failed', or 'ready' with no match — offer to retry.
   return (
     <div
       className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 text-center"
@@ -252,7 +246,7 @@ function CardImage({ word, tint }: { word: Word; tint: string }) {
         onClick={(e) => { e.stopPropagation(); regen.mutate(word.word); }}
       >
         <Sparkles className="w-3.5 h-3.5" />
-        {regen.isPending ? 'Starting…' : 'Generate illustration'}
+        {regen.isPending ? 'Searching…' : 'Find illustration'}
       </Button>
     </div>
   );

@@ -9,7 +9,7 @@ import (
 
 func Module(rg *gin.RouterGroup, db *sql.DB, cfg *config.Config, keys GeminiKeys) {
 	repo := NewRepository(db)
-	svc := NewService(repo, NewGenerator(), keys)
+	svc := NewService(repo, NewGenerator(), NewImageSource(), keys)
 	h := NewHandler(svc)
 	RegisterRoutes(rg, h, cfg)
 }

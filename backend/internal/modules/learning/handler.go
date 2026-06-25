@@ -128,7 +128,7 @@ func (h *Handler) AddWord(c *gin.Context) {
 		return
 	}
 	// Phrases never get an illustration, so don't advertise a pending image.
-	if w.Kind != "phrase" && h.svc.ImageEnabled(middleware.UserID(c)) {
+	if w.Kind != "phrase" {
 		w.ImageStatus = "pending"
 	}
 	c.JSON(http.StatusCreated, w)
@@ -155,30 +155,9 @@ func (h *Handler) ExplainPhrase(c *gin.Context) {
 	c.JSON(http.StatusOK, exp)
 }
 
-// GetWordImage streams a word's generated SVG; 404 when the word has no image.
-func (h *Handler) GetWordImage(c *gin.Context) {
-	word := strings.ToLower(strings.TrimSpace(c.Query("word")))
-	if word == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
-		return
-	}
-	svg, ok := h.svc.WordImage(middleware.UserID(c), word)
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "image not found"})
-		return
-	}
-	// The image_updated_at (?v=) token makes the URL safe to cache hard.
-	c.Header("Cache-Control", "private, max-age=31536000, immutable")
-	c.Data(http.StatusOK, "image/svg+xml; charset=utf-8", svg)
-}
-
-// RegenerateWordImage (re)triggers generation for an existing word — backfills
-// legacy words and retries failures.
+// RegenerateWordImage (re)triggers an image search for an existing word —
+// backfills legacy words and retries failures.
 func (h *Handler) RegenerateWordImage(c *gin.Context) {
-	if !h.svc.ImageEnabled(middleware.UserID(c)) {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "illustrations are not configured"})
-		return
-	}
 	var req completeWordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
