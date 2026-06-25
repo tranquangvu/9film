@@ -42,23 +42,11 @@ func Open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Migrate creates the schema if it doesn't exist. Statements are idempotent so
-// it can run on every startup.
+// Migrate creates the schema if it doesn't exist. Every table is declared with
+// its full set of columns here (no additive ALTERs), so a fresh database is
+// complete after one pass. Statements are idempotent so it can run on every
+// startup.
 func Migrate(db *sql.DB) error {
-	// word_images has changed shape twice: a raster PNG BLOB → SVG markup → an
-	// Openverse image URL. The table is regenerated on demand (images re-fetch on
-	// next save), so dropping any old shape is safe — the CREATE below remakes it
-	// with the current `image_url` column.
-	for _, legacyCol := range []string{"png", "svg"} {
-		if has, err := hasColumn(db, "word_images", legacyCol); err != nil {
-			return err
-		} else if has {
-			if _, err := db.Exec(`DROP TABLE word_images`); err != nil {
-				return err
-			}
-		}
-	}
-
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,17 +98,31 @@ func Migrate(db *sql.DB) error {
 			opensubtitles_password TEXT NOT NULL DEFAULT '',
 			updated_at             TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
+		// A saved vocabulary word with its capture context, illustration state, list
+		// membership, and SM-2 review schedule. image_status: ''=none/legacy,
+		// pending, ready, failed; image_updated_at is a cache-bust token. list:
+		// ''=personal, 'oxford3000'=imported starter pack. SM-2: due_at='' until the
+		// word is first completed; ease starts at 2.5; interval is in days; reps is
+		// the successful-streak count. kind: 'word' (default) or 'phrase' (idiom).
 		`CREATE TABLE IF NOT EXISTS words (
-			user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			word        TEXT NOT NULL,
-			sentence    TEXT NOT NULL DEFAULT '',
-			translation TEXT NOT NULL DEFAULT '',
-			imdb_id     TEXT NOT NULL DEFAULT '',
-			season      INTEGER NOT NULL DEFAULT 0,
-			episode     INTEGER NOT NULL DEFAULT 0,
-			timestamp    REAL NOT NULL DEFAULT 0,
-			created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-			completed_at TEXT NOT NULL DEFAULT '',
+			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			word             TEXT NOT NULL,
+			sentence         TEXT NOT NULL DEFAULT '',
+			translation      TEXT NOT NULL DEFAULT '',
+			imdb_id          TEXT NOT NULL DEFAULT '',
+			season           INTEGER NOT NULL DEFAULT 0,
+			episode          INTEGER NOT NULL DEFAULT 0,
+			timestamp        REAL NOT NULL DEFAULT 0,
+			created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+			completed_at     TEXT NOT NULL DEFAULT '',
+			image_status     TEXT NOT NULL DEFAULT '',
+			image_updated_at TEXT NOT NULL DEFAULT '',
+			list             TEXT NOT NULL DEFAULT '',
+			due_at           TEXT NOT NULL DEFAULT '',
+			ease             REAL NOT NULL DEFAULT 2.5,
+			interval         INTEGER NOT NULL DEFAULT 0,
+			reps             INTEGER NOT NULL DEFAULT 0,
+			kind             TEXT NOT NULL DEFAULT 'word',
 			PRIMARY KEY (user_id, word)
 		)`,
 		// Secondary indexes for the per-user list queries whose filter/sort
@@ -131,6 +133,8 @@ func Migrate(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_favorites_user_created ON favorites(user_id, created_at DESC)`,
 		// Saved words: WHERE user_id=? AND completed_at (?='') ORDER BY created_at/completed_at.
 		`CREATE INDEX IF NOT EXISTS idx_words_user_completed ON words(user_id, completed_at, created_at)`,
+		// Due-for-review queue: WHERE user_id=? AND due_at!='' AND due_at<=now.
+		`CREATE INDEX IF NOT EXISTS idx_words_user_due ON words(user_id, due_at)`,
 		// The illustration URL (an Openverse image) for a saved word, kept in its
 		// own table and folded into the words list query via a LEFT JOIN.
 		`CREATE TABLE IF NOT EXISTS word_images (
@@ -175,90 +179,5 @@ func Migrate(db *sql.DB) error {
 			return err
 		}
 	}
-
-	// Additive column migrations: the statements above are CREATE-only, so new
-	// columns on an existing table need a guarded ALTER (SQLite has no
-	// ADD COLUMN IF NOT EXISTS). image_status: ''=unknown/legacy, pending, ready,
-	// failed; image_updated_at is a cache-bust token bumped on each generation.
-	if err := addColumnIfMissing(db, "words", "image_status", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := addColumnIfMissing(db, "words", "image_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	// Word list membership: ''=personal, 'oxford3000'=imported starter pack.
-	if err := addColumnIfMissing(db, "words", "list", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	// default_quality was dropped from the settings UI; remove the dead column.
-	if err := dropColumnIfExists(db, "settings", "default_quality"); err != nil {
-		return err
-	}
-	// Spaced-repetition (SM-2) review schedule per word. due_at='' means the word
-	// isn't scheduled yet (only set once it's first completed); ease starts at the
-	// SM-2 default 2.5; interval is in days; reps is the successful-streak count.
-	if err := addColumnIfMissing(db, "words", "due_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := addColumnIfMissing(db, "words", "ease", "REAL NOT NULL DEFAULT 2.5"); err != nil {
-		return err
-	}
-	if err := addColumnIfMissing(db, "words", "interval", "INTEGER NOT NULL DEFAULT 0"); err != nil {
-		return err
-	}
-	if err := addColumnIfMissing(db, "words", "reps", "INTEGER NOT NULL DEFAULT 0"); err != nil {
-		return err
-	}
-	// Capture kind: 'word' (default) or 'phrase' (a saved idiom / phrasal verb).
-	if err := addColumnIfMissing(db, "words", "kind", "TEXT NOT NULL DEFAULT 'word'"); err != nil {
-		return err
-	}
-	// Due-for-review queue: WHERE user_id=? AND due_at!='' AND due_at<=now. Created
-	// after the column exists (the additive migration above runs before this).
-	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_words_user_due ON words(user_id, due_at)`); err != nil {
-		return err
-	}
 	return nil
-}
-
-// dropColumnIfExists removes a column when present, making the removal idempotent
-// across restarts and existing DBs.
-func dropColumnIfExists(db *sql.DB, table, col string) error {
-	has, err := hasColumn(db, table, col)
-	if err != nil || !has {
-		return err
-	}
-	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", table, col))
-	return err
-}
-
-// hasColumn reports whether a table already has the named column. A missing
-// table yields no rows, so it returns false.
-func hasColumn(db *sql.DB, table, col string) (bool, error) {
-	rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table)
-	if err != nil {
-		return false, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return false, err
-		}
-		if name == col {
-			return true, nil
-		}
-	}
-	return false, rows.Err()
-}
-
-// addColumnIfMissing adds a column to a table only when it isn't already there,
-// making additive schema changes idempotent across restarts and existing DBs.
-func addColumnIfMissing(db *sql.DB, table, col, ddl string) error {
-	has, err := hasColumn(db, table, col)
-	if err != nil || has {
-		return err
-	}
-	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col, ddl))
-	return err
 }
