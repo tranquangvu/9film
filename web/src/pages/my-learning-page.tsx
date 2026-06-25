@@ -91,7 +91,6 @@ function LearningHero({
   subtitle,
   mascot,
   addedCount,
-  completedCount,
   streak,
   dueCount,
   onStudy,
@@ -102,7 +101,6 @@ function LearningHero({
   subtitle: string;
   mascot: string;
   addedCount: number;
-  completedCount: number;
   streak: number;
   dueCount: number;
   onStudy: () => void;
@@ -153,16 +151,13 @@ function LearningHero({
         )}
       </div>
 
-      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-zinc-400">
-        <span className="inline-flex items-center gap-1.5">
-          <CheckCircle2 className="w-4 h-4 text-orange-400" /> {completedCount} learned
-        </span>
-        {streak > 0 && (
+      {streak > 0 && (
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-zinc-400">
           <span className="inline-flex items-center gap-1.5">
             <Flame className="w-4 h-4 text-orange-400" /> {streak}-day streak
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -612,7 +607,6 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
               subtitle={isOxford ? 'The essential English words — learn them as flashcards.' : 'Grow your words — one flashcard at a time.'}
               mascot={isOxford ? '📚' : ''}
               addedCount={addedCount}
-              completedCount={completedCount}
               streak={streak}
               dueCount={isOxford ? 0 : dueCount}
               onStudy={() => setStudying(true)}
