@@ -589,14 +589,7 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   }
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-emerald-950/40 via-background to-background pt-24 pb-16 px-4 md:px-8 lg:px-12"
-      style={{
-        backgroundImage:
-          'linear-gradient(rgba(16,185,129,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.05) 1px, transparent 1px)',
-        backgroundSize: '32px 32px',
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950/40 via-background to-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
       <div className="mx-auto max-w-3xl">
         {isOxford && (
           <Link to="/my-learning" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-4">
