@@ -199,11 +199,6 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
               ),
             )}
           </p>
-          {!selection && (
-            <p className="pointer-events-none mt-1 text-xs text-white/40">
-              Tap a word · drag across words to save a phrase
-            </p>
-          )}
         </div>
       )}
 
