@@ -5,7 +5,6 @@ import Navbar from '@/components/system/common/navbar';
 import Sidebar from '@/components/system/common/sidebar';
 import Footer from '@/components/system/common/footer';
 import SearchOverlay from '@/components/system/common/searching';
-import { SetupPrompt } from '@/components/system/common/setup-prompt';
 
 // A keyed motion.div that remounts on each route change and replays its enter
 // animation. We deliberately avoid AnimatePresence's `mode="wait"` exit gating:
@@ -50,7 +49,6 @@ export default function MainLayout() {
         </motion.div>
       </main>
       <Footer />
-      <SetupPrompt />
     </div>
   );
 }
