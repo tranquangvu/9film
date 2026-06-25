@@ -112,14 +112,16 @@ function LearningHero({
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 md:p-8">
       <div className="flex items-center gap-4">
-        <motion.div
-          className="text-5xl md:text-6xl select-none"
-          initial={{ scale: 0.5, opacity: 0, rotate: -8 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 14 }}
-        >
-          {mascot}
-        </motion.div>
+        {mascot && (
+          <motion.div
+            className="text-5xl md:text-6xl select-none"
+            initial={{ scale: 0.5, opacity: 0, rotate: -8 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 14 }}
+          >
+            {mascot}
+          </motion.div>
+        )}
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">{title}</h1>
           <p className="text-sm text-emerald-100/70">{subtitle}</p>
@@ -145,25 +147,25 @@ function LearningHero({
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-2.5">
         {dueCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button variant="primary" size="lg" className="rounded-2xl" onClick={onReview}>
-              <Brain className="w-5 h-5" /> Review {dueCount} {dueCount === 1 ? 'word' : 'words'}
+            <Button variant="primary" size="sm" onClick={onReview}>
+              <Brain className="w-4 h-4" /> Review {dueCount} {dueCount === 1 ? 'word' : 'words'}
             </Button>
           </motion.div>
         )}
         {addedCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button variant={dueCount > 0 ? 'outline' : 'primary'} size="lg" className="rounded-2xl" onClick={onStudy}>
-              <GraduationCap className="w-5 h-5" /> Study {addedCount} {addedCount === 1 ? 'word' : 'words'}
+            <Button variant={dueCount > 0 ? 'outline' : 'primary'} size="sm" onClick={onStudy}>
+              <GraduationCap className="w-4 h-4" /> Study {addedCount} {addedCount === 1 ? 'word' : 'words'}
             </Button>
           </motion.div>
         )}
         {insightsTo && (
           <Link
             to={insightsTo}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
           >
             <BarChart3 className="w-4 h-4" /> Insights
           </Link>
@@ -616,7 +618,7 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
             <LearningHero
               title={isOxford ? 'The Oxford 3000' : 'Vocabulary Garden'}
               subtitle={isOxford ? 'The essential English words — learn them as flashcards.' : 'Grow your words — one flashcard at a time.'}
-              mascot={isOxford ? '📚' : '🐰'}
+              mascot={isOxford ? '📚' : ''}
               addedCount={addedCount}
               completedCount={completedCount}
               streak={streak}
