@@ -208,14 +208,10 @@ func (s *service) GetWords(userID int64, status, list string, limit, offset int)
 	return s.repo.GetWords(userID, status, list, limit, offset)
 }
 
-// ExplainPhrase returns the cached explanation for a phrase, generating it with
-// Gemini on first request. With no key (or on AI failure) it degrades to a plain
-// machine translation as the meaning and does NOT cache, so adding a key later
-// still yields the full breakdown.
+// ExplainPhrase generates an idiom/phrasal-verb breakdown with Gemini. With no
+// key (or on AI failure) it degrades to a plain machine translation as the
+// meaning. Results aren't persisted server-side; the frontend caches them.
 func (s *service) ExplainPhrase(userID int64, phrase, sentence, target string) (*PhraseExplanation, error) {
-	if e, ok := s.repo.GetExplanation(userID, phrase); ok {
-		return e, nil
-	}
 	apiKey, model := s.keys.Resolve(userID)
 	if apiKey == "" {
 		meaning, _ := s.Translate(phrase, target)
@@ -226,9 +222,6 @@ func (s *service) ExplainPhrase(userID int64, phrase, sentence, target string) (
 		logger.Get().Warn("phrase explanation failed; using translation", zap.String("phrase", phrase), zap.Error(err))
 		meaning, _ := s.Translate(phrase, target)
 		return &PhraseExplanation{Meaning: meaning}, nil
-	}
-	if err := s.repo.SaveExplanation(userID, phrase, *e); err != nil {
-		logger.Get().Warn("save explanation failed", zap.String("phrase", phrase), zap.Error(err))
 	}
 	return e, nil
 }

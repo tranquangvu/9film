@@ -19,8 +19,6 @@ type Repository interface {
 	UpdateSchedule(userID int64, word string, ease float64, interval, reps int, dueAt string) error
 	SetImageStatus(userID int64, word, status string) error
 	SaveImage(userID int64, word, imageURL string) error
-	SaveExplanation(userID int64, word string, e PhraseExplanation) error
-	GetExplanation(userID int64, word string) (*PhraseExplanation, bool)
 	SaveTest(userID int64, t TestResult) (int64, error)
 	GetTests(userID int64) ([]TestResult, error)
 }
@@ -244,33 +242,6 @@ func (r *repository) GetTests(userID int64) ([]TestResult, error) {
 		items = append(items, t)
 	}
 	return items, rows.Err()
-}
-
-// SaveExplanation upserts the AI breakdown of a phrase/idiom.
-func (r *repository) SaveExplanation(userID int64, word string, e PhraseExplanation) error {
-	_, err := r.db.Exec(
-		`INSERT INTO word_explanations (user_id, word, meaning, literal, figurative, usage, updated_at)
-		   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-		   ON CONFLICT(user_id, word) DO UPDATE SET
-		     meaning = excluded.meaning, literal = excluded.literal,
-		     figurative = excluded.figurative, usage = excluded.usage,
-		     updated_at = datetime('now')`,
-		userID, word, e.Meaning, e.Literal, e.Figurative, e.Usage,
-	)
-	return err
-}
-
-// GetExplanation returns a cached phrase explanation, or (nil, false) when none.
-func (r *repository) GetExplanation(userID int64, word string) (*PhraseExplanation, bool) {
-	var e PhraseExplanation
-	err := r.db.QueryRow(
-		`SELECT meaning, literal, figurative, usage FROM word_explanations WHERE user_id = ? AND word = ?`,
-		userID, word,
-	).Scan(&e.Meaning, &e.Literal, &e.Figurative, &e.Usage)
-	if err != nil {
-		return nil, false
-	}
-	return &e, true
 }
 
 // BulkAddWords inserts many bare words (no context, no image) tagged with the
