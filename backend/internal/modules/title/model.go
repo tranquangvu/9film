@@ -204,7 +204,14 @@ func normalizeImdbID(id string) string {
 }
 
 func releaseCutoff() time.Time {
-	return time.Now().UTC().AddDate(0, -6, 0)
+	return time.Now().UTC().AddDate(0, -3, 0)
+}
+
+// releaseRangeStart is the lower bound for the home-page browse query: the start
+// of the year three years ago (e.g. 2023-01-01 when run in 2026).
+func releaseRangeStart() time.Time {
+	year := time.Now().UTC().Year() - 3
+	return time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC)
 }
 
 // IMDb data is public, user-independent, and rarely changes — cache both single

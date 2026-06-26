@@ -300,9 +300,6 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		first = 20
 	}
 
-	// Cache only the first page (no `after` cursor) of the unfiltered feed,
-	// optionally narrowed to movie/tv. Any other params — a cursor, genre, sort,
-	// minRating, or an unknown type — bypass the cache entirely.
 	cacheable := params.After == "" && params.Genre == "" && params.Sort == "" && params.MinRating == nil &&
 		(params.Type == "" || params.Type == "movie" || params.Type == "tv")
 	cacheKey := browseCacheKey(params, first)
@@ -325,10 +322,13 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 			"anyTitleTypeIds": typeConstraint,
 		},
 		// Only surface titles the user can actually watch; cap the range at the
-		// shared cutoff so recently/just-released titles without streams are excluded.
+		// shared cutoff so recently/just-released titles without streams are excluded,
+		// and floor it at the start of the year three years ago so the home page
+		// favours recent titles.
 		"releaseDateConstraint": map[string]any{
 			"releaseDateRange": map[string]any{
-				"end": releaseCutoff().Format(time.DateOnly),
+				"start": releaseRangeStart().Format(time.DateOnly),
+				"end":   releaseCutoff().Format(time.DateOnly),
 			},
 		},
 	}
