@@ -22,7 +22,9 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const location = useLocation();
 
   const search = useSearchQuery(query, 12);
-  const trending = useBrowseTitleQuery({ sort: 'popular', first: 8 });
+  // Popular suggestions are only shown inside the overlay, so don't fetch them
+  // until it's actually open — otherwise this fires on every page load.
+  const trending = useBrowseTitleQuery({ sort: 'popular', first: 8, recent: true }, undefined, isOpen);
 
   const results = query.trim().length > 0
     ? (search.data ?? []).map(toTitle)
