@@ -216,61 +216,57 @@ function WordDialog({
       <DialogContent className="max-w-2xl">
         {word && (
           <div>
-            <div className="flex justify-between items-center gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3 pr-8">
-                  <DialogTitle className="capitalize">
-                    {word.word}
-                  </DialogTitle>
-                  {canSpeak() && (
-                    <button onClick={() => speak(word.word)} aria-label="Pronounce word" className="shrink-0 text-orange-400 hover:text-orange-300 transition-colors">
-                      <Volume2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  {isDone && (
-                    <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-                    </span>
-                  )}
-                </div>
+            {word.imageStatus === 'ready' && word.imageUrl && (
+              <a
+                href={word.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative mb-4 block aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 ring-1 ring-white/10 shadow-lg shadow-black/40 transition-shadow hover:ring-orange-400/40"
+              >
+                <img
+                  src={word.imageUrl}
+                  alt={word.word}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
+              </a>
+            )}
 
-                {dict.data?.phonetic && <p className="mt-1 text-sm text-zinc-500">{dict.data.phonetic}</p>}
-
-                {word.translation && <p className="mt-2 text-orange-300 font-medium">{word.translation}</p>}
-                {word.sentence && (
-                  <div className="mt-2 flex items-start gap-2">
-                    <DialogDescription className="italic text-zinc-400">“{word.sentence}”</DialogDescription>
-                    {canSpeak() && (
-                      <button onClick={() => speak(word.sentence)} aria-label="Read sentence aloud" className="shrink-0 mt-1 text-orange-400 hover:text-orange-300 transition-colors">
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )}
-                {word.imdbId && (
-                  <Link to={sceneLink(word)} className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300" target="_blank">
-                    <Play className="w-3.5 h-3.5" /> Watch the scene
-                  </Link>
-                )}
-              </div>
-
-              {word.imageStatus === 'ready' && word.imageUrl && (
-                <a
-                  href={word.imageUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group relative shrink-0 mt-1 w-36 sm:w-44 aspect-square overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 ring-1 ring-white/10 shadow-lg shadow-black/40 transition-shadow hover:ring-orange-400/40"
-                >
-                  <img
-                    src={word.imageUrl}
-                    alt={word.word}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                  />
-                  <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
-                </a>
+            <div className="flex items-center gap-3 pr-8">
+              <DialogTitle className="capitalize">
+                {word.word}
+              </DialogTitle>
+              {canSpeak() && (
+                <button onClick={() => speak(word.word)} aria-label="Pronounce word" className="shrink-0 text-orange-400 hover:text-orange-300 transition-colors">
+                  <Volume2 className="w-4 h-4" />
+                </button>
+              )}
+              {isDone && (
+                <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                </span>
               )}
             </div>
+
+            {dict.data?.phonetic && <p className="mt-1 text-sm text-zinc-500">{dict.data.phonetic}</p>}
+
+            {word.translation && <p className="mt-2 text-orange-300 font-medium">{word.translation}</p>}
+            {word.sentence && (
+              <div className="mt-2 flex items-start gap-2">
+                <DialogDescription className="italic text-zinc-400">“{word.sentence}”</DialogDescription>
+                {canSpeak() && (
+                  <button onClick={() => speak(word.sentence)} aria-label="Read sentence aloud" className="shrink-0 mt-1 text-orange-400 hover:text-orange-300 transition-colors">
+                    <Volume2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+            {word.imdbId && (
+              <Link to={sceneLink(word)} className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300" target="_blank">
+                <Play className="w-3.5 h-3.5" /> Watch the scene
+              </Link>
+            )}
 
             {isPhrase && (
               <div className="mt-4 space-y-3">
