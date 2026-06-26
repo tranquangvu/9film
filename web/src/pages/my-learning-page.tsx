@@ -216,45 +216,50 @@ function WordDialog({
       <DialogContent className="max-w-2xl">
         {word && (
           <div>
-            {word.imageStatus === 'ready' && word.imageUrl && (
-              <div className="mb-4 w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white">
-                <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
-              </div>
-            )}
-            <div className="flex items-center gap-3 pr-8">
-              <DialogTitle className="capitalize">
-                {word.word}
-              </DialogTitle>
-              {canSpeak() && (
-                <button onClick={() => speak(word.word)} aria-label="Pronounce word" className="shrink-0 text-orange-400 hover:text-orange-300 transition-colors">
-                  <Volume2 className="w-4 h-4" />
-                </button>
-              )}
-              {isDone && (
-                <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-                </span>
-              )}
-            </div>
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 pr-8">
+                  <DialogTitle className="capitalize">
+                    {word.word}
+                  </DialogTitle>
+                  {canSpeak() && (
+                    <button onClick={() => speak(word.word)} aria-label="Pronounce word" className="shrink-0 text-orange-400 hover:text-orange-300 transition-colors">
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {isDone && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                    </span>
+                  )}
+                </div>
 
-            {dict.data?.phonetic && <p className="mt-1 text-sm text-zinc-500">{dict.data.phonetic}</p>}
+                {dict.data?.phonetic && <p className="mt-1 text-sm text-zinc-500">{dict.data.phonetic}</p>}
 
-            {word.translation && <p className="mt-2 text-orange-300 font-medium">{word.translation}</p>}
-            {word.sentence && (
-              <div className="mt-2 flex items-start gap-2">
-                <DialogDescription className="italic text-zinc-400">“{word.sentence}”</DialogDescription>
-                {canSpeak() && (
-                  <button onClick={() => speak(word.sentence)} aria-label="Read sentence aloud" className="shrink-0 mt-1 text-orange-400 hover:text-orange-300 transition-colors">
-                    <Volume2 className="w-3.5 h-3.5" />
-                  </button>
+                {word.translation && <p className="mt-2 text-orange-300 font-medium">{word.translation}</p>}
+                {word.sentence && (
+                  <div className="mt-2 flex items-start gap-2">
+                    <DialogDescription className="italic text-zinc-400">“{word.sentence}”</DialogDescription>
+                    {canSpeak() && (
+                      <button onClick={() => speak(word.sentence)} aria-label="Read sentence aloud" className="shrink-0 mt-1 text-orange-400 hover:text-orange-300 transition-colors">
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+                {word.imdbId && (
+                  <Link to={sceneLink(word)} className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300" target="_blank">
+                    <Play className="w-3.5 h-3.5" /> Watch the scene
+                  </Link>
                 )}
               </div>
-            )}
-            {word.imdbId && (
-              <Link to={sceneLink(word)} className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300" target="_blank">
-                <Play className="w-3.5 h-3.5" /> Watch the scene
-              </Link>
-            )}
+
+              {word.imageStatus === 'ready' && word.imageUrl && (
+                <div className="shrink-0 w-32 sm:w-40 aspect-square rounded-2xl overflow-hidden bg-white">
+                  <img src={word.imageUrl} alt={word.word} className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
 
             {isPhrase && (
               <div className="mt-4 space-y-3">
