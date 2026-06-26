@@ -189,6 +189,20 @@ export default function MyListPage() {
               </div>
               {favLoadingMore && <LoadMoreIndicator className="mt-8" />}
             </>
+          ) : activeTab === 'all' && continueWatching.length > 0 ? (
+            // Favorites are empty but the list isn't (Continue Watching above), so
+            // keep the Favorites section visible with its own scoped empty state
+            // rather than the misleading whole-list "Your list is empty".
+            <>
+              <h2 className="text-lg font-bold text-white mb-5">Favorites</h2>
+              <Empty
+                icon="📋"
+                title={emptyMessages.saved.title}
+                message={emptyMessages.saved.message}
+                actionLabel="Browse Content"
+                onAction={() => navigate('/browse')}
+              />
+            </>
           ) : (
             <Empty
               icon="📋"
