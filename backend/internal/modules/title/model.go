@@ -203,7 +203,7 @@ func normalizeImdbID(id string) string {
 	return "tt" + id
 }
 
-func releaseCutoff() time.Time {
+func releaseRangeEnd() time.Time {
 	return time.Now().UTC().AddDate(0, -3, 0)
 }
 

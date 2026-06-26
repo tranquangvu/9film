@@ -210,7 +210,7 @@ func (r *repository) SearchTitles(term string, limit int) ([]ImdbTitle, error) {
 		// user can actually watch (released on or before the cutoff).
 		"releaseDateConstraint": map[string]any{
 			"releaseDateRange": map[string]any{
-				"end": releaseCutoff().Format(time.DateOnly),
+				"end": releaseRangeEnd().Format(time.DateOnly),
 			},
 		},
 	}
@@ -328,7 +328,7 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		"releaseDateConstraint": map[string]any{
 			"releaseDateRange": map[string]any{
 				"start": releaseRangeStart().Format(time.DateOnly),
-				"end":   releaseCutoff().Format(time.DateOnly),
+				"end":   releaseRangeEnd().Format(time.DateOnly),
 			},
 		},
 	}
