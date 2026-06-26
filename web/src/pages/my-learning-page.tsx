@@ -213,7 +213,7 @@ function WordDialog({
 
   return (
     <Dialog open={!!word} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         {word && (
           <div>
             {word.imageStatus === 'ready' && word.imageUrl && (
@@ -221,15 +221,14 @@ function WordDialog({
                 href={word.imageUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="group relative mb-4 block aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 ring-1 ring-white/10 shadow-lg shadow-black/40 transition-shadow hover:ring-orange-400/40"
+                className="group relative -mx-6 -mt-6 mb-4 block h-40 sm:h-44 overflow-hidden rounded-t-2xl bg-[#1a1a1a]"
               >
                 <img
                   src={word.imageUrl}
                   alt={word.word}
                   loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.05]"
                 />
-                <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
               </a>
             )}
 
