@@ -216,7 +216,7 @@ function WordDialog({
       <DialogContent className="max-w-2xl">
         {word && (
           <div>
-            <div className="flex items-start gap-4">
+            <div className="flex justify-between items-center gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 pr-8">
                   <DialogTitle className="capitalize">
@@ -255,9 +255,20 @@ function WordDialog({
               </div>
 
               {word.imageStatus === 'ready' && word.imageUrl && (
-                <div className="shrink-0 w-32 sm:w-40 aspect-square rounded-2xl overflow-hidden bg-white">
-                  <img src={word.imageUrl} alt={word.word} className="w-full h-full object-cover" />
-                </div>
+                <a
+                  href={word.imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group relative shrink-0 mt-1 w-36 sm:w-44 aspect-square overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 ring-1 ring-white/10 shadow-lg shadow-black/40 transition-shadow hover:ring-orange-400/40"
+                >
+                  <img
+                    src={word.imageUrl}
+                    alt={word.word}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  />
+                  <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/10" />
+                </a>
               )}
             </div>
 
