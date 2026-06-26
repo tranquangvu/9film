@@ -189,6 +189,10 @@ type BrowseParams struct {
 	// "popular" (most popular first), or "rating" (highest user rating first).
 	// Empty falls back to IMDb's default relevance order.
 	Sort string
+	// Recent floors the release range at releaseRangeStart so only recent titles
+	// surface. Set for the home-page feeds and similar-title suggestions; left off
+	// for the genre/listing browse pages, which span the full back catalogue.
+	Recent bool
 }
 
 type graphqlRequest struct {

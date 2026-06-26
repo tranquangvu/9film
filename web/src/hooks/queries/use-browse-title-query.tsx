@@ -33,6 +33,7 @@ export function useBrowseTitleQuery<T = BrowseResult>(
     after?: string;
     minRating?: number;
     sort?: string;
+    recent?: boolean;
   },
   select?: (data: BrowseResult) => T,
   enabled = true,

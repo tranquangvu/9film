@@ -15,15 +15,15 @@ const TOP_TEN_LIMIT = 10;
 const POPULAR_LIMIT = 100;
 
 export function usePopularTitles() {
-  return useBrowseTitleQuery({ sort: 'popular', first: POPULAR_LIMIT }, (data) => data.titles);
+  return useBrowseTitleQuery({ sort: 'popular', first: POPULAR_LIMIT, recent: true }, (data) => data.titles);
 }
 
 export function usePopularMovieTitles() {
-  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 20 }, (data) => toTitles(data.titles));
+  return useBrowseTitleQuery({ type: 'movie', sort: 'popular', first: 20, recent: true }, (data) => toTitles(data.titles));
 }
 
 export function usePopularTVSeriesTitles() {
-  return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20 }, (data) => toTitles(data.titles));
+  return useBrowseTitleQuery({ type: 'tv', sort: 'popular', first: 20, recent: true }, (data) => toTitles(data.titles));
 }
 
 // Continue Watching row. The backend returns one deduped row per title with the

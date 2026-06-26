@@ -101,6 +101,7 @@ func (h *Handler) BrowseTitles(c *gin.Context) {
 		After:     c.Query("after"),
 		MinRating: minRating,
 		Sort:      c.Query("sort"),
+		Recent:    c.Query("recent") == "true",
 	})
 	if err != nil {
 		logger.Get().Warn("browse titles failed", zap.Error(err))

@@ -37,7 +37,7 @@ export async function getTrendingTitles(limit = 10, signal?: AbortSignal): Promi
 }
 
 export async function browseTitles(
-  opts: { type?: string; genre?: string; first?: number; after?: string; minRating?: number; sort?: string },
+  opts: { type?: string; genre?: string; first?: number; after?: string; minRating?: number; sort?: string; recent?: boolean },
   signal?: AbortSignal,
 ): Promise<BrowseResult> {
   const params = new URLSearchParams();
@@ -47,6 +47,7 @@ export async function browseTitles(
   if (opts.after) params.set('after', opts.after);
   if (opts.minRating != null) params.set('minRating', String(opts.minRating));
   if (opts.sort) params.set('sort', opts.sort);
+  if (opts.recent) params.set('recent', 'true');
 
   const json = await apiFetch<BrowseResult>(`/api/title/browse?${params}`, { signal });
   return { titles: json.titles ?? [], hasNextPage: json.hasNextPage ?? false, endCursor: json.endCursor };

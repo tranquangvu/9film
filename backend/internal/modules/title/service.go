@@ -165,9 +165,10 @@ func (s *service) SimilarTitles(userID int64, imdbID string, limit int) ([]Title
 	}
 
 	result, err := s.browse(BrowseParams{
-		Type:  mediaType,
-		Genre: genre,
-		First: limit + 5,
+		Type:   mediaType,
+		Genre:  genre,
+		First:  limit + 5,
+		Recent: true,
 	})
 	if err != nil {
 		return nil, err

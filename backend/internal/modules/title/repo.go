@@ -317,19 +317,24 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		typeConstraint = []string{"tvSeries", "tvMiniSeries", "tvMovie", "tvSpecial"}
 	}
 
+	releaseDateRange := map[string]any{
+		"end": releaseRangeEnd().Format(time.DateOnly),
+	}
+	// Recent feeds (home page, similar titles) also floor the range at the start of
+	// the year three years ago; the genre/listing browse pages span the full back
+	// catalogue.
+	if params.Recent {
+		releaseDateRange["start"] = releaseRangeStart().Format(time.DateOnly)
+	}
+
 	constraints := map[string]any{
 		"titleTypeConstraint": map[string]any{
 			"anyTitleTypeIds": typeConstraint,
 		},
 		// Only surface titles the user can actually watch; cap the range at the
-		// shared cutoff so recently/just-released titles without streams are excluded,
-		// and floor it at the start of the year three years ago so the home page
-		// favours recent titles.
+		// shared cutoff so recently/just-released titles without streams are excluded.
 		"releaseDateConstraint": map[string]any{
-			"releaseDateRange": map[string]any{
-				"start": releaseRangeStart().Format(time.DateOnly),
-				"end":   releaseRangeEnd().Format(time.DateOnly),
-			},
+			"releaseDateRange": releaseDateRange,
 		},
 	}
 	if params.Genre != "" {
@@ -421,6 +426,6 @@ func browseCacheKey(p BrowseParams, first int) string {
 		rating = strconv.FormatFloat(*p.MinRating, 'f', -1, 64)
 	}
 	return strings.Join([]string{
-		"browse", p.Type, p.Genre, p.Sort, p.After, rating, strconv.Itoa(first),
+		"browse", p.Type, p.Genre, p.Sort, p.After, rating, strconv.FormatBool(p.Recent), strconv.Itoa(first),
 	}, "|")
 }
