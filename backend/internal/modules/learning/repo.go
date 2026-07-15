@@ -100,7 +100,7 @@ type rowScanner interface {
 func scanWord(row rowScanner) (Word, error) {
 	var w Word
 	err := row.Scan(
-		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
+		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID, &w.Title,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
 		&w.List, &w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind,
 	)
@@ -109,7 +109,7 @@ func scanWord(row rowScanner) (Word, error) {
 
 // wordColumns is the shared select list for full word rows — every words column
 // scanWord expects, in the order it expects them.
-const wordColumns = `w.word, w.sentence, w.translation, w.imdb_id, w.season, w.episode, w.timestamp, w.created_at, w.completed_at, w.list, w.due_at, w.ease, w.interval, w.reps, w.kind`
+const wordColumns = `w.word, w.sentence, w.translation, w.imdb_id, w.title, w.season, w.episode, w.timestamp, w.created_at, w.completed_at, w.list, w.due_at, w.ease, w.interval, w.reps, w.kind`
 
 // GetWord returns a single saved word (used as the grading reference when
 // scoring a test answer). Returns (nil, nil) when not found.
@@ -140,12 +140,13 @@ func (r *repository) AddWord(userID int64, w Word) error {
 	}
 	_, err := r.db.Exec(
 		`INSERT INTO words
-		   (user_id, word, sentence, translation, imdb_id, season, episode, timestamp, kind)
-		   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		   (user_id, word, sentence, translation, imdb_id, title, season, episode, timestamp, kind)
+		   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		   ON CONFLICT(user_id, word) DO UPDATE SET
 		     sentence = excluded.sentence,
 		     translation = excluded.translation,
 		     imdb_id = excluded.imdb_id,
+		     title = excluded.title,
 		     season = excluded.season,
 		     episode = excluded.episode,
 		     timestamp = excluded.timestamp,
@@ -156,7 +157,7 @@ func (r *repository) AddWord(userID int64, w Word) error {
 		     ease = 2.5,
 		     interval = 0,
 		     reps = 0`,
-		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp, kind,
+		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Title, w.Season, w.Episode, w.Timestamp, kind,
 	)
 	return err
 }

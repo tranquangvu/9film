@@ -17,6 +17,7 @@ import {
   Brain,
   Check,
   X,
+  Plus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,23 +37,14 @@ import {
 } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
+import { normId } from '@/utils/title';
 import { speak, canSpeak } from '@/utils/speak';
-import { wordColor } from '@/utils/word-color';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
 import { FlashcardDeck } from '@/components/system/learn/flashcard-deck';
 import { WordTest } from '@/components/system/learn/word-test';
 import { ReviewDeck } from '@/components/system/learn/review-deck';
 import { parseDate, dayKey } from '@/utils/word-date';
 import type { Word, WordStat } from '@/services/user';
-
-function friendlyDay(d: Date): string {
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (dayKey(d) === dayKey(today)) return 'Today';
-  if (dayKey(d) === dayKey(yesterday)) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 // Build a deep link back to the exact scene the word was saved from.
 function sceneLink(w: Word): string {
@@ -357,78 +349,96 @@ function ExplainBlock({ label, text }: { label: string; text: string }) {
   );
 }
 
-interface DayGroup {
-  key: string;
-  date: Date;
+interface TitleGroup {
+  imdbId: string; // '' = saved without a source title (e.g. imported packs)
+  title: string; // stored source name ('' when unknown / legacy)
   words: Word[];
+  recent: number; // most recent word time, for ordering groups
 }
 
-function groupByDay(words: Word[], dateOf: (w: Word) => string | undefined): DayGroup[] {
-  const map = new Map<string, DayGroup>();
-  for (const w of words) {
-    const d = parseDate(dateOf(w)) ?? new Date(0);
-    const key = dayKey(d);
-    const entry = map.get(key);
-    if (entry) entry.words.push(w);
-    else map.set(key, { key, date: d, words: [w] });
-  }
+// Group a word list by the movie/show it was saved from, using the title name
+// stored on each word (no IMDb fetch). Words sharing an id land together;
+// source-less words (imported packs) collapse into one bucket that always sorts
+// last. Within a group, and across groups, the most recently touched words come
+// first.
+function groupByTitle(words: Word[], dateOf: (w: Word) => string | undefined): TitleGroup[] {
   const ts = (w: Word) => parseDate(dateOf(w))?.getTime() ?? 0;
+  const map = new Map<string, TitleGroup>();
+  for (const w of words) {
+    const key = w.imdbId || '';
+    const entry = map.get(key);
+    if (entry) {
+      entry.words.push(w);
+      if (!entry.title && w.title) entry.title = w.title;
+    } else {
+      map.set(key, { imdbId: key, title: w.title ?? '', words: [w], recent: 0 });
+    }
+  }
   const groups = [...map.values()];
-  for (const g of groups) g.words.sort((a, b) => ts(b) - ts(a));
-  return groups.sort((a, b) => b.date.getTime() - a.date.getTime());
+  for (const g of groups) {
+    g.words.sort((a, b) => ts(b) - ts(a));
+    g.recent = ts(g.words[0]);
+  }
+  return groups.sort((a, b) => {
+    if (!a.imdbId !== !b.imdbId) return a.imdbId ? -1 : 1;
+    return b.recent - a.recent;
+  });
 }
 
-function WordGroupList({
+function WordTitleGroupList({
   groups,
   onSelect,
   onTest,
 }: {
-  groups: DayGroup[];
+  groups: TitleGroup[];
   onSelect: (w: Word) => void;
-  onTest?: (g: DayGroup) => void;
+  onTest?: (g: TitleGroup, label: string) => void;
 }) {
   return (
     <div className="space-y-5">
-      {groups.map((g) => (
-        <motion.div key={g.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm font-medium text-zinc-300">{friendlyDay(g.date)}</span>
-            <span className="text-xs text-zinc-600">
-              <span className="mr-2">|</span>
-              {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
-            </span>
-            {onTest && (
-              <button
-                onClick={() => onTest(g)}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25 transition-colors"
-              >
-                <GraduationCap className="w-3.5 h-3.5" /> Test
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {g.words.map((w) => (
-              <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
-            ))}
-          </div>
-        </motion.div>
-      ))}
+      {groups.map((g) => {
+        const label = g.title || g.imdbId || 'Saved words';
+        return (
+          <motion.div key={g.imdbId || 'none'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex items-center gap-2 mb-3">
+              {g.imdbId ? (
+                <Link
+                  to={`/title/${normId(g.imdbId)}`}
+                  className="min-w-0 truncate text-sm font-medium text-zinc-200 hover:text-white"
+                >
+                  {label}
+                </Link>
+              ) : (
+                <span className="text-sm font-medium text-zinc-300">{label}</span>
+              )}
+              <span className="shrink-0 text-xs text-zinc-600">
+                <span className="mr-2">|</span>
+                {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
+              </span>
+              {onTest && (
+                <button
+                  onClick={() => onTest(g, label)}
+                  className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25 transition-colors"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" /> Test
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {g.words.map((w) => (
+                <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
+              ))}
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
 
-// Each word carries its own stable, translucent color (derived from the word
-// text) so the lists read as soft, colorful chips.
 function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
-  const c = wordColor(word.word);
   return (
-    <Badge
-      variant="tag"
-      onClick={onClick}
-      style={{ background: c.background, borderColor: c.borderColor, color: c.color }}
-      className="capitalize cursor-pointer hover:brightness-125"
-    >
-      {word.kind === 'phrase' && <span className="mr-1">💬</span>}
+    <Badge variant="tag" onClick={onClick} className="capitalize">
       {word.word}
     </Badge>
   );
@@ -470,11 +480,11 @@ function OxfordImportCard() {
       <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-block">
         <Button
           variant="primary"
-          size="lg"
-          className="rounded-2xl"
+          size="sm"
           disabled={importList.isPending}
           onClick={() => importList.mutate('oxford3000')}
         >
+          <Plus className="w-4 h-4" />
           {importList.isPending ? 'Adding…' : 'Add the Oxford 3000'}
         </Button>
       </motion.div>
@@ -512,7 +522,7 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   // since they're all added at once); everything else groups by day.
   const flat = isOxford && tab === 'learn';
   const groups = useMemo(
-    () => (flat ? [] : groupByDay(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt))),
+    () => (flat ? [] : groupByTitle(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt))),
     [words, tab, flat],
   );
 
@@ -616,8 +626,8 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
 
             <div className="flex items-center gap-2 flex-wrap">
               {([
-                { id: 'learn', label: 'To Learn', icon: <BookOpen className="w-3.5 h-3.5" /> },
-                { id: 'completed', label: 'Learned', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                { id: 'learn', label: 'Study', icon: <BookOpen className="w-3.5 h-3.5" /> },
+                { id: 'completed', label: 'Completed', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
               ] as const).map((t) => (
                 <Badge variant="tag" key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
                   {t.icon}
@@ -649,15 +659,15 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
                       </div>
                     )
                   : groups.length > 0 && (
-                      <WordGroupList
+                      <WordTitleGroupList
                         groups={groups}
                         onSelect={setSelected}
                         onTest={
                           tab === 'completed'
-                            ? (g) => {
+                            ? (g, label) => {
                                 // Spelling a long idiom is harsh — test single words only.
                                 const words = g.words.filter((w) => w.kind !== 'phrase');
-                                if (words.length > 0) setTestGroup({ words, label: friendlyDay(g.date) });
+                                if (words.length > 0) setTestGroup({ words, label });
                               }
                             : undefined
                         }

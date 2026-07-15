@@ -8,6 +8,7 @@ import { translate } from '@/services/learn';
 
 export interface WordContext {
   imdbId: string;
+  title: string;
   season: number;
   episode: number;
   learningLang: string;
@@ -61,6 +62,7 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
       sentence,
       translation: savedTranslation,
       imdbId: context.imdbId,
+      title: context.title,
       season: context.season,
       episode: context.episode,
       timestamp,

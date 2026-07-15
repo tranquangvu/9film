@@ -43,8 +43,9 @@ func Open(path string) (*sql.DB, error) {
 }
 
 // Migrate creates the schema if it doesn't exist. Every table is declared with
-// its full set of columns here (no additive ALTERs), so a fresh database is
-// complete after one pass. Statements are idempotent so it can run on every
+// its full set of columns here, so a fresh database is complete after one pass;
+// columns added to an existing table are backfilled by the ensureColumn calls
+// after the CREATE block. Statements are idempotent so it can run on every
 // startup.
 func Migrate(db *sql.DB) error {
 	stmts := []string{
@@ -109,6 +110,7 @@ func Migrate(db *sql.DB) error {
 			sentence         TEXT NOT NULL DEFAULT '',
 			translation      TEXT NOT NULL DEFAULT '',
 			imdb_id          TEXT NOT NULL DEFAULT '',
+			title            TEXT NOT NULL DEFAULT '',
 			season           INTEGER NOT NULL DEFAULT 0,
 			episode          INTEGER NOT NULL DEFAULT 0,
 			timestamp        REAL NOT NULL DEFAULT 0,
@@ -156,6 +158,13 @@ func Migrate(db *sql.DB) error {
 		}
 	}
 
+	// Additive column migrations for databases created before a column existed.
+	// CREATE TABLE IF NOT EXISTS won't add columns to an existing table, so these
+	// backfill them in place (idempotent — skipped when the column is present).
+	if err := ensureColumn(db, "words", "title", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+
 	// Word illustrations were removed; drop what older databases still carry.
 	if _, err := db.Exec(`DROP TABLE IF EXISTS word_images`); err != nil {
 		return err
@@ -166,6 +175,30 @@ func Migrate(db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// ensureColumn adds `col` to `table` when it's missing, leaving existing rows at
+// the column default. Idempotent: a no-op once the column exists.
+func ensureColumn(db *sql.DB, table, col, ddl string) error {
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		if name == col {
+			return rows.Err()
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col, ddl))
+	return err
 }
 
 // dropColumn removes `col` from `table` when it's still present, discarding its

@@ -69,7 +69,7 @@ export function WatchPage() {
 
   const learning =
     learningMode && cues.length > 0
-      ? { cues, context: { imdbId: id, season: isSeries ? season : 0, episode: isSeries ? episode : 0, learningLang } }
+      ? { cues, context: { imdbId: id, title: title ?? '', season: isSeries ? season : 0, episode: isSeries ? episode : 0, learningLang } }
       : null;
   const hasTranscript = learningMode && cues.length > 0;
 

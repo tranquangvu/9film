@@ -7,6 +7,9 @@ type Word struct {
 	Sentence    string  `json:"sentence"`
 	Translation string  `json:"translation"`
 	ImdbID      string  `json:"imdbId"`
+	// Title is the movie/show name the word was saved from, stored as metadata so
+	// the learning page can group words by source without re-fetching IMDb.
+	Title       string  `json:"title"`
 	Season      int     `json:"season"`
 	Episode     int     `json:"episode"`
 	Timestamp   float64 `json:"timestamp"`

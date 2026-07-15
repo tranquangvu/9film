@@ -37,6 +37,8 @@ export interface Word {
   sentence: string;
   translation: string;
   imdbId: string;
+  /** Movie/show name the word was saved from (stored metadata; used to group the learning list). */
+  title?: string;
   season: number;
   episode: number;
   timestamp: number;
