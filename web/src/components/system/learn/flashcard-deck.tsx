@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Volume2, RotateCw, Check } from 'lucide-react';
+import { X, Volume2, RotateCw, Check, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCompleteWord } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
+import { useWordTranslation } from '@/hooks/queries/use-translate-query';
+import { SpellBoxes } from '@/components/system/learn/spell-boxes';
 import { speak, canSpeak } from '@/utils/speak';
-import { wordColor } from '@/utils/word-color';
 import type { Word } from '@/services/user';
+import { isSpelled, spelledCount, sceneLink } from '@/utils/word';
+
+const SPELL_TIMES = 6; // times the word must be retyped before "Got it" unlocks
 
 // A playful flip-card study game. The front shows the word; flipping reveals the
-// meaning. "Got it" marks the word learned (the new complete gate); "Again"
-// requeues it to the back for another pass this session.
+// meaning and the retype boxes. "Got it" marks the word learned once they all
+// match; "Again" requeues it to the back for another pass this session.
 export function FlashcardDeck({
   words,
   total,
@@ -34,7 +39,6 @@ export function FlashcardDeck({
 
   const byKey = useMemo(() => new Map(words.map((w) => [w.word, w])), [words]);
 
-  // Merge newly loaded pages into the study queue as they arrive.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setQueue((prev) => {
@@ -44,7 +48,6 @@ export function FlashcardDeck({
     });
   }, [words]);
 
-  // Pull the next page as we near the end of the loaded queue.
   useEffect(() => {
     if (hasMore && pos >= queue.length - 5) fetchMore();
   }, [hasMore, pos, queue.length, fetchMore]);
@@ -84,8 +87,7 @@ export function FlashcardDeck({
         <X className="w-5 h-5" />
       </button>
 
-      {/* Progress */}
-      <div className="w-full max-w-sm mb-6">
+      <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs font-medium text-emerald-200/80 mb-1.5">
           <span>{Math.min(learned, total)} / {total} learned</span>
           <span>{finished ? 'Done' : `Card ${pos + 1}`}</span>
@@ -138,62 +140,99 @@ function Flashcard({
   onAgain: () => void;
   completing: boolean;
 }) {
-  const c = wordColor(word.word);
+  const translation = useWordTranslation(word);
+  // Shares the back's cached lookup (same query key), so this costs no request.
+  const phonetic = useDictionaryQuery(word.word).data?.phonetic;
+  // Same retype gate as the word dialog: "Got it" unlocks once every box matches.
+  // The parent keys this component by word, so the boxes clear on each new card.
+  const [spellings, setSpellings] = useState<string[]>(() => Array(SPELL_TIMES).fill(''));
+  const done = spelledCount(word.word, spellings);
+  const spelled = isSpelled(word.word, spellings);
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0, y: 12 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.9, opacity: 0, y: -12 }}
       transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      className="w-full max-w-sm"
+      className="w-full max-w-md"
     >
-      {/* Flip stage */}
       <div style={{ perspective: 1200 }} className="w-full">
         <motion.div
           onClick={onFlip}
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[260px] cursor-pointer select-none"
+          className="relative w-full h-[min(320px,calc(100vh-14rem))] cursor-pointer select-none"
         >
-          {/* Front */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 flex flex-col"
+            className="absolute inset-0 flex flex-col overflow-y-auto rounded-3xl border border-white/10 bg-surface p-5"
           >
-            <div className="flex flex-1 items-center justify-center gap-2">
-              <span className="text-3xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
-                {word.word}
-              </span>
-              {canSpeak() && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); speak(word.word); }}
-                  aria-label="Pronounce"
-                  className="text-orange-400 hover:text-orange-300 transition-colors"
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1">
+              <p className="relative">
+                <span
+                  className="text-center text-5xl font-bold capitalize leading-tight tracking-tight text-white break-words"
                 >
-                  <Volume2 className="w-5 h-5" />
-                </button>
+                  {word.word}
+                </span>
+                {canSpeak() && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); speak(word.word); }}
+                    aria-label="Pronounce"
+                    className="absolute top-2 -right-9 shrink-0 rounded-full p-1.5 text-orange-400 transition-colors hover:bg-white/5 hover:text-orange-300"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                )}
+              </p>
+              {phonetic && (
+                <p className="text-sm tracking-wide text-zinc-500">{phonetic}</p>
+              )}
+              {translation && (
+                <p className="text-center text-base font-semibold text-orange-300">{translation}</p>
               )}
             </div>
-            <p className="text-center text-xs text-zinc-500">Tap card to flip</p>
+            <div className="mt-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-baseline justify-center gap-1">
+                <p className="text-xs tracking-wide text-zinc-500">
+                  Type it till it sticks
+                </p>
+                <span
+                  className={`text-xs tabular-nums transition-colors ${spelled ? 'text-emerald-400' : 'text-zinc-400'}`}
+                >
+                  {done}/{SPELL_TIMES}
+                </span>
+              </div>
+              <SpellBoxes
+                word={word.word}
+                value={spellings}
+                onChange={setSpellings}
+                className="mt-2 grid grid-cols-3 gap-2"
+              />
+            </div>
+            <p className="mt-3 shrink-0 text-center text-xs text-zinc-600">Tap card to flip</p>
           </div>
-
-          {/* Back */}
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-            className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 overflow-y-auto"
+            className="absolute inset-0 overflow-y-auto rounded-3xl border border-white/10 bg-surface p-5"
           >
             <CardBack word={word} />
           </div>
         </motion.div>
       </div>
 
-      {/* Controls */}
       <div className="mt-5 grid grid-cols-2 gap-3">
         <Button variant="outline" size="md" className="rounded-2xl" onClick={onAgain} disabled={completing}>
           <RotateCw className="w-4 h-4" /> Again
         </Button>
-        <Button variant="primary" size="md" className="rounded-2xl" onClick={onGotIt} disabled={completing}>
+        <Button
+          variant="primary"
+          size="md"
+          className="rounded-2xl"
+          onClick={onGotIt}
+          disabled={completing || !spelled}
+          title={spelled ? undefined : `Type the word ${SPELL_TIMES} times to unlock`}
+        >
           <Check className="w-4 h-4" /> Got it
         </Button>
       </div>
@@ -203,19 +242,22 @@ function Flashcard({
 
 function CardBack({ word }: { word: Word }) {
   const dict = useDictionaryQuery(word.word);
+  const translation = useWordTranslation(word);
+  // No click guard here: the card flips back when the back is tapped, same as
+  // the front. Only the controls below stop the click.
   return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-2">
-        <h3 className="text-lg font-bold capitalize text-white">{word.word}</h3>
-        {dict.data?.phonetic && <span className="text-sm text-zinc-500">{dict.data.phonetic}</span>}
-      </div>
-      {word.translation && <p className="mt-1 text-orange-300 font-semibold">{word.translation}</p>}
+    <div>
+      <h3 className="text-lg font-bold capitalize text-white">{word.word}</h3>
+      {dict.data?.phonetic && (
+        <p className="mt-0.5 text-sm tracking-wide text-zinc-500">{dict.data.phonetic}</p>
+      )}
+      {translation && <p className="mt-1 text-orange-300 font-semibold">{translation}</p>}
       {word.sentence && (
         <div className="mt-2 flex items-start gap-2">
           <p className="italic text-sm text-zinc-400">“{word.sentence}”</p>
           {canSpeak() && (
             <button
-              onClick={() => speak(word.sentence)}
+              onClick={(e) => { e.stopPropagation(); speak(word.sentence); }}
               aria-label="Read sentence"
               className="shrink-0 mt-0.5 text-orange-400 hover:text-orange-300"
             >
@@ -223,6 +265,18 @@ function CardBack({ word }: { word: Word }) {
             </button>
           )}
         </div>
+      )}
+      {/* Imported starter-pack words carry no imdbId — no scene to go back to.
+          stopPropagation so following the link doesn't also flip the card. */}
+      {word.imdbId && (
+        <Link
+          to={sceneLink(word)}
+          target="_blank"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300"
+        >
+          <Play className="w-3.5 h-3.5" /> Watch the scene
+        </Link>
       )}
       {dict.data && (
         <div className="mt-3 space-y-2.5">

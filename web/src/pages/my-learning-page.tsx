@@ -15,8 +15,6 @@ import {
   ChevronRight,
   ClipboardList,
   Brain,
-  Check,
-  X,
   Plus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -43,18 +41,10 @@ import { LoadMoreIndicator } from '@/components/system/common/load-more-indicato
 import { FlashcardDeck } from '@/components/system/learn/flashcard-deck';
 import { WordTest } from '@/components/system/learn/word-test';
 import { ReviewDeck } from '@/components/system/learn/review-deck';
-import { parseDate, dayKey } from '@/utils/word-date';
+import { SpellBoxes } from '@/components/system/learn/spell-boxes';
 import type { Word, WordStat } from '@/services/user';
-
-// Build a deep link back to the exact scene the word was saved from.
-function sceneLink(w: Word): string {
-  const params = new URLSearchParams();
-  if (w.season > 0) params.set('s', String(w.season));
-  if (w.episode > 0) params.set('e', String(w.episode));
-  if (w.timestamp > 0) params.set('t', String(Math.floor(w.timestamp)));
-  const qs = params.toString();
-  return `/watch/${w.imdbId}${qs ? `?${qs}` : ''}`;
-}
+import { isSpelled, sceneLink } from '@/utils/word';
+import { parseDate, dayKey } from '@/utils/word-date';
 
 // Consecutive days (ending today or yesterday) with at least one word added or
 // completed — a light "keep the streak" motivator in the hero.
@@ -200,8 +190,7 @@ function WordDialog({
   useEffect(() => {
     setSpellings(Array(SPELL_TIMES).fill(''));
   }, [openWord]);
-  const target = (openWord ?? '').trim().toLowerCase();
-  const allSpelled = target !== '' && spellings.every((s) => s.trim().toLowerCase() === target);
+  const allSpelled = isSpelled(openWord ?? '', spellings);
 
   return (
     <Dialog open={!!word} onOpenChange={onOpenChange}>
@@ -277,37 +266,12 @@ function WordDialog({
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Type the word {SPELL_TIMES} times to complete
                 </p>
-                <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {spellings.map((s, i) => {
-                    const filled = s.trim() !== '';
-                    const correct = s.trim().toLowerCase() === target;
-                    return (
-                      <div key={i} className="relative">
-                        <input
-                          value={s}
-                          onChange={(e) =>
-                            setSpellings((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))
-                          }
-                          onFocus={() => speak(word.word)}
-                          autoComplete="off"
-                          autoCapitalize="none"
-                          spellCheck={false}
-                          placeholder={`#${i + 1}`}
-                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 pr-8 text-sm text-white outline-none transition-colors focus:border-orange-400/60"
-                        />
-                        {filled && (
-                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                            {correct ? (
-                              <Check className="w-4 h-4 text-emerald-400" />
-                            ) : (
-                              <X className="w-4 h-4 text-rose-400" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <SpellBoxes
+                  word={word.word}
+                  value={spellings}
+                  onChange={setSpellings}
+                  className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2"
+                />
               </div>
             )}
 

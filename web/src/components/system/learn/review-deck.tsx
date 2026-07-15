@@ -4,9 +4,10 @@ import { X, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDueReviewsQuery, useSubmitReview } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
+import { useWordTranslation } from '@/hooks/queries/use-translate-query';
 import { speak, canSpeak } from '@/utils/speak';
-import { wordColor } from '@/utils/word-color';
 import type { ReviewGrade, Word } from '@/services/user';
+import { wordColor } from '@/utils/word-color';
 
 // The four SM-2 recall ratings, in increasing confidence. Colors hint difficulty.
 const GRADES: { id: ReviewGrade; label: string; cls: string }[] = [
@@ -66,8 +67,7 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
         <X className="w-5 h-5" />
       </button>
 
-      {/* Progress */}
-      <div className="w-full max-w-sm mb-6">
+      <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs font-medium text-sky-200/80 mb-1.5">
           <span>{reviewed} reviewed</span>
           <span>{finished || empty ? 'Done' : `${Math.min(pos + 1, total)} / ${total} due`}</span>
@@ -126,7 +126,7 @@ function ReviewCard({
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.9, opacity: 0, y: -12 }}
       transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      className="w-full max-w-sm"
+      className="w-full max-w-md"
     >
       <div style={{ perspective: 1200 }} className="w-full">
         <motion.div
@@ -134,31 +134,33 @@ function ReviewCard({
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[260px] cursor-pointer select-none"
+          className="relative w-full h-[min(360px,calc(100vh-14rem))] cursor-pointer select-none"
         >
           {/* Front: the word alone — recall is the point */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 flex flex-col"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-surface p-5"
           >
-            <div className="flex flex-1 items-center justify-center gap-2">
-              <span className="text-3xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
-                {word.word}
-              </span>
-              {canSpeak() && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); speak(word.word); }}
-                  aria-label="Pronounce"
-                  className="text-orange-400 hover:text-orange-300 transition-colors"
-                >
-                  <Volume2 className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-            <p className="text-center text-xs text-zinc-500">Recall the meaning, then tap to check</p>
+            <span
+              className="text-center text-5xl font-extrabold capitalize leading-tight tracking-tight break-words"
+              style={{ color: c.color }}
+            >
+              {word.word}
+            </span>
+            {canSpeak() && (
+              <button
+                onClick={(e) => { e.stopPropagation(); speak(word.word); }}
+                aria-label="Pronounce"
+                className="text-orange-400 hover:text-orange-300 transition-colors"
+              >
+                <Volume2 className="w-6 h-6" />
+              </button>
+            )}
+            <p className="absolute inset-x-0 bottom-5 text-center text-xs text-zinc-500">
+              Recall the meaning, then tap to check
+            </p>
           </div>
 
-          {/* Back: meaning */}
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 overflow-y-auto"
@@ -168,7 +170,6 @@ function ReviewCard({
         </motion.div>
       </div>
 
-      {/* Controls: flip first, then grade recall */}
       <div className="mt-5">
         {!flipped ? (
           <Button variant="outline" size="md" className="w-full rounded-2xl" onClick={onFlip}>
@@ -196,13 +197,16 @@ function ReviewCard({
 
 function ReviewBack({ word }: { word: Word }) {
   const dict = useDictionaryQuery(word.word);
+  const translation = useWordTranslation(word);
+  // Revealing the answer is one-way here (see onFlip), so the back never needs
+  // to pass a click through to the flip handler.
   return (
     <div onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-2">
         <h3 className="text-lg font-bold capitalize text-white">{word.word}</h3>
         {dict.data?.phonetic && <span className="text-sm text-zinc-500">{dict.data.phonetic}</span>}
       </div>
-      {word.translation && <p className="mt-1 text-orange-300 font-semibold">{word.translation}</p>}
+      {translation && <p className="mt-1 text-orange-300 font-semibold">{translation}</p>}
       {word.sentence && (
         <div className="mt-2 flex items-start gap-2">
           <p className="italic text-sm text-zinc-400">“{word.sentence}”</p>
