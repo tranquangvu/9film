@@ -13,8 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// Bundled starter word lists the user can import in one tap. Words are added
-// bare (no image generation) to seed a vocabulary to study.
+// Bundled starter word lists the user can import in one tap, seeding a
+// vocabulary to study.
 const oxford3000URL = "https://raw.githubusercontent.com/sapbmw/The-Oxford-3000/master/The_Oxford_3000.txt"
 
 const dictAPIBase = "https://api.dictionaryapi.dev/api/v2/entries/en"
@@ -60,13 +60,10 @@ type Service interface {
 	GetWordStats(userID int64) ([]WordStat, error)
 	AddWord(userID int64, w Word) error
 	// ImportWordList bulk-adds a bundled starter list (e.g. "oxford3000"),
-	// returning how many words were newly added. No images are generated.
+	// returning how many words were newly added.
 	ImportWordList(userID int64, list string) (int, error)
 	RemoveWord(userID int64, word string) error
 	CompleteWord(userID int64, word string) error
-	// RegenerateWordImage (re)fetches the illustration for an existing word —
-	// backfills legacy words and retries failures.
-	RegenerateWordImage(userID int64, word string) error
 	// SubmitTest grades a completed self-test (spelling locally, meanings via AI
 	// when configured, else a heuristic), stores it, and returns the result.
 	SubmitTest(userID int64, list, groupLabel string, items []TestSubmissionItem) (*TestResult, error)
@@ -88,29 +85,21 @@ type GeminiKeys interface {
 	Resolve(userID int64) (apiKey, model string)
 }
 
-// maxConcurrentImageGen bounds in-flight image searches across all background
-// goroutines so a burst of saves can't fan out to dozens of upstream requests.
-const maxConcurrentImageGen = 3
-
 type service struct {
 	repo            Repository
 	dictClient      *http.Client
 	translateClient *http.Client
 	gen             Generator
-	imgSource       ImageSource
 	keys            GeminiKeys
-	imgSem          chan struct{}
 }
 
-func NewService(repo Repository, gen Generator, imgSource ImageSource, keys GeminiKeys) Service {
+func NewService(repo Repository, gen Generator, keys GeminiKeys) Service {
 	return &service{
 		repo:            repo,
 		dictClient:      &http.Client{Timeout: 8 * time.Second},
 		translateClient: &http.Client{Timeout: 8 * time.Second},
 		gen:             gen,
-		imgSource:       imgSource,
 		keys:            keys,
-		imgSem:          make(chan struct{}, maxConcurrentImageGen),
 	}
 }
 
@@ -231,18 +220,7 @@ func (s *service) GetWordStats(userID int64) ([]WordStat, error) {
 }
 
 func (s *service) AddWord(userID int64, w Word) error {
-	// Look up any prior state before the upsert so we only (re)generate for a new
-	// word or one that never got an image — re-saving keeps the existing one.
-	prior, _ := s.repo.GetWord(userID, w.Word)
-	if err := s.repo.AddWord(userID, w); err != nil {
-		return err
-	}
-	// Phrases/idioms don't get an illustration — they get an on-demand explanation
-	// instead. Only words trigger an image search.
-	if w.Kind != "phrase" && (prior == nil || prior.ImageStatus == "" || prior.ImageStatus == "failed") {
-		s.generateAsync(userID, w.Word)
-	}
-	return nil
+	return s.repo.AddWord(userID, w)
 }
 
 func (s *service) ImportWordList(userID int64, list string) (int, error) {
@@ -417,42 +395,4 @@ func heuristicVerdict(translation, answer string) (bool, string) {
 		return true, "Matches your saved meaning."
 	}
 	return false, "Expected something like: " + translation
-}
-
-// RegenerateWordImage marks an existing word pending and kicks off generation
-// again — used to backfill legacy words and retry failures on demand.
-func (s *service) RegenerateWordImage(userID int64, word string) error {
-	w, err := s.repo.GetWord(userID, word)
-	if err != nil {
-		return err
-	}
-	if w == nil {
-		return fmt.Errorf("word not found")
-	}
-	s.generateAsync(userID, w.Word)
-	return nil
-}
-
-// generateAsync marks the word pending and fires a bounded background goroutine
-// that searches the image source and persists the resulting URL. The slow upstream
-// call holds no DB connection; only the tiny status/URL writes touch the
-// (single-connection) DB.
-func (s *service) generateAsync(userID int64, word string) {
-	// Synchronous so an immediate refetch already sees the shimmer state.
-	_ = s.repo.SetImageStatus(userID, word, "pending")
-	go func() {
-		s.imgSem <- struct{}{}
-		defer func() { <-s.imgSem }()
-
-		imageURL, err := s.imgSource.FetchWordImage(word)
-		if err != nil {
-			logger.Get().Warn("word image search failed", zap.String("word", word), zap.Error(err))
-			_ = s.repo.SetImageStatus(userID, word, "failed")
-			return
-		}
-		if err := s.repo.SaveImage(userID, word, imageURL); err != nil {
-			logger.Get().Warn("word image save failed", zap.String("word", word), zap.Error(err))
-			_ = s.repo.SetImageStatus(userID, word, "failed")
-		}
-	}()
 }

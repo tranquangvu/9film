@@ -127,10 +127,6 @@ func (h *Handler) AddWord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save word"})
 		return
 	}
-	// Phrases never get an illustration, so don't advertise a pending image.
-	if w.Kind != "phrase" {
-		w.ImageStatus = "pending"
-	}
 	c.JSON(http.StatusCreated, w)
 }
 
@@ -153,26 +149,6 @@ func (h *Handler) ExplainPhrase(c *gin.Context) {
 	}
 	c.Header("Cache-Control", "private, max-age=86400")
 	c.JSON(http.StatusOK, exp)
-}
-
-// RegenerateWordImage (re)triggers an image search for an existing word —
-// backfills legacy words and retries failures.
-func (h *Handler) RegenerateWordImage(c *gin.Context) {
-	var req completeWordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-	req.Word = strings.ToLower(strings.TrimSpace(req.Word))
-	if req.Word == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "word is required"})
-		return
-	}
-	if err := h.svc.RegenerateWordImage(middleware.UserID(c), req.Word); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "could not regenerate image"})
-		return
-	}
-	c.JSON(http.StatusAccepted, gin.H{"imageStatus": "pending"})
 }
 
 // ImportWords bulk-adds a bundled starter list (defaults to the Oxford 3000).

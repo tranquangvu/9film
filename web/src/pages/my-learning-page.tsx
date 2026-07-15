@@ -213,25 +213,9 @@ function WordDialog({
 
   return (
     <Dialog open={!!word} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl">
         {word && (
           <div>
-            {word.imageStatus === 'ready' && word.imageUrl && (
-              <a
-                href={word.imageUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="group relative -mx-6 -mt-6 mb-4 block h-40 sm:h-44 overflow-hidden rounded-t-2xl bg-[#1a1a1a]"
-              >
-                <img
-                  src={word.imageUrl}
-                  alt={word.word}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.05]"
-                />
-              </a>
-            )}
-
             <div className="flex items-center gap-3 pr-8">
               <DialogTitle className="capitalize">
                 {word.word}
@@ -434,7 +418,7 @@ function WordGroupList({
 }
 
 // Each word carries its own stable, translucent color (derived from the word
-// text) so the lists read as soft, colorful chips. A dot hints image state.
+// text) so the lists read as soft, colorful chips.
 function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
   const c = wordColor(word.word);
   return (
@@ -444,11 +428,7 @@ function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
       style={{ background: c.background, borderColor: c.borderColor, color: c.color }}
       className="capitalize cursor-pointer hover:brightness-125"
     >
-      {word.kind === 'phrase' ? (
-        <span className="mr-1">💬</span>
-      ) : (
-        word.imageStatus === 'ready' && <span className="mr-1">🖼️</span>
-      )}
+      {word.kind === 'phrase' && <span className="mr-1">💬</span>}
       {word.word}
     </Badge>
   );

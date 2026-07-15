@@ -14,7 +14,7 @@ const defaultGeminiModel = "gemini-2.5-flash"
 
 // Generator is the Gemini-backed helper: it grades self-test meaning answers and
 // explains saved phrases/idioms — both using the API key + model resolved per
-// user. (Word illustrations come from a separate keyless ImageSource.)
+// user.
 type Generator interface {
 	// VerifyMeanings grades a batch of meaning answers in one call, returning a
 	// verdict per item (order/word-matched by the caller).

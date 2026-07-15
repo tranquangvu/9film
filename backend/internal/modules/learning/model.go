@@ -12,12 +12,6 @@ type Word struct {
 	Timestamp   float64 `json:"timestamp"`
 	CreatedAt   string  `json:"createdAt"`
 	CompletedAt string  `json:"completedAt"`
-	// Illustration state: ''=none/legacy, pending, ready, failed. ImageURL is the
-	// resolved image URL (from the word_images table, '' until ready);
-	// ImageUpdatedAt is a cache-bust token.
-	ImageStatus    string `json:"imageStatus"`
-	ImageUpdatedAt string `json:"imageUpdatedAt"`
-	ImageURL       string `json:"imageUrl"`
 	// Which list the word belongs to: ''=personal (saved while watching),
 	// 'oxford3000'=imported starter pack.
 	List string `json:"list"`

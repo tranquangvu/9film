@@ -32,8 +32,6 @@ export interface UserSettings {
   learningLang: string;
 }
 
-export type WordImageStatus = '' | 'pending' | 'ready' | 'failed';
-
 export interface Word {
   word: string;
   sentence: string;
@@ -45,12 +43,6 @@ export interface Word {
   createdAt?: string;
   /** Set once the word has been learned; empty string while still in the added list. */
   completedAt?: string;
-  /** Illustration state: ''=none/legacy, pending, ready, failed. */
-  imageStatus?: WordImageStatus;
-  /** Cache-bust token bumped each time the illustration is (re)fetched. */
-  imageUpdatedAt?: string;
-  /** Resolved illustration URL (an Openverse image); set once imageStatus is 'ready'. */
-  imageUrl?: string;
   /** '' = personal (saved while watching), 'oxford3000' = imported starter pack. */
   list?: string;
   /** SM-2 review schedule. dueAt='' = not scheduled (seeded once learned). */
@@ -225,12 +217,6 @@ export function addWord(body: Omit<Word, 'createdAt' | 'completedAt'>): Promise<
 // user's vocabulary. Returns how many words were newly added.
 export function importWordList(list: string): Promise<{ added: number }> {
   return apiFetch('/api/me/words/import', { method: 'POST', body: { list } });
-}
-
-// (Re)fetches the illustration for an existing word — backfills legacy words
-// and retries failures.
-export function regenerateWordImage(word: string): Promise<{ imageStatus: WordImageStatus }> {
-  return apiFetch('/api/me/words/image', { method: 'POST', body: { word: word.toLowerCase() } });
 }
 
 export function removeWord(word: string): Promise<void> {

@@ -98,12 +98,11 @@ func Migrate(db *sql.DB) error {
 			opensubtitles_password TEXT NOT NULL DEFAULT '',
 			updated_at             TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
-		// A saved vocabulary word with its capture context, illustration state, list
-		// membership, and SM-2 review schedule. image_status: ''=none/legacy,
-		// pending, ready, failed; image_updated_at is a cache-bust token. list:
-		// ''=personal, 'oxford3000'=imported starter pack. SM-2: due_at='' until the
-		// word is first completed; ease starts at 2.5; interval is in days; reps is
-		// the successful-streak count. kind: 'word' (default) or 'phrase' (idiom).
+		// A saved vocabulary word with its capture context, list membership, and
+		// SM-2 review schedule. list: ''=personal, 'oxford3000'=imported starter
+		// pack. SM-2: due_at='' until the word is first completed; ease starts at
+		// 2.5; interval is in days; reps is the successful-streak count. kind:
+		// 'word' (default) or 'phrase' (idiom).
 		`CREATE TABLE IF NOT EXISTS words (
 			user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			word             TEXT NOT NULL,
@@ -115,8 +114,6 @@ func Migrate(db *sql.DB) error {
 			timestamp        REAL NOT NULL DEFAULT 0,
 			created_at       TEXT NOT NULL DEFAULT (datetime('now')),
 			completed_at     TEXT NOT NULL DEFAULT '',
-			image_status     TEXT NOT NULL DEFAULT '',
-			image_updated_at TEXT NOT NULL DEFAULT '',
 			list             TEXT NOT NULL DEFAULT '',
 			due_at           TEXT NOT NULL DEFAULT '',
 			ease             REAL NOT NULL DEFAULT 2.5,
@@ -135,15 +132,6 @@ func Migrate(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_words_user_completed ON words(user_id, completed_at, created_at)`,
 		// Due-for-review queue: WHERE user_id=? AND due_at!='' AND due_at<=now.
 		`CREATE INDEX IF NOT EXISTS idx_words_user_due ON words(user_id, due_at)`,
-		// The illustration URL (an Openverse image) for a saved word, kept in its
-		// own table and folded into the words list query via a LEFT JOIN.
-		`CREATE TABLE IF NOT EXISTS word_images (
-			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			word       TEXT NOT NULL,
-			image_url  TEXT NOT NULL,
-			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-			PRIMARY KEY (user_id, word)
-		)`,
 		// A completed vocabulary self-test over a completed-date group: per-word
 		// spelling attempts + AI-graded meaning answers. The per-word breakdown is
 		// stored as a JSON blob in `items` (read-mostly, never queried by field).
@@ -167,5 +155,47 @@ func Migrate(db *sql.DB) error {
 			return err
 		}
 	}
+
+	// Word illustrations were removed; drop what older databases still carry.
+	if _, err := db.Exec(`DROP TABLE IF EXISTS word_images`); err != nil {
+		return err
+	}
+	for _, col := range []string{"image_status", "image_updated_at"} {
+		if err := dropColumn(db, "words", col); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// dropColumn removes `col` from `table` when it's still present, discarding its
+// data. Idempotent: a no-op once the column is gone.
+func dropColumn(db *sql.DB, table, col string) error {
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	found := false
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		if name == col {
+			found = true
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	// Close the cursor before the ALTER: SQLite won't schema-change a table with
+	// an open read on it.
+	rows.Close()
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", table, col))
+	return err
 }

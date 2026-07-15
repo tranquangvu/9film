@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Volume2, Sparkles } from 'lucide-react';
+import { X, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useDueReviewsQuery, useSubmitReview } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
@@ -18,9 +17,9 @@ const GRADES: { id: ReviewGrade; label: string; cls: string }[] = [
 ];
 
 // A spaced-repetition review session over the words due today. Front shows the
-// illustration + word; flip to reveal the meaning, then rate recall (Again/Hard/
-// Good/Easy) which reschedules the word via SM-2. The due list is snapshotted once
-// so optimistic removals don't reshuffle the session mid-way.
+// word; flip to reveal the meaning, then rate recall (Again/Hard/Good/Easy)
+// which reschedules the word via SM-2. The due list is snapshotted once so
+// optimistic removals don't reshuffle the session mid-way.
 export function ReviewDeck({ onClose }: { onClose: () => void }) {
   const { data, isLoading } = useDueReviewsQuery();
   const review = useSubmitReview();
@@ -135,16 +134,15 @@ function ReviewCard({
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[420px] cursor-pointer select-none"
+          className="relative w-full h-[260px] cursor-pointer select-none"
         >
-          {/* Front: illustration + word */}
+          {/* Front: the word alone — recall is the point */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
             className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 flex flex-col"
           >
-            <ReviewImage word={word} tint={c.background} />
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <span className="text-2xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
+            <div className="flex flex-1 items-center justify-center gap-2">
+              <span className="text-3xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
                 {word.word}
               </span>
               {canSpeak() && (
@@ -157,7 +155,7 @@ function ReviewCard({
                 </button>
               )}
             </div>
-            <p className="mt-auto text-center text-xs text-zinc-500">Recall the meaning, then tap to check</p>
+            <p className="text-center text-xs text-zinc-500">Recall the meaning, then tap to check</p>
           </div>
 
           {/* Back: meaning */}
@@ -193,26 +191,6 @@ function ReviewCard({
         )}
       </div>
     </motion.div>
-  );
-}
-
-// Front illustration: image when ready, shimmer while generating, emoji-tint
-// fallback otherwise (no "generate" CTA here — reviews aren't the place for it).
-function ReviewImage({ word, tint }: { word: Word; tint: string }) {
-  if (word.imageStatus === 'ready' && word.imageUrl) {
-    return (
-      <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white">
-        <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
-      </div>
-    );
-  }
-  if (word.imageStatus === 'pending') {
-    return <Skeleton className="w-full aspect-square rounded-2xl" />;
-  }
-  return (
-    <div className="w-full aspect-square rounded-2xl flex items-center justify-center" style={{ background: tint }}>
-      <Sparkles className="w-9 h-9 text-white/40" />
-    </div>
   );
 }
 

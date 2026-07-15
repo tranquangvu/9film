@@ -60,9 +60,9 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
   return json as T;
 }
 
-// Authenticated GET returning binary data — used for endpoints an <img> can't
-// reach directly because it can't send the bearer token (e.g. the per-user word
-// illustration). The caller wraps the Blob in an object URL.
+// Authenticated GET returning binary data — used for endpoints a plain element
+// can't reach directly because it can't send the bearer token (e.g. a subtitle
+// download). The caller wraps the Blob in an object URL.
 export async function apiFetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
   const headers: Record<string, string> = {};
   const token = getToken();

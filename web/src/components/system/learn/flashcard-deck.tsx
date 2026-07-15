@@ -1,20 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Volume2, RotateCw, Check, Sparkles, ImageOff } from 'lucide-react';
+import { X, Volume2, RotateCw, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useCompleteWord,
-  useRegenerateWordImage,
-} from '@/hooks/queries/use-words-query';
+import { useCompleteWord } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { speak, canSpeak } from '@/utils/speak';
 import { wordColor } from '@/utils/word-color';
 import type { Word } from '@/services/user';
 
-// A playful flip-card study game. The front shows the AI illustration + word;
-// flipping reveals the meaning. "Got it" marks the word learned (the new
-// complete gate); "Again" requeues it to the back for another pass this session.
+// A playful flip-card study game. The front shows the word; flipping reveals the
+// meaning. "Got it" marks the word learned (the new complete gate); "Again"
+// requeues it to the back for another pass this session.
 export function FlashcardDeck({
   words,
   total,
@@ -29,7 +25,7 @@ export function FlashcardDeck({
   onClose: () => void;
 }) {
   // The queue is a growing list of word keys; current card data is read live from
-  // `words` so an illustration that finishes generating appears mid-study.
+  // `words` so a word edited mid-study shows its latest state.
   const [queue, setQueue] = useState<string[]>(() => words.map((w) => w.word));
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -158,16 +154,15 @@ function Flashcard({
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[440px] cursor-pointer select-none"
+          className="relative w-full h-[260px] cursor-pointer select-none"
         >
           {/* Front */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
             className="absolute inset-0 rounded-3xl border border-white/10 bg-surface p-5 flex flex-col"
           >
-            <CardImage word={word} tint={c.background} />
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <span className="text-2xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
+            <div className="flex flex-1 items-center justify-center gap-2">
+              <span className="text-3xl font-extrabold capitalize tracking-tight" style={{ color: c.color }}>
                 {word.word}
               </span>
               {canSpeak() && (
@@ -180,7 +175,7 @@ function Flashcard({
                 </button>
               )}
             </div>
-            <p className="mt-auto text-center text-xs text-zinc-500">Tap card to flip</p>
+            <p className="text-center text-xs text-zinc-500">Tap card to flip</p>
           </div>
 
           {/* Back */}
@@ -203,52 +198,6 @@ function Flashcard({
         </Button>
       </div>
     </motion.div>
-  );
-}
-
-// The illustration area: image when ready, shimmer while generating, or an
-// emoji fallback + a "Generate" button (legacy words / failures).
-function CardImage({ word, tint }: { word: Word; tint: string }) {
-  const regen = useRegenerateWordImage();
-
-  // Phrases/idioms get no illustration — show a calm placeholder, not a "generate"
-  // prompt (an SVG mnemonic of an idiom is meaningless).
-  if (word.kind === 'phrase') {
-    return (
-      <div className="w-full aspect-square rounded-2xl flex items-center justify-center" style={{ background: tint }}>
-        <span className="text-5xl select-none">💬</span>
-      </div>
-    );
-  }
-
-  if (word.imageStatus === 'pending') {
-    return <Skeleton className="w-full aspect-square rounded-2xl" />;
-  }
-  if (word.imageStatus === 'ready' && word.imageUrl) {
-    return (
-      <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white">
-        <img src={word.imageUrl} alt={word.word} className="w-full h-full object-contain" />
-      </div>
-    );
-  }
-  // '' (legacy), 'failed', or 'ready' with no match — offer to retry.
-  return (
-    <div
-      className="w-full aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 text-center"
-      style={{ background: tint }}
-    >
-      <ImageOff className="w-9 h-9 text-white/50" />
-      <Button
-        variant="ghost"
-        size="sm"
-        className="rounded-full"
-        disabled={regen.isPending}
-        onClick={(e) => { e.stopPropagation(); regen.mutate(word.word); }}
-      >
-        <Sparkles className="w-3.5 h-3.5" />
-        {regen.isPending ? 'Searching…' : 'Find illustration'}
-      </Button>
-    </div>
   );
 }
 

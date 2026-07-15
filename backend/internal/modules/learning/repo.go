@@ -17,8 +17,6 @@ type Repository interface {
 	CompleteWord(userID int64, word string) error
 	GetDueReviews(userID int64, limit int) ([]Word, error)
 	UpdateSchedule(userID int64, word string, ease float64, interval, reps int, dueAt string) error
-	SetImageStatus(userID int64, word, status string) error
-	SaveImage(userID int64, word, imageURL string) error
 	SaveTest(userID int64, t TestResult) (int64, error)
 	GetTests(userID int64) ([]TestResult, error)
 }
@@ -73,7 +71,6 @@ func (r *repository) GetWords(userID int64, status, list string, limit, offset i
 	rows, err := r.db.Query(
 		`SELECT `+wordColumns+`
 		   FROM words w
-		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
 		   WHERE w.user_id = ? AND w.list = ? AND `+where+`
 		   ORDER BY `+order+`
 		   LIMIT ? OFFSET ?`,
@@ -105,24 +102,21 @@ func scanWord(row rowScanner) (Word, error) {
 	err := row.Scan(
 		&w.Word, &w.Sentence, &w.Translation, &w.ImdbID,
 		&w.Season, &w.Episode, &w.Timestamp, &w.CreatedAt, &w.CompletedAt,
-		&w.ImageStatus, &w.ImageUpdatedAt, &w.List,
-		&w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind, &w.ImageURL,
+		&w.List, &w.DueAt, &w.Ease, &w.Interval, &w.Reps, &w.Kind,
 	)
 	return w, err
 }
 
-// wordColumns is the shared select list for full word rows: every words column
-// scanWord expects, plus the joined illustration URL (''=none). Each query adds
-// its own LEFT JOIN word_images alias `wi`.
-const wordColumns = `w.word, w.sentence, w.translation, w.imdb_id, w.season, w.episode, w.timestamp, w.created_at, w.completed_at, w.image_status, w.image_updated_at, w.list, w.due_at, w.ease, w.interval, w.reps, w.kind, COALESCE(wi.image_url, '')`
+// wordColumns is the shared select list for full word rows — every words column
+// scanWord expects, in the order it expects them.
+const wordColumns = `w.word, w.sentence, w.translation, w.imdb_id, w.season, w.episode, w.timestamp, w.created_at, w.completed_at, w.list, w.due_at, w.ease, w.interval, w.reps, w.kind`
 
-// GetWord returns a single saved word (used to build the image prompt and to
-// confirm ownership before (re)generating). Returns (nil, nil) when not found.
+// GetWord returns a single saved word (used as the grading reference when
+// scoring a test answer). Returns (nil, nil) when not found.
 func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 	w, err := scanWord(r.db.QueryRow(
 		`SELECT `+wordColumns+`
 		   FROM words w
-		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
 		   WHERE w.user_id = ? AND w.word = ?`,
 		userID, word,
 	))
@@ -140,8 +134,6 @@ func (r *repository) GetWord(userID int64, word string) (*Word, error) {
 // context/scene and resets membership (list, completed state, SRS schedule) so a
 // previously completed or imported-list word reappears under "To Learn".
 func (r *repository) AddWord(userID int64, w Word) error {
-	// Re-saving an existing word leaves its image columns untouched (the service
-	// decides whether to (re)generate); a new row defaults image_status to ''.
 	kind := w.Kind
 	if kind == "" {
 		kind = "word"
@@ -165,34 +157,6 @@ func (r *repository) AddWord(userID int64, w Word) error {
 		     interval = 0,
 		     reps = 0`,
 		userID, w.Word, w.Sentence, w.Translation, w.ImdbID, w.Season, w.Episode, w.Timestamp, kind,
-	)
-	return err
-}
-
-// SetImageStatus updates only the image_status of a word (e.g. -> 'failed' or
-// 'pending' before a regeneration).
-func (r *repository) SetImageStatus(userID int64, word, status string) error {
-	_, err := r.db.Exec(
-		`UPDATE words SET image_status = ? WHERE user_id = ? AND word = ?`,
-		status, userID, word,
-	)
-	return err
-}
-
-// SaveImage stores the found illustration URL and flips the word to 'ready',
-// bumping the cache-bust token.
-func (r *repository) SaveImage(userID int64, word, imageURL string) error {
-	if _, err := r.db.Exec(
-		`INSERT INTO word_images (user_id, word, image_url, updated_at)
-		   VALUES (?, ?, ?, datetime('now'))
-		   ON CONFLICT(user_id, word) DO UPDATE SET image_url = excluded.image_url, updated_at = datetime('now')`,
-		userID, word, imageURL,
-	); err != nil {
-		return err
-	}
-	_, err := r.db.Exec(
-		`UPDATE words SET image_status = 'ready', image_updated_at = datetime('now') WHERE user_id = ? AND word = ?`,
-		userID, word,
 	)
 	return err
 }
@@ -244,9 +208,9 @@ func (r *repository) GetTests(userID int64) ([]TestResult, error) {
 	return items, rows.Err()
 }
 
-// BulkAddWords inserts many bare words (no context, no image) tagged with the
-// given list, in one transaction, skipping any the user already has so existing
-// context isn't overwritten. Returns how many were newly added.
+// BulkAddWords inserts many bare words (no context) tagged with the given list,
+// in one transaction, skipping any the user already has so existing context
+// isn't overwritten. Returns how many were newly added.
 func (r *repository) BulkAddWords(userID int64, words []string, list string) (int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -303,12 +267,11 @@ func (r *repository) CompleteWord(userID int64, word string) error {
 }
 
 // GetDueReviews returns up to `limit` learned words whose next review is due
-// (oldest-due first), as full rows so the review deck can show context/image.
+// (oldest-due first), as full rows so the review deck can show context.
 func (r *repository) GetDueReviews(userID int64, limit int) ([]Word, error) {
 	rows, err := r.db.Query(
 		`SELECT `+wordColumns+`
 		   FROM words w
-		   LEFT JOIN word_images wi ON wi.user_id = w.user_id AND wi.word = w.word
 		   WHERE w.user_id = ? AND w.due_at != '' AND w.due_at <= datetime('now')
 		   ORDER BY w.due_at ASC
 		   LIMIT ?`,

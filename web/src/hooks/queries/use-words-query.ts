@@ -8,7 +8,6 @@ import { useMemo } from 'react';
 import {
   getWords,
   getWordStats,
-  regenerateWordImage,
   importWordList,
   addWord,
   removeWord,
@@ -44,8 +43,7 @@ export function useWordStatsQuery() {
   });
 }
 
-// One tab+list's saved words, paginated for infinite scroll. While any loaded
-// word's illustration is still generating, poll so the shimmer flips live.
+// One tab+list's saved words, paginated for infinite scroll.
 export function useInfiniteWordsQuery(status: WordStatus, list = '') {
   const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
@@ -55,12 +53,6 @@ export function useInfiniteWordsQuery(status: WordStatus, list = '') {
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: isAuthenticated,
     staleTime: 60 * 1000,
-    refetchInterval: (query) => {
-      const pending = query.state.data?.pages.some((p) =>
-        p.items.some((w) => w.imageStatus === 'pending'),
-      );
-      return pending ? 2500 : false;
-    },
   });
 }
 
@@ -80,17 +72,6 @@ export function useImportWordList() {
       });
     },
     onError: () => toast({ title: 'Could not import word list', description: 'Please try again.', variant: 'destructive' }),
-  });
-}
-
-// Triggers (re)generation; flips the word back to pending so polling resumes.
-export function useRegenerateWordImage() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (word: string) => regenerateWordImage(word.toLowerCase()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: WORDS_PREFIX });
-    },
   });
 }
 
