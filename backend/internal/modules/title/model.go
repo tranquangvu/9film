@@ -193,6 +193,23 @@ type BrowseParams struct {
 	// surface. Set for the home-page feeds and similar-title suggestions; left off
 	// for the genre/listing browse pages, which span the full back catalogue.
 	Recent bool
+	// Cacheable marks the query as a broad, user-independent feed safe to memoize.
+	// Set by the handler from the request URL; see cacheableBrowseURLs.
+	Cacheable bool
+}
+
+// cacheableBrowseURLs whitelists the exact request URLs of the broad,
+// user-independent feeds we memoize: the recent home-page feeds and the unfiltered
+// listings. Matched case-insensitively (lowercased) against the request URL, so
+// any other query shape — a cursor, genre, rating filter, or different page size —
+// simply isn't listed and falls through to a cache miss.
+var cacheableBrowseURLs = map[string]bool{
+	"/api/title/browse?first=100&sort=popular&recent=true":           true, // home: trending
+	"/api/title/browse?type=movie&first=20&sort=popular&recent=true": true, // home: movies
+	"/api/title/browse?type=tv&first=20&sort=popular&recent=true":    true, // home: tv
+	"/api/title/browse?first=50":                                     true, // listing: all
+	"/api/title/browse?type=movie&first=50":                          true, // listing: movies
+	"/api/title/browse?type=tv&first=50":                             true, // listing: tv
 }
 
 type graphqlRequest struct {

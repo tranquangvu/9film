@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -102,6 +103,9 @@ func (h *Handler) BrowseTitles(c *gin.Context) {
 		MinRating: minRating,
 		Sort:      c.Query("sort"),
 		Recent:    c.Query("recent") == "true",
+		// Cacheable only for the broad, user-independent feeds — matched by exact
+		// request URL against the whitelist.
+		Cacheable: cacheableBrowseURLs[strings.ToLower(c.Request.URL.RequestURI())],
 	})
 	if err != nil {
 		logger.Get().Warn("browse titles failed", zap.Error(err))

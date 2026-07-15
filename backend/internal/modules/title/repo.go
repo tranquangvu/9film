@@ -300,8 +300,7 @@ func (r *repository) BrowseTitles(params BrowseParams) (*rawBrowseResult, error)
 		first = 20
 	}
 
-	cacheable := params.After == "" && params.Genre == "" && params.Sort == "" && params.MinRating == nil &&
-		(params.Type == "" || params.Type == "movie" || params.Type == "tv")
+	cacheable := params.Cacheable
 	cacheKey := browseCacheKey(params, first)
 	if cacheable {
 		if res, ok := r.browses.Get(cacheKey); ok {
