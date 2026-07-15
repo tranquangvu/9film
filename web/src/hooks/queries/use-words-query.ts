@@ -21,7 +21,7 @@ import {
 } from '@/services/user';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
-import { parseDate } from '@/utils/word-date';
+import { parseDate } from '@/utils/word';
 
 const STATS_KEY = ['word-stats'] as const;
 const REVIEWS_KEY = ['reviews'] as const;

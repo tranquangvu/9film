@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { parseDate } from '@/utils/word-date';
 import type { WordStat } from '@/services/user';
+import { parseDate } from '@/utils/word';
 
 const TO_LEARN_COLOR = '#34d399'; // emerald-400
 const COMPLETED_COLOR = '#fb923c'; // orange-400

@@ -5,9 +5,9 @@ import { X, Volume2, Eye, Check, XCircle, CheckCircle2, Sparkles, Trophy } from 
 import { Button } from '@/components/ui/button';
 import { useSubmitTest } from '@/hooks/queries/use-tests-query';
 import { speak, canSpeak } from '@/utils/speak';
-import { wordColor } from '@/utils/word-color';
 import { cn } from '@/utils/cn';
 import type { Word, TestResult, TestSubmissionItem } from '@/services/user';
+import { wordColor } from '@/utils/word';
 
 const STUDY_MS = 5000; // how long the word is shown before it vanishes
 const VANISH_MS = 1300; // length of the magical hide animation
@@ -185,7 +185,7 @@ function StudyCard({
             <motion.span
               key={i}
               className="text-5xl md:text-6xl font-extrabold capitalize"
-              style={{ color: c.color }}
+              style={{ color: c }}
               animate={
                 vanishing
                   ? { opacity: 0, y: -60, scale: 1.9, filter: 'blur(10px)', rotate: (i % 2 ? 1 : -1) * 28 }
@@ -325,7 +325,7 @@ function AnswerForm({
           </button>
         </div>
         {revealed && (
-          <p className="mt-1 text-center text-lg font-bold capitalize" style={{ color: wordColor(word).color }}>
+          <p className="mt-1 text-center text-lg font-bold capitalize" style={{ color: wordColor(word) }}>
             {word}
           </p>
         )}

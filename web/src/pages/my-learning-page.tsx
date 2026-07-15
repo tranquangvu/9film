@@ -43,8 +43,7 @@ import { WordTest } from '@/components/system/learn/word-test';
 import { ReviewDeck } from '@/components/system/learn/review-deck';
 import { SpellBoxes } from '@/components/system/learn/spell-boxes';
 import type { Word, WordStat } from '@/services/user';
-import { isSpelled, sceneLink } from '@/utils/word';
-import { parseDate, dayKey } from '@/utils/word-date';
+import { isSpelled, sceneLink, parseDate, dayKey } from '@/utils/word';
 
 // Consecutive days (ending today or yesterday) with at least one word added or
 // completed — a light "keep the streak" motivator in the hero.

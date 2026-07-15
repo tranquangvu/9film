@@ -13,10 +13,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/auth-context';
 import { useTestsQuery } from '@/hooks/queries/use-tests-query';
-import { wordColor } from '@/utils/word-color';
-import { parseDate } from '@/utils/word-date';
 import { cn } from '@/utils/cn';
 import type { TestResult, TestItem } from '@/services/user';
+import { wordColor, parseDate } from '@/utils/word';
 
 function when(s?: string): string {
   const d = parseDate(s);
@@ -142,7 +141,7 @@ function ItemRow({ item }: { item: TestItem }) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="font-semibold capitalize" style={{ color: wordColor(item.word).color }}>
+        <span className="font-semibold capitalize" style={{ color: wordColor(item.word) }}>
           {item.word}
         </span>
         <Badge variant="tag" className={cn(item.spellingScore === item.spellings.length ? 'text-emerald-300' : 'text-zinc-400')}>

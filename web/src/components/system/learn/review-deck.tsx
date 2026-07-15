@@ -7,7 +7,7 @@ import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { useWordTranslation } from '@/hooks/queries/use-translate-query';
 import { speak, canSpeak } from '@/utils/speak';
 import type { ReviewGrade, Word } from '@/services/user';
-import { wordColor } from '@/utils/word-color';
+import { wordColor } from '@/utils/word';
 
 // The four SM-2 recall ratings, in increasing confidence. Colors hint difficulty.
 const GRADES: { id: ReviewGrade; label: string; cls: string }[] = [
@@ -143,7 +143,7 @@ function ReviewCard({
           >
             <span
               className="text-center text-5xl font-extrabold capitalize leading-tight tracking-tight break-words"
-              style={{ color: c.color }}
+              style={{ color: c }}
             >
               {word.word}
             </span>
