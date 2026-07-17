@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Play,
-  Volume2,
   CheckCircle2,
   BookOpen,
   Trophy,
@@ -19,31 +17,21 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import { useAuth } from '@/context/auth-context';
 import {
   useWordStatsQuery,
   useInfiniteWordsQuery,
   useImportWordList,
-  useCompleteWord,
   useDueCount,
 } from '@/hooks/queries/use-words-query';
-import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
-import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { normId } from '@/utils/title';
-import { speak, canSpeak } from '@/utils/speak';
 import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
 import { FlashcardDeck } from '@/components/system/learn/flashcard-deck';
+import { SECTION_SIZE } from '@/components/system/learn/section-break';
 import { WordTest } from '@/components/system/learn/word-test';
 import { ReviewDeck } from '@/components/system/learn/review-deck';
-import { SpellBoxes } from '@/components/system/learn/spell-boxes';
 import type { Word, WordStat } from '@/services/user';
-import { isSpelled, sceneLink, parseDate, dayKey } from '@/utils/word';
+import { parseDate, dayKey } from '@/utils/word';
 
 // Consecutive days (ending today or yesterday) with at least one word added or
 // completed — a light "keep the streak" motivator in the hero.
@@ -89,6 +77,11 @@ function LearningHero({
   insightsTo?: string;
   testsTo: string;
 }) {
+  // Studying/reviewing runs in sections of SECTION_SIZE, so when there are more
+  // words than one section the button advertises the batch size (10), not the
+  // full backlog — otherwise "Study 14 words" misleads about the session length.
+  const studyCount = Math.min(addedCount, SECTION_SIZE);
+  const reviewCount = Math.min(dueCount, SECTION_SIZE);
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-400/15 bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent p-6 md:p-8">
       <div className="flex items-center gap-4">
@@ -112,17 +105,23 @@ function LearningHero({
         {dueCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button variant="primary" size="sm" onClick={onReview}>
-              <Brain className="w-4 h-4" /> Review {dueCount} {dueCount === 1 ? 'word' : 'words'}
+              <Brain className="w-4 h-4" /> Review {dueCount > SECTION_SIZE ? 'next ' : ''}{reviewCount} {reviewCount === 1 ? 'word' : 'words'}
             </Button>
           </motion.div>
         )}
         {addedCount > 0 && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button variant={dueCount > 0 ? 'outline' : 'primary'} size="sm" onClick={onStudy}>
-              <GraduationCap className="w-4 h-4" /> Study {addedCount} {addedCount === 1 ? 'word' : 'words'}
+              <GraduationCap className="w-4 h-4" /> Study {addedCount > SECTION_SIZE ? 'next ' : ''}{studyCount} {studyCount === 1 ? 'word' : 'words'}
             </Button>
           </motion.div>
         )}
+        <Link
+          to={testsTo}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4" /> Test results
+        </Link>
         {insightsTo && (
           <Link
             to={insightsTo}
@@ -131,12 +130,6 @@ function LearningHero({
             <BarChart3 className="w-4 h-4" /> Insights
           </Link>
         )}
-        <Link
-          to={testsTo}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-        >
-          <ClipboardList className="w-4 h-4" /> Test results
-        </Link>
       </div>
 
       {streak > 0 && (
@@ -150,167 +143,6 @@ function LearningHero({
   );
 }
 
-const SPELL_TIMES = 8; // times the word must be retyped to mark it complete
-
-function WordDialog({
-  word,
-  onOpenChange,
-  onPrev,
-  onNext,
-  hasPrev,
-  hasNext,
-  onComplete,
-  completing,
-}: {
-  word: Word | null;
-  onOpenChange: (open: boolean) => void;
-  onPrev: () => void;
-  onNext: () => void;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onComplete: (w: Word) => void;
-  completing: boolean;
-}) {
-  const isPhrase = word?.kind === 'phrase';
-  const dict = useDictionaryQuery(isPhrase ? undefined : word?.word);
-  const explain = useExplainPhrase(isPhrase ? (word?.word ?? null) : null, word?.sentence ?? '');
-
-  const openWord = word?.word;
-  useEffect(() => {
-    if (openWord) speak(openWord);
-  }, [openWord]);
-
-  const isDone = !!word?.completedAt;
-
-  // To complete a word, the learner retypes it SPELL_TIMES times; each box
-  // pronounces the word on focus. The "Complete" button unlocks only when all
-  // attempts match. State resets whenever a different word is opened.
-  const [spellings, setSpellings] = useState<string[]>(() => Array(SPELL_TIMES).fill(''));
-  useEffect(() => {
-    setSpellings(Array(SPELL_TIMES).fill(''));
-  }, [openWord]);
-  const allSpelled = isSpelled(openWord ?? '', spellings);
-
-  return (
-    <Dialog open={!!word} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        {word && (
-          <div>
-            <div className="flex items-center gap-3 pr-8">
-              <DialogTitle className="capitalize">
-                {word.word}
-              </DialogTitle>
-              {canSpeak() && (
-                <button onClick={() => speak(word.word)} aria-label="Pronounce word" className="shrink-0 text-orange-400 hover:text-orange-300 transition-colors">
-                  <Volume2 className="w-4 h-4" />
-                </button>
-              )}
-              {isDone && (
-                <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-                </span>
-              )}
-            </div>
-
-            {dict.data?.phonetic && <p className="mt-1 text-sm text-zinc-500">{dict.data.phonetic}</p>}
-
-            {word.translation && <p className="mt-2 text-orange-300 font-medium">{word.translation}</p>}
-            {word.sentence && (
-              <div className="mt-2 flex items-start gap-2">
-                <DialogDescription className="italic text-zinc-400">“{word.sentence}”</DialogDescription>
-                {canSpeak() && (
-                  <button onClick={() => speak(word.sentence)} aria-label="Read sentence aloud" className="shrink-0 mt-1 text-orange-400 hover:text-orange-300 transition-colors">
-                    <Volume2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
-            {word.imdbId && (
-              <Link to={sceneLink(word)} className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300" target="_blank">
-                <Play className="w-3.5 h-3.5" /> Watch the scene
-              </Link>
-            )}
-
-            {isPhrase && (
-              <div className="mt-4 space-y-3">
-                {explain.isLoading && <p className="text-sm text-zinc-600">Explaining…</p>}
-                {explain.data?.literal && <ExplainBlock label="Literally" text={explain.data.literal} />}
-                {explain.data?.figurative && <ExplainBlock label="Figuratively" text={explain.data.figurative} />}
-                {explain.data?.usage && <ExplainBlock label="Usage" text={explain.data.usage} />}
-              </div>
-            )}
-
-            {!isPhrase && dict.isLoading && <p className="mt-4 text-sm text-zinc-600">Loading definitions…</p>}
-            {!isPhrase && dict.data && (
-              <div className="mt-4 space-y-3">
-                {dict.data.meanings.slice(0, 4).map((m, i) => (
-                  <div key={`${m.partOfSpeech}-${i}`}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{m.partOfSpeech}</p>
-                    <ul className="mt-1.5 space-y-1.5">
-                      {m.definitions.slice(0, 3).map((d, j) => (
-                        <li key={j} className="text-sm text-zinc-200">
-                          <span className="text-zinc-500 mr-1.5">•</span>
-                          {d.definition}
-                          {d.example && <span className="block pl-4 mt-0.5 text-zinc-500 italic">“{d.example}”</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!isDone && (
-              <div className="mt-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Type the word {SPELL_TIMES} times to complete
-                </p>
-                <SpellBoxes
-                  word={word.word}
-                  value={spellings}
-                  onChange={setSpellings}
-                  className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2"
-                />
-              </div>
-            )}
-
-            <div className="mt-6 flex items-center justify-between gap-2">
-              <Button variant="ghost" size="sm" className="rounded-full" onClick={onPrev} disabled={!hasPrev}>
-                <ChevronLeft className="w-4 h-4" /> Prev
-              </Button>
-              {!isDone ? (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="rounded-full"
-                  disabled={completing || !allSpelled}
-                  onClick={() => onComplete(word)}
-                >
-                  <CheckCircle2 className="w-4 h-4" /> {completing ? 'Saving…' : 'Complete'}
-                </Button>
-              ) : (
-                <span className="text-xs text-orange-400 font-medium">Learned</span>
-              )}
-              <Button variant="ghost" size="sm" className="rounded-full" onClick={onNext} disabled={!hasNext}>
-                Next <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// One labelled line of a phrase explanation in the word detail dialog.
-function ExplainBlock({ label, text }: { label: string; text: string }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-0.5 text-sm text-zinc-200">{text}</p>
-    </div>
-  );
-}
 
 interface TitleGroup {
   imdbId: string; // '' = saved without a source title (e.g. imported packs)
@@ -495,35 +327,9 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
   const learnList = useInfiniteWordsQuery('learn', list);
   const learnWords = useMemo(() => learnList.data?.pages.flatMap((p) => p.items) ?? [], [learnList.data]);
 
-  const selectedLive = selected ? (words.find((w) => w.word === selected.word) ?? selected) : null;
-
-  // Navigation within the open word popup, across the loaded list.
-  const selIdx = useMemo(
-    () => (selected ? words.findIndex((w) => w.word === selected.word) : -1),
-    [selected, words],
-  );
-  const complete = useCompleteWord();
-  const gotoWord = (i: number) => {
-    if (i >= 0 && i < words.length) setSelected(words[i]);
-  };
-  // Mark learned, then advance to the next word (or close when it was the last).
-  const completeAndNext = (w: Word) => {
-    const next = words[selIdx + 1] ?? null;
-    complete.mutate(w.word, {
-      onSuccess: () => setSelected(next && next.word !== w.word ? next : null),
-    });
-  };
-
   const sentinelRef = useRef<HTMLDivElement>(null);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = tabQuery;
 
-  // Keep navigation flowing for large lists: load the next page as the open
-  // word nears the end of what's loaded.
-  useEffect(() => {
-    if (selIdx >= 0 && selIdx >= words.length - 3 && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [selIdx, words.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el || !hasNextPage) return;
@@ -644,17 +450,6 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
         )}
       </div>
 
-      <WordDialog
-        word={selectedLive}
-        onOpenChange={(open) => !open && setSelected(null)}
-        onPrev={() => gotoWord(selIdx - 1)}
-        onNext={() => gotoWord(selIdx + 1)}
-        hasPrev={selIdx > 0}
-        hasNext={selIdx >= 0 && selIdx < words.length - 1}
-        onComplete={completeAndNext}
-        completing={complete.isPending}
-      />
-
       <AnimatePresence>
         {studying && (
           <FlashcardDeck
@@ -663,6 +458,21 @@ export default function MyLearningPage({ list = '' }: { list?: string }) {
             hasMore={!!learnList.hasNextPage}
             fetchMore={learnList.fetchNextPage}
             onClose={() => setStudying(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Tapping a word opens the same deck, parked on that word, over the tab's
+          own list — so you can keep going from there rather than just read one. */}
+      <AnimatePresence>
+        {selected && (
+          <FlashcardDeck
+            words={words}
+            total={tab === 'learn' ? addedCount : completedCount}
+            hasMore={!!tabQuery.hasNextPage}
+            fetchMore={tabQuery.fetchNextPage}
+            startWord={selected.word}
+            onClose={() => setSelected(null)}
           />
         )}
       </AnimatePresence>

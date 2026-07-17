@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDueReviewsQuery, useSubmitReview } from '@/hooks/queries/use-words-query';
+import { SectionBreak, SECTION_SIZE } from '@/components/system/learn/section-break';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { useWordTranslation } from '@/hooks/queries/use-translate-query';
 import { speak, canSpeak } from '@/utils/speak';
@@ -28,6 +29,11 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
   const [pos, setPos] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
+  // Section pacing: pause on a break screen after every SECTION_SIZE graded cards,
+  // once the due set is bigger than a single section.
+  const [paused, setPaused] = useState(false);
+  const [sectionDone, setSectionDone] = useState(0);
+  const [sectionIndex, setSectionIndex] = useState(1);
 
   // Snapshot the due set once, the first time it loads.
   useEffect(() => {
@@ -43,13 +49,28 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
   const current = currentKey ? byKey.get(currentKey) : undefined;
   const finished = total > 0 && pos >= total;
   const empty = !isLoading && total === 0 && (data?.length ?? 0) === 0;
+  const sectioned = total > SECTION_SIZE;
 
   function grade(g: ReviewGrade) {
     if (!current) return;
     review.mutate({ word: current.word, grade: g });
     setReviewed((n) => n + 1);
     setFlipped(false);
+    // Pause between sections, but never on the last card (that ends on ReviewDone).
+    const doneInSection = sectionDone + 1;
+    const wasLast = pos >= total - 1;
     setPos((p) => p + 1);
+    if (sectioned && !wasLast && doneInSection >= SECTION_SIZE) {
+      setPaused(true);
+    } else {
+      setSectionDone(doneInSection);
+    }
+  }
+
+  function continueSection() {
+    setSectionDone(0);
+    setSectionIndex((i) => i + 1);
+    setPaused(false);
   }
 
   return (
@@ -70,7 +91,15 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs font-medium text-sky-200/80 mb-1.5">
           <span>{reviewed} reviewed</span>
-          <span>{finished || empty ? 'Done' : `${Math.min(pos + 1, total)} / ${total} due`}</span>
+          <span>
+            {finished || empty
+              ? 'Done'
+              : paused
+                ? 'Break'
+                : sectioned
+                  ? `Section ${sectionIndex} · ${sectionDone}/${SECTION_SIZE}`
+                  : `${Math.min(pos + 1, total)} / ${total} due`}
+          </span>
         </div>
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
           <motion.div
@@ -84,6 +113,14 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
       <AnimatePresence mode="wait">
         {isLoading ? (
           <p key="loading" className="text-sky-200/70">Loading reviews…</p>
+        ) : paused ? (
+          <SectionBreak
+            key={`break-${sectionIndex}`}
+            sectionIndex={sectionIndex}
+            doneCount={SECTION_SIZE}
+            onContinue={continueSection}
+            onClose={onClose}
+          />
         ) : empty || finished ? (
           <ReviewDone key="done" reviewed={reviewed} onClose={onClose} />
         ) : current ? (

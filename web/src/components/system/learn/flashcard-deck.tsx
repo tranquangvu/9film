@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { useCompleteWord } from '@/hooks/queries/use-words-query';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { useWordTranslation } from '@/hooks/queries/use-translate-query';
+import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { SpellBoxes } from '@/components/system/learn/spell-boxes';
+import { SectionBreak, SECTION_SIZE } from '@/components/system/learn/section-break';
 import { speak, canSpeak } from '@/utils/speak';
 import type { Word } from '@/services/user';
-import { isSpelled, spelledCount, sceneLink } from '@/utils/word';
+import { isSpelled, spelledCount, sceneLink, wordColor } from '@/utils/word';
 
 const SPELL_TIMES = 6; // times the word must be retyped before "Got it" unlocks
 
@@ -22,19 +24,34 @@ export function FlashcardDeck({
   hasMore,
   fetchMore,
   onClose,
+  startWord,
 }: {
   words: Word[];
   total: number;
   hasMore: boolean;
   fetchMore: () => void;
   onClose: () => void;
+  // Open on this word rather than the first — how tapping a word in the list
+  // gets straight to its card, with the rest of the list still behind it.
+  startWord?: string;
 }) {
   // The queue is a growing list of word keys; current card data is read live from
   // `words` so a word edited mid-study shows its latest state.
   const [queue, setQueue] = useState<string[]>(() => words.map((w) => w.word));
-  const [pos, setPos] = useState(0);
+  const [pos, setPos] = useState(() => {
+    const i = startWord ? words.findIndex((w) => w.word === startWord) : 0;
+    return i > 0 ? i : 0;
+  });
   const [flipped, setFlipped] = useState(false);
   const [learned, setLearned] = useState(0);
+  // Section pacing: run through the deck in batches of SECTION_SIZE words, pausing
+  // on a break screen between them. `sectionDone` counts words learned in the
+  // current batch (a re-queued "Again" doesn't count — it's the same word again).
+  // Only armed once the deck is bigger than one section.
+  const [paused, setPaused] = useState(false);
+  const [sectionDone, setSectionDone] = useState(0);
+  const [sectionIndex, setSectionIndex] = useState(1);
+  const sectioned = total > SECTION_SIZE;
   const complete = useCompleteWord();
 
   const byKey = useMemo(() => new Map(words.map((w) => [w.word, w])), [words]);
@@ -62,7 +79,22 @@ export function FlashcardDeck({
     complete.mutate(current.word);
     setLearned((n) => n + 1);
     setFlipped(false);
+    // A full section just filled — pause here unless this was the final card
+    // (the last word always ends on DeckDone, never a break).
+    const doneInSection = sectionDone + 1;
+    const wasLast = pos >= queue.length - 1 && !hasMore;
     setPos((p) => p + 1);
+    if (sectioned && !wasLast && doneInSection >= SECTION_SIZE) {
+      setPaused(true);
+    } else {
+      setSectionDone(doneInSection);
+    }
+  }
+
+  function continueSection() {
+    setSectionDone(0);
+    setSectionIndex((i) => i + 1);
+    setPaused(false);
   }
 
   function again() {
@@ -90,7 +122,15 @@ export function FlashcardDeck({
       <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs font-medium text-emerald-200/80 mb-1.5">
           <span>{Math.min(learned, total)} / {total} learned</span>
-          <span>{finished ? 'Done' : `Card ${pos + 1}`}</span>
+          <span>
+            {finished
+              ? 'Done'
+              : paused
+                ? 'Break'
+                : sectioned
+                  ? `Section ${sectionIndex} · ${sectionDone}/${SECTION_SIZE}`
+                  : ''}
+          </span>
         </div>
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
           <motion.div
@@ -102,7 +142,15 @@ export function FlashcardDeck({
       </div>
 
       <AnimatePresence mode="wait">
-        {finished ? (
+        {paused ? (
+          <SectionBreak
+            key={`break-${sectionIndex}`}
+            sectionIndex={sectionIndex}
+            doneCount={SECTION_SIZE}
+            onContinue={continueSection}
+            onClose={onClose}
+          />
+        ) : finished ? (
           <DeckDone key="done" learned={learned} onClose={onClose} />
         ) : current ? (
           <Flashcard
@@ -140,14 +188,18 @@ function Flashcard({
   onAgain: () => void;
   completing: boolean;
 }) {
+  // Idioms skip the retype gate — typing "disagree with doing" six times is
+  // punishing, and the self-test excludes phrases for the same reason.
+  const isPhrase = word.kind === 'phrase';
   const translation = useWordTranslation(word);
   // Shares the back's cached lookup (same query key), so this costs no request.
-  const phonetic = useDictionaryQuery(word.word).data?.phonetic;
+  const phonetic = useDictionaryQuery(isPhrase ? undefined : word.word).data?.phonetic;
   // Same retype gate as the word dialog: "Got it" unlocks once every box matches.
   // The parent keys this component by word, so the boxes clear on each new card.
   const [spellings, setSpellings] = useState<string[]>(() => Array(SPELL_TIMES).fill(''));
   const done = spelledCount(word.word, spellings);
-  const spelled = isSpelled(word.word, spellings);
+  const spelled = isPhrase || isSpelled(word.word, spellings);
+  const color = wordColor(word.word);
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0, y: 12 }}
@@ -171,7 +223,8 @@ function Flashcard({
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1">
               <p className="relative">
                 <span
-                  className="text-center text-5xl font-bold capitalize leading-tight tracking-tight text-white break-words"
+                  className="text-center text-5xl font-bold capitalize leading-tight tracking-tight break-words"
+                  style={{ color }}
                 >
                   {word.word}
                 </span>
@@ -179,7 +232,8 @@ function Flashcard({
                   <button
                     onClick={(e) => { e.stopPropagation(); speak(word.word); }}
                     aria-label="Pronounce"
-                    className="absolute top-2 -right-9 shrink-0 rounded-full p-1.5 text-orange-400 transition-colors hover:bg-white/5 hover:text-orange-300"
+                    style={{ color }}
+                    className="absolute top-2 -right-9 shrink-0 rounded-full p-1.5 transition-colors hover:bg-white/5"
                   >
                     <Volume2 className="w-5 h-5" />
                   </button>
@@ -189,27 +243,29 @@ function Flashcard({
                 <p className="text-sm tracking-wide text-zinc-500">{phonetic}</p>
               )}
               {translation && (
-                <p className="text-center text-base font-semibold text-orange-300">{translation}</p>
+                <p className="text-center text-base font-semibold" style={{ color }}>{translation}</p>
               )}
             </div>
-            <div className="mt-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-baseline justify-center gap-1">
-                <p className="text-xs tracking-wide text-zinc-500">
-                  Type it till it sticks
-                </p>
-                <span
-                  className={`text-xs tabular-nums transition-colors ${spelled ? 'text-emerald-400' : 'text-zinc-400'}`}
-                >
-                  {done}/{SPELL_TIMES}
-                </span>
+            {!isPhrase && (
+              <div className="mt-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-baseline justify-center gap-1">
+                  <p className="text-xs tracking-wide text-zinc-500">
+                    Type it till it sticks
+                  </p>
+                  <span
+                    className={`text-xs tabular-nums transition-colors ${spelled ? 'text-emerald-400' : 'text-zinc-400'}`}
+                  >
+                    {done}/{SPELL_TIMES}
+                  </span>
+                </div>
+                <SpellBoxes
+                  word={word.word}
+                  value={spellings}
+                  onChange={setSpellings}
+                  className="mt-2 grid grid-cols-3 gap-2"
+                />
               </div>
-              <SpellBoxes
-                word={word.word}
-                value={spellings}
-                onChange={setSpellings}
-                className="mt-2 grid grid-cols-3 gap-2"
-              />
-            </div>
+            )}
             <p className="mt-3 shrink-0 text-center text-xs text-zinc-600">Tap card to flip</p>
           </div>
           <div
@@ -241,7 +297,11 @@ function Flashcard({
 }
 
 function CardBack({ word }: { word: Word }) {
-  const dict = useDictionaryQuery(word.word);
+  // Idioms have no dictionary entry, so they get an AI breakdown in place of
+  // the definitions list.
+  const isPhrase = word.kind === 'phrase';
+  const dict = useDictionaryQuery(isPhrase ? undefined : word.word);
+  const explain = useExplainPhrase(isPhrase ? word.word : null, word.sentence ?? '');
   const translation = useWordTranslation(word);
   // No click guard here: the card flips back when the back is tapped, same as
   // the front. Only the controls below stop the click.
@@ -278,6 +338,14 @@ function CardBack({ word }: { word: Word }) {
           <Play className="w-3.5 h-3.5" /> Watch the scene
         </Link>
       )}
+      {isPhrase && (
+        <div className="mt-3 space-y-2.5">
+          {explain.isLoading && <p className="text-sm text-zinc-600">Explaining…</p>}
+          {explain.data?.literal && <ExplainBlock label="Literally" text={explain.data.literal} />}
+          {explain.data?.figurative && <ExplainBlock label="Figuratively" text={explain.data.figurative} />}
+          {explain.data?.usage && <ExplainBlock label="Usage" text={explain.data.usage} />}
+        </div>
+      )}
       {dict.data && (
         <div className="mt-3 space-y-2.5">
           {dict.data.meanings.slice(0, 3).map((m, i) => (
@@ -294,6 +362,15 @@ function CardBack({ word }: { word: Word }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ExplainBlock({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="mt-0.5 text-sm text-zinc-200">{text}</p>
     </div>
   );
 }
