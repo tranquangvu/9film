@@ -53,6 +53,15 @@ function computeStreak(words: WordStat[]): number {
   return streak;
 }
 
+// One shared pill style for every hero action, so the four buttons match in
+// shape, size, spacing, and hover. Review (and Study when nothing is due) use the
+// primary variant; the rest are neutral. All hover via the same bg transition.
+const PILL =
+  'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors';
+const PILL_NEUTRAL = 'border-white/15 bg-white/5 text-white hover:bg-white/10';
+const PILL_PRIMARY =
+  'border-orange-400/40 bg-orange-500 text-white shadow-lg shadow-orange-500/30 hover:bg-orange-600';
+
 // Playful header: a bouncing mascot, the title, and bubbly stat pills.
 function LearningHero({
   title,
@@ -102,31 +111,27 @@ function LearningHero({
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
+        {/* All four actions share one pill style + hover; Review is the primary
+            (orange) variant, the rest are neutral. */}
         {dueCount > 0 && (
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button variant="primary" size="sm" onClick={onReview}>
-              <Brain className="w-4 h-4" /> Review {dueCount > SECTION_SIZE ? 'next ' : ''}{reviewCount} {reviewCount === 1 ? 'word' : 'words'}
-            </Button>
-          </motion.div>
+          <button type="button" onClick={onReview} className={`${PILL} ${PILL_PRIMARY}`}>
+            <Brain className="w-4 h-4" /> Review {dueCount > SECTION_SIZE ? 'next ' : ''}{reviewCount} {reviewCount === 1 ? 'word' : 'words'}
+          </button>
         )}
         {addedCount > 0 && (
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button variant={dueCount > 0 ? 'outline' : 'primary'} size="sm" onClick={onStudy}>
-              <GraduationCap className="w-4 h-4" /> Study {addedCount > SECTION_SIZE ? 'next ' : ''}{studyCount} {studyCount === 1 ? 'word' : 'words'}
-            </Button>
-          </motion.div>
+          <button
+            type="button"
+            onClick={onStudy}
+            className={`${PILL} ${dueCount > 0 ? PILL_NEUTRAL : PILL_PRIMARY}`}
+          >
+            <GraduationCap className="w-4 h-4" /> Study {addedCount > SECTION_SIZE ? 'next ' : ''}{studyCount} {studyCount === 1 ? 'word' : 'words'}
+          </button>
         )}
-        <Link
-          to={testsTo}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-        >
+        <Link to={testsTo} className={`${PILL} ${PILL_NEUTRAL}`}>
           <ClipboardList className="w-4 h-4" /> Test results
         </Link>
         {insightsTo && (
-          <Link
-            to={insightsTo}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
-          >
+          <Link to={insightsTo} className={`${PILL} ${PILL_NEUTRAL}`}>
             <BarChart3 className="w-4 h-4" /> Insights
           </Link>
         )}

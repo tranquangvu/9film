@@ -262,6 +262,7 @@ function Flashcard({
                   word={word.word}
                   value={spellings}
                   onChange={setSpellings}
+                  accent={color}
                   className="mt-2 grid grid-cols-3 gap-2"
                 />
               </div>
@@ -284,7 +285,10 @@ function Flashcard({
         <Button
           variant="primary"
           size="md"
-          className="rounded-2xl"
+          // Match the card's word colour. wordColor is a light pastel, so the
+          // label goes dark for contrast; the orange shadow is dropped to suit.
+          className="rounded-2xl text-zinc-950 shadow-none"
+          style={{ backgroundColor: color }}
           onClick={onGotIt}
           disabled={completing || !spelled}
           title={spelled ? undefined : `Type the word ${SPELL_TIMES} times to unlock`}
@@ -303,15 +307,16 @@ function CardBack({ word }: { word: Word }) {
   const dict = useDictionaryQuery(isPhrase ? undefined : word.word);
   const explain = useExplainPhrase(isPhrase ? word.word : null, word.sentence ?? '');
   const translation = useWordTranslation(word);
+  const color = wordColor(word.word);
   // No click guard here: the card flips back when the back is tapped, same as
   // the front. Only the controls below stop the click.
   return (
     <div>
-      <h3 className="text-lg font-bold capitalize text-white">{word.word}</h3>
+      <h3 className="text-lg font-bold capitalize" style={{ color }}>{word.word}</h3>
       {dict.data?.phonetic && (
         <p className="mt-0.5 text-sm tracking-wide text-zinc-500">{dict.data.phonetic}</p>
       )}
-      {translation && <p className="mt-1 text-orange-300 font-semibold">{translation}</p>}
+      {translation && <p className="mt-1 font-semibold" style={{ color }}>{translation}</p>}
       {word.sentence && (
         <div className="mt-2 flex items-start gap-2">
           <p className="italic text-sm text-zinc-400">“{word.sentence}”</p>
@@ -319,7 +324,8 @@ function CardBack({ word }: { word: Word }) {
             <button
               onClick={(e) => { e.stopPropagation(); speak(word.sentence); }}
               aria-label="Read sentence"
-              className="shrink-0 mt-0.5 text-orange-400 hover:text-orange-300"
+              style={{ color }}
+              className="shrink-0 mt-0.5 opacity-90 hover:opacity-100"
             >
               <Volume2 className="w-3.5 h-3.5" />
             </button>
@@ -333,7 +339,8 @@ function CardBack({ word }: { word: Word }) {
           to={sceneLink(word)}
           target="_blank"
           onClick={(e) => e.stopPropagation()}
-          className="mt-2 inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300"
+          style={{ color }}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs opacity-90 hover:opacity-100"
         >
           <Play className="w-3.5 h-3.5" /> Watch the scene
         </Link>

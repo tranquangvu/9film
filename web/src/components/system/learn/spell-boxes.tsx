@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Check, X } from 'lucide-react';
 import { speak } from '@/utils/speak';
 
@@ -6,7 +7,7 @@ import { speak } from '@/utils/speak';
 // emerald, a mismatch to rose. Orange (the app's action colour) is reserved for
 // the box you're actually typing in.
 const BOX_IDLE =
-  'border-white/10 bg-black/30 text-white placeholder:text-zinc-700 focus:border-orange-400/60 focus:bg-black/50';
+  'border-white/10 bg-black/30 text-white placeholder:text-zinc-700 focus:border-[var(--focus-border)] focus:bg-black/50';
 const BOX_OK = 'border-emerald-500/40 bg-emerald-500/10 text-emerald-50 focus:border-emerald-400/70';
 const BOX_BAD = 'border-rose-500/40 bg-rose-500/10 text-rose-50 focus:border-rose-400/70';
 
@@ -19,15 +20,22 @@ export function SpellBoxes({
   value,
   onChange,
   className = 'grid grid-cols-2 sm:grid-cols-4 gap-2',
+  accent,
 }: {
   word: string;
   value: string[];
   onChange: (next: string[]) => void;
   className?: string;
+  // Optional per-word tint (an `hsl(...)` string from wordColor) for the idle
+  // box's focus border, so the box you're typing in matches the card's word
+  // colour. Filled boxes keep their emerald/rose verdict colours regardless.
+  accent?: string;
 }) {
   const target = word.trim().toLowerCase();
+  // Focus-border colour: the word's accent when given, else the app's orange.
+  const focusBorder = accent ? accent.replace(')', ' / 0.7)') : 'rgb(251 146 60 / 0.6)';
   return (
-    <div className={className}>
+    <div className={className} style={{ '--focus-border': focusBorder } as CSSProperties}>
       {value.map((s, i) => {
         const filled = s.trim() !== '';
         const correct = s.trim().toLowerCase() === target;
