@@ -1,9 +1,9 @@
 package learning
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,8 +14,12 @@ import (
 )
 
 // Bundled starter word lists the user can import in one tap, seeding a
-// vocabulary to study.
-const oxford3000URL = "https://raw.githubusercontent.com/sapbmw/The-Oxford-3000/master/The_Oxford_3000.txt"
+// vocabulary to study. Vendored rather than fetched so the import works offline
+// and can't shift under us; sourced from
+// https://github.com/sapbmw/The-Oxford-3000 (The_Oxford_3000.txt).
+//
+//go:embed oxford3000.txt
+var oxford3000List string
 
 const dictAPIBase = "https://api.dictionaryapi.dev/api/v2/entries/en"
 
@@ -227,19 +231,7 @@ func (s *service) ImportWordList(userID int64, list string) (int, error) {
 	if list != "oxford3000" {
 		return 0, fmt.Errorf("unknown word list %q", list)
 	}
-	resp, err := s.dictClient.Get(oxford3000URL)
-	if err != nil {
-		return 0, fmt.Errorf("fetch word list: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("word list source returned %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, fmt.Errorf("read word list: %w", err)
-	}
-	return s.repo.BulkAddWords(userID, parseWordList(string(body)), "oxford3000")
+	return s.repo.BulkAddWords(userID, parseWordList(oxford3000List), "oxford3000")
 }
 
 // parseWordList turns a newline-separated list into trimmed, lowercased, unique
