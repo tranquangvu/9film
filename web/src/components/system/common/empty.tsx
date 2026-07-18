@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
@@ -7,6 +8,7 @@ interface EmptyProps {
   title: string
   message: string
   actionLabel?: string
+  actionIcon?: ReactNode
   onAction?: () => void
   className?: string
 }
@@ -16,6 +18,7 @@ export function Empty({
   title,
   message,
   actionLabel,
+  actionIcon,
   onAction,
   className,
 }: EmptyProps) {
@@ -40,11 +43,12 @@ export function Empty({
 
       {actionLabel && onAction && (
         <motion.button
-          className={cn(buttonVariants({ variant: 'primary' }), 'mt-6 rounded-xl text-sm px-6 py-2.5 hover:bg-orange-400 shadow-none')}
+          className={cn(buttonVariants({ variant: 'primary' }), 'mt-6 text-sm px-6 py-2.5 hover:bg-orange-400 shadow-none')}
           onClick={onAction}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
         >
+          {actionIcon}
           {actionLabel}
         </motion.button>
       )}

@@ -89,7 +89,7 @@ export function TopNavbar({ onSearchOpen, onLeftNavbarOpen }: TopNavbarProps) {
             variant="ghost"
             onClick={onSearchOpen}
             aria-label="Search"
-            className="p-2 text-zinc-400 hover:text-white rounded-lg border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
+            className="p-2 text-zinc-400 hover:text-white rounded-full border-0 shadow-none !bg-transparent hover:!bg-white/10 !backdrop-blur-none"
           >
             <Search size={18} />
           </Button>

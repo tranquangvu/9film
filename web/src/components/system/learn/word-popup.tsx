@@ -144,12 +144,12 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
         </div>
       )}
 
-      <div className="mt-5 flex justify-start">
+      <div className="mt-5">
         {isAuthenticated ? (
           <button
             onClick={onSave}
             disabled={saved}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/50 transition-colors"
+            className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/50 transition-colors"
           >
             {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
             {saved ? 'Saved' : 'Save'}

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderHeart, HeartPlus, Play } from 'lucide-react';
+import { Compass, FolderHeart, HeartPlus, Play } from 'lucide-react';
 import type { Title } from '@/types';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
 import { useContinueWatching } from '@/hooks/queries/use-progress-query';
@@ -195,7 +195,9 @@ export default function MyListPage() {
                 icon="📋"
                 title={emptyMessages.saved.title}
                 message={emptyMessages.saved.message}
-                actionLabel="Browse Content"
+                actionLabel="Browse"
+
+                actionIcon={<Compass className="w-4 h-4" />}
                 onAction={() => navigate('/browse')}
               />
             </>
@@ -204,7 +206,9 @@ export default function MyListPage() {
               icon="📋"
               title={emptyMessages[activeTab].title}
               message={emptyMessages[activeTab].message}
-              actionLabel="Browse Content"
+              actionLabel="Browse"
+
+              actionIcon={<Compass className="w-4 h-4" />}
               onAction={() => navigate('/browse')}
             />
           )}
@@ -232,7 +236,9 @@ export default function MyListPage() {
               icon="📺"
               title={emptyMessages.continue.title}
               message={emptyMessages.continue.message}
-              actionLabel="Browse Content"
+              actionLabel="Browse"
+
+              actionIcon={<Compass className="w-4 h-4" />}
               onAction={() => navigate('/browse')}
             />
           )}
