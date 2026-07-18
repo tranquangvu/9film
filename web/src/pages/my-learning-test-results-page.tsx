@@ -11,6 +11,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { PageGradient } from '@/components/system/common/gradient';
 import { useAuth } from '@/context/auth-context';
 import { useTestsQuery } from '@/hooks/queries/use-tests-query';
 import { cn } from '@/utils/cn';
@@ -28,7 +29,7 @@ function when(s?: string): string {
   });
 }
 
-export default function TestResultsPage() {
+export default function MyLearningTestResultsPage() {
   const { isAuthenticated } = useAuth();
   const { data: tests, isLoading } = useTestsQuery();
   const [open, setOpen] = useState<number | null>(null);
@@ -44,25 +45,17 @@ export default function TestResultsPage() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-indigo-950/40 via-background to-background pt-24 pb-16 px-4 md:px-8 lg:px-12"
-      style={{
-        backgroundImage:
-          'linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px)',
-        backgroundSize: '32px 32px',
-      }}
-    >
-      <div className="mx-auto max-w-3xl">
+    <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
+      <PageGradient className="from-indigo-950/40" />
+      {/* Positioned so the content paints above the wash. */}
+      <div className="relative mx-auto max-w-3xl">
         <Link to="/my-learning" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white mb-4">
           <ChevronLeft className="w-4 h-4" /> My Learning
         </Link>
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="text-4xl select-none">📋</div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">Test results</h1>
-            <p className="text-sm text-indigo-100/70">Your spelling &amp; meaning self-tests.</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">Test results</h1>
+          <p className="text-sm text-indigo-100/70">Your spelling &amp; meaning self-tests.</p>
         </div>
 
         {isLoading ? (
@@ -147,7 +140,6 @@ function ItemRow({ item }: { item: TestItem }) {
         <Badge variant="tag" className={cn(item.spellingScore === item.spellings.length ? 'text-emerald-300' : 'text-zinc-400')}>
           {item.spellingScore}/{item.spellings.length} spelt
         </Badge>
-        {/* The spelling attempts, each flagged right/wrong. */}
         <span className="flex items-center gap-1.5">
           {item.spellings.map((s, i) => {
             const ok = s.trim().toLowerCase() === item.word.toLowerCase();

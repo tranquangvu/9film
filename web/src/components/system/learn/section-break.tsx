@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 export const SECTION_SIZE = 10;
 
 // The interstitial shown between sections: "you finished this batch of 10 — keep
-// going or take a break?". Mirrors the DeckDone / ReviewDone look so the pause
+// going or take a break?". Mirrors the StudyDone / ReviewDone look so the pause
 // feels like part of the same game.
 export function SectionBreak({
   sectionIndex,

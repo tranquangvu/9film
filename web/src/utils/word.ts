@@ -1,6 +1,4 @@
-// Pure helpers for saved vocabulary words: colour, dates, scene links, and the
-// retype gate.
-import type { Word } from '@/services/user';
+import type { Word, WordStat } from '@/services/user';
 
 // Deterministic 32-bit string hash (FNV-1a style) — stable and well spread.
 function hash(s: string): number {
@@ -41,6 +39,62 @@ export function parseDate(s?: string): Date | null {
 
 export function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Consecutive days (ending today or yesterday) with at least one word added or
+// completed — a light "keep the streak" motivator in the learning hero.
+export function computeStreak(words: WordStat[]): number {
+  const days = new Set<string>();
+  for (const w of words) {
+    const a = parseDate(w.createdAt);
+    if (a) days.add(dayKey(a));
+    const c = parseDate(w.completedAt);
+    if (c) days.add(dayKey(c));
+  }
+  const d = new Date();
+  if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+  let streak = 0;
+  while (days.has(dayKey(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+export interface TitleGroup {
+  imdbId: string; // '' = saved without a source title (e.g. imported packs)
+  title: string; // stored source name ('' when unknown / legacy)
+  words: Word[];
+  recent: number; // most recent word time, for ordering groups
+}
+
+// Group a word list by the movie/show it was saved from, using the title name
+// stored on each word (no IMDb fetch). Words sharing an id land together;
+// source-less words (imported packs) collapse into one bucket that always sorts
+// last. Within a group, and across groups, the most recently touched words come
+// first.
+export function groupByTitle(words: Word[], dateOf: (w: Word) => string | undefined): TitleGroup[] {
+  const ts = (w: Word) => parseDate(dateOf(w))?.getTime() ?? 0;
+  const map = new Map<string, TitleGroup>();
+  for (const w of words) {
+    const key = w.imdbId || '';
+    const entry = map.get(key);
+    if (entry) {
+      entry.words.push(w);
+      if (!entry.title && w.title) entry.title = w.title;
+    } else {
+      map.set(key, { imdbId: key, title: w.title ?? '', words: [w], recent: 0 });
+    }
+  }
+  const groups = [...map.values()];
+  for (const g of groups) {
+    g.words.sort((a, b) => ts(b) - ts(a));
+    g.recent = ts(g.words[0]);
+  }
+  return groups.sort((a, b) => {
+    if (!a.imdbId !== !b.imdbId) return a.imdbId ? -1 : 1;
+    return b.recent - a.recent;
+  });
 }
 
 // Deep link back to the exact scene a word was saved from. Season/episode are

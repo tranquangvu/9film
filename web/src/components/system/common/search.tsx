@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TitleCard } from '@/components/system/title/title-card';
-import { PosterTileSkeleton } from '@/components/system/title/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SearchOverlayProps {
   isOpen: boolean
@@ -172,5 +172,20 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function PosterTileSkeleton() {
+  return (
+    <div
+      className="flex flex-col rounded-xl overflow-hidden"
+      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <Skeleton className="aspect-[2/3] rounded-none" />
+      <div className="p-2.5 space-y-1.5">
+        <Skeleton className="h-3 w-5/6" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
   );
 }

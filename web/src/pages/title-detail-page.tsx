@@ -25,10 +25,10 @@ import { formatDuration, formatRating, formatYear } from "@/utils/format";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { TitleCard } from "@/components/system/title/title-card";
+import { TitleCard, TitleCardSkeleton } from "@/components/system/title/title-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { GenreBadge } from "@/components/system/title/genre-badge";
-import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from "@/components/system/common/orange-gradient";
-import { DetailPageSkeleton } from "@/components/system/title/skeletons";
+import { OrangeGradient, ORANGE_GRADIENT_FILL } from "@/components/system/common/gradient";
 import { useFavoriteButton } from "@/hooks/queries/use-favorites-query";
 import {
   useWatchedEpisodes,
@@ -350,7 +350,7 @@ export default function TitleDetailPage() {
               )}
             <span className="w-px h-4 bg-zinc-700" />
             <span className="flex items-center gap-1.5">
-              <OrangeGradientDefs />
+              <OrangeGradient />
               <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
               <span className="font-bold text-white">
                 {formatRating(title.rating)}
@@ -395,7 +395,7 @@ export default function TitleDetailPage() {
               )}
               title={favorite.active ? "Remove from favorites" : "Add to favorites"}
             >
-              <OrangeGradientDefs />
+              <OrangeGradient />
               {favorite.active ? (
                 <Heart
                   className="w-5 h-5"
@@ -548,6 +548,81 @@ export default function TitleDetailPage() {
               </div>
             </section>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Full-page placeholder while the title's metadata loads: hero, then the
+// season/overview/cast/similar blocks in the order the real page renders them.
+function DetailPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="relative w-full h-screen overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-surface-2 to-background" />
+        <div className="absolute inset-0 gradient-overlay" />
+        <div className="absolute inset-0 gradient-overlay-right" />
+
+        <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-28 md:px-8 lg:px-12 max-w-4xl space-y-5">
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-16 rounded-full" />
+            ))}
+          </div>
+          <Skeleton className="h-6 lg:h-8 w-2/3 rounded-lg" />
+          <div className="flex flex-wrap items-center gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-16" />
+            ))}
+          </div>
+          <div className="flex items-center gap-4 pt-1">
+            <Skeleton className="h-12 w-36 rounded-full" />
+            <Skeleton className="h-12 w-12 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 md:px-8 lg:px-12 pt-0 pb-8 space-y-10">
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-28" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-full" />
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-12 rounded-full" />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-4 w-full max-w-3xl" />
+          <Skeleton className="h-4 w-5/6 max-w-3xl" />
+          <Skeleton className="h-4 w-4/6 max-w-3xl" />
+        </div>
+
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-20" />
+          <div className="flex flex-wrap gap-x-6 gap-y-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 w-44">
+                <Skeleton className="w-12 h-12 rounded-full flex-shrink-0" />
+                <div className="min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-40" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TitleCardSkeleton key={i} size="lg" className="w-full" />
+            ))}
+          </div>
         </div>
       </div>
     </div>

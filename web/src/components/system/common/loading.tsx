@@ -1,17 +1,17 @@
 import { cn } from "@/utils/cn";
 
-interface LoadMoreIndicatorProps {
+interface LoadingProps {
   className?: string;
 }
 
-// Infinite-scroll "loading more" indicator: three orange dots bouncing in a
-// staggered wave. Themed to the app's accent rather than a plain spinner.
-export function LoadMoreIndicator({ className }: LoadMoreIndicatorProps) {
+// Themed to the app's accent rather than a plain spinner. Used wherever more
+// content is on its way — infinite-scroll pages, a tab's first fetch.
+export function Loading({ className }: LoadingProps) {
   return (
     <div
       className={cn("flex justify-center items-center gap-1.5 py-2", className)}
       role="status"
-      aria-label="Loading more"
+      aria-label="Loading"
     >
       {[0, 1, 2].map((i) => (
         <span

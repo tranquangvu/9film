@@ -7,7 +7,6 @@ import { useToast } from '@/components/ui/toast';
 import { toTitle } from '@/utils/title';
 import { Empty } from '@/components/system/common/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SearchResultsSkeleton } from '@/components/system/title/skeletons';
 import { cn } from '@/utils/cn';
 import { formatYear, formatDuration, formatRating } from '@/utils/format';
 import { Badge } from '@/components/ui/badge';
@@ -322,6 +321,29 @@ export default function SearchPage() {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+function SearchResultsSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="bg-surface rounded-2xl overflow-hidden divide-y divide-white/5">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex gap-4 p-3">
+          <Skeleton className="shrink-0 w-16 h-24 rounded-lg" />
+          <div className="grow py-1 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+            <div className="flex gap-1.5 pt-0.5">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <Skeleton key={j} className="h-4 w-12" />
+              ))}
+            </div>
+            <Skeleton className="h-3 w-full" />
+          </div>
+          <Skeleton className="shrink-0 h-5 w-12 rounded-full" />
+        </div>
+      ))}
     </div>
   );
 }

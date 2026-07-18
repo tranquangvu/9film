@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { TitleCard } from "@/components/system/title/title-card";
+import { TitleCard, TitleCardSkeleton } from "@/components/system/title/title-card";
 import type { Title } from "@/types";
 
 // Mirrors the Tailwind grid breakpoints the non-virtual grid used
@@ -15,7 +15,7 @@ function gapFor(width: number): number {
   return width >= 768 ? 32 : 24;
 }
 
-interface VirtualTitleGridProps {
+interface TitleVirtualGridProps {
   items: Title[];
   // Infinite scroll: fetch the next page as the last rows scroll into view.
   hasMore?: boolean;
@@ -33,13 +33,13 @@ const PREFETCH_ROWS = 2;
 // mounted, so the DOM, image loads, and per-card query subscriptions stay
 // bounded no matter how many pages are loaded. Posters are a fixed 2:3 ratio,
 // so every row is the same height and we can estimate without per-row measuring.
-export function VirtualTitleGrid({
+export function TitleVirtualGrid({
   items,
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
   showProgress = false,
-}: VirtualTitleGridProps) {
+}: TitleVirtualGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -130,6 +130,16 @@ export function VirtualTitleGrid({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+export function TitleGridSkeleton({ count = 15 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-8">
+      {Array.from({ length: count }).map((_, i) => (
+        <TitleCardSkeleton key={i} size="lg" className="w-full" />
+      ))}
     </div>
   );
 }

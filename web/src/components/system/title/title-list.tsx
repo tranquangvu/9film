@@ -1,11 +1,10 @@
 import { memo } from "react";
-import { VirtualTitleGrid } from "@/components/system/title/virtual-title-grid";
-import { LoadMoreIndicator } from "@/components/system/common/load-more-indicator";
+import { TitleVirtualGrid, TitleGridSkeleton } from "@/components/system/title/title-virtual-grid";
+import { Loading } from "@/components/system/common/loading";
 import { Empty } from "@/components/system/common/empty";
-import { TitleGridSkeleton } from "@/components/system/title/skeletons";
 import type { Title } from "@/types";
 
-interface BrowseContentProps {
+interface TitleListProps {
   isLoading: boolean;
   items: Title[];
   gridKey: string;
@@ -18,7 +17,7 @@ interface BrowseContentProps {
   isLoadingMore?: boolean;
 }
 
-export const BrowseContent = memo(function BrowseContent({
+export const TitleList = memo(function TitleList({
   isLoading,
   items,
   gridKey,
@@ -29,7 +28,7 @@ export const BrowseContent = memo(function BrowseContent({
   hasMore = false,
   onLoadMore,
   isLoadingMore = false,
-}: BrowseContentProps) {
+}: TitleListProps) {
   return (
     <div className="px-4 md:px-8 lg:px-12 mt-6">
       {isLoading ? (
@@ -44,7 +43,7 @@ export const BrowseContent = memo(function BrowseContent({
         />
       ) : (
         <>
-          <VirtualTitleGrid
+          <TitleVirtualGrid
             key={gridKey}
             items={items}
             hasMore={hasMore}
@@ -52,7 +51,7 @@ export const BrowseContent = memo(function BrowseContent({
             onLoadMore={onLoadMore}
           />
 
-          {isLoadingMore && <LoadMoreIndicator className="mt-8" />}
+          {isLoadingMore && <Loading className="mt-8" />}
         </>
       )}
     </div>

@@ -5,9 +5,10 @@ import { Play, Info, Star, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatDuration, formatRating, formatYear } from '@/utils/format';
 import { GenreBadge } from '@/components/system/title/genre-badge';
-import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
+import { OrangeGradient, ORANGE_GRADIENT_FILL } from '@/components/system/common/gradient';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { Title } from '@/types';
 
 interface HeroBannerProps {
@@ -221,7 +222,7 @@ export function HeroBanner({ titles }: HeroBannerProps) {
               )}
               <span className="w-px h-4 bg-zinc-700" />
               <span className="flex items-center gap-1.5">
-                <OrangeGradientDefs />
+                <OrangeGradient />
                 <Star className="w-3.5 h-3.5" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
                 <span className="font-bold text-white">{formatRating(activeTitle.rating)}</span>
                 <span className="text-zinc-500 text-xs">IMDb</span>
@@ -284,6 +285,38 @@ export function HeroBanner({ titles }: HeroBannerProps) {
           </div>
         )}
 
+      </div>
+    </section>
+  );
+}
+
+export function HeroBannerSkeleton() {
+  return (
+    <section className="relative min-h-screen w-full overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/30 via-orange-900/20 to-background" />
+      <div className="gradient-overlay-right absolute inset-0 z-10" />
+      <div className="gradient-overlay absolute inset-0 z-10" />
+
+      <div className="relative z-20 flex flex-col justify-end min-h-screen pb-28 px-6 md:px-12">
+        <div className="w-full md:max-w-[50%]">
+          <Skeleton className="h-6 md:h-8 w-1/3 rounded-lg mb-4" />
+
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-5 w-16 rounded-full" />
+            ))}
+          </div>
+
+          <div className="space-y-2.5 max-w-xl mb-6">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <Skeleton className="h-12 w-32 rounded-full" />
+            <Skeleton className="h-12 w-12 rounded-full" />
+          </div>
+        </div>
       </div>
     </section>
   );

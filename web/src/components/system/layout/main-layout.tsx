@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
-import Navbar from '@/components/system/common/navbar';
-import Sidebar from '@/components/system/common/sidebar';
-import Footer from '@/components/system/common/footer';
-import SearchOverlay from '@/components/system/common/searching';
+import { NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router-dom';
+import { TopNavbar, LeftNavbar } from '@/components/system/common/navbar';
+import SearchOverlay from '@/components/system/common/search';
+
+const footerLinks = [
+  { label: 'About', to: '/about' },
+  { label: 'Privacy', to: '/privacy' },
+  { label: 'Terms', to: '/terms' },
+  { label: 'Disclaimer', to: '/disclaimer' },
+];
 
 // A keyed motion.div that remounts on each route change and replays its enter
 // animation. We deliberately avoid AnimatePresence's `mode="wait"` exit gating:
@@ -18,20 +23,20 @@ const pageVariants = {
 
 export default function MainLayout() {
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLeftNavbarOpen, setIsLeftNavbarOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       {/* Reset to top on navigation; restore prior position on back/forward. */}
       <ScrollRestoration />
-      <Navbar
+      <TopNavbar
         onSearchOpen={() => setIsSearchOpen(true)}
-        onSidebarToggle={() => setIsSidebarOpen(true)}
+        onLeftNavbarOpen={() => setIsLeftNavbarOpen(true)}
       />
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+      <LeftNavbar
+        isOpen={isLeftNavbarOpen}
+        onClose={() => setIsLeftNavbarOpen(false)}
       />
       <SearchOverlay
         isOpen={isSearchOpen}
@@ -48,7 +53,25 @@ export default function MainLayout() {
           <Outlet />
         </motion.div>
       </main>
-      <Footer />
+      <footer className="border-t border-white/5 bg-[#0a0a0a]">
+        <div className="px-6 md:px-12 py-8 flex items-center justify-between">
+          <NavLink to="/" className="text-base font-bold tracking-tight text-gradient">
+            9film
+          </NavLink>
+
+          <nav className="flex items-center gap-5">
+            {footerLinks.map((link) => (
+              <NavLink
+                key={link.label}
+                to={link.to}
+                className="text-xs text-zinc-500 hover:text-orange-500 transition-colors"
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

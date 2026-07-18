@@ -78,7 +78,6 @@ export function getMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/me');
 }
 
-// Updates the signed-in user's username and avatar. Returns the updated user.
 export function updateMe(body: { username: string; avatar: string }): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/me', { method: 'PUT', body });
 }
@@ -216,7 +215,7 @@ export function addWord(body: Omit<Word, 'createdAt' | 'completedAt'>): Promise<
 }
 
 // Bulk-imports a bundled starter word list (e.g. the Oxford 3000) into the
-// user's vocabulary. Returns how many words were newly added.
+// user's vocabulary.
 export function importWordList(list: string): Promise<{ added: number }> {
   return apiFetch('/api/me/words/import', { method: 'POST', body: { list } });
 }
@@ -261,7 +260,7 @@ export interface TestSubmissionItem {
   meaning: string;
 }
 
-// Grades and stores a completed self-test; returns the full graded result.
+// Grades and stores a completed self-test.
 export function submitTest(body: {
   list: string;
   groupLabel: string;

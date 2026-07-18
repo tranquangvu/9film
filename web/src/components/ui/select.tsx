@@ -27,7 +27,6 @@ function SelectTrigger({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: 'sm' | 'default';
-  /** Optional leading icon rendered inside the trigger. */
   icon?: React.ReactNode;
   /** Icon-only mode: renders a square icon button with no text or chevron. */
   iconOnly?: boolean;

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BrowseContent } from "@/components/system/common/browse-content";
+import { TitleList } from "@/components/system/title/title-list";
 import {
   Drawer,
   DrawerTrigger,
@@ -177,7 +177,7 @@ export default function TvSeriesPage() {
         </div>
 
         {/* Content — memoized so drawer open/close doesn't reconcile the grid */}
-        <BrowseContent
+        <TitleList
           isLoading={isLoading || isError}
           items={filtered}
           gridKey={gridKey}

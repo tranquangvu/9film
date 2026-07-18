@@ -89,7 +89,6 @@ export function WatchPage() {
   return (
     <MediaProvider>
     <div className="min-h-screen bg-background text-white">
-      {/* ── Video + transcript sidebar ──────────────────────────────────────── */}
       <div
         className="relative w-full h-screen bg-black flex"
         style={{ '--media-border-radius': '0' } as React.CSSProperties}
@@ -114,7 +113,6 @@ export function WatchPage() {
               click-through for tap-to-pause; each cluster re-enables events. */}
           <header className="absolute top-0 inset-x-0 z-50 px-4 md:px-6 py-4 bg-linear-to-b from-black/75 via-black/30 to-transparent pointer-events-none">
             <div className="flex items-center justify-between gap-4">
-              {/* Left: back · title · season/episode */}
               <div className="flex items-center gap-2 md:gap-3 pointer-events-auto min-w-0">
                 <button
                   data-tour="back"
@@ -171,7 +169,6 @@ export function WatchPage() {
                 )}
               </div>
 
-              {/* Right: transcript · source · subtitle */}
               <div className="flex items-center gap-2 pointer-events-auto shrink-0">
                 <Tooltip.Provider>
                   {hasTranscript && (

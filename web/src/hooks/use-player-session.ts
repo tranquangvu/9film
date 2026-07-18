@@ -10,8 +10,7 @@ import {
   type EpisodeMap,
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
-import { orderSubs, pickSubs } from '@/utils/subtitle';
-import { getSubtitlePref, setSubtitlePref } from '@/utils/subtitle-pref';
+import { orderSubs, pickSubs, getSubtitlePref, setSubtitlePref } from '@/utils/subtitle';
 import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
@@ -199,9 +198,6 @@ export function usePlayerSession(
 
   const autoSubId = resolvedSubs?.fileId ?? null;
 
-  // Saved selection for this title. For signed-in users it rides along in the
-  // title detail (DB-backed, follows them across devices); otherwise we fall back
-  // to localStorage.
   const saveSubtitleMut = useSaveSubtitle();
   // Per-episode (DB-backed, follows the signed-in user across devices), falling
   // back to the title-scoped localStorage pref for anonymous users.

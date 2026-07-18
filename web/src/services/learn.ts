@@ -21,7 +21,7 @@ export interface Definition {
 export interface DefineResult {
   word: string;
   definition: Definition | null; // null when the word has no dictionary entry
-  translation: string; // target-language translation of the word
+  translation: string;
 }
 
 export async function define(word: string, target = 'vi', signal?: AbortSignal): Promise<DefineResult> {

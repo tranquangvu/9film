@@ -18,7 +18,6 @@ export function TranscriptPanel({ cues }: TranscriptPanelProps) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Track the active cue.
   useEffect(() => {
     if (!media) return;
     const update = () => setActiveIdx(activeCueIndex(cues, media.currentTime));

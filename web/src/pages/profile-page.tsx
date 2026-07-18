@@ -307,7 +307,6 @@ function ConnectionsCard() {
     <Card>
       <CardTitle>Connections</CardTitle>
 
-      {/* Gemini */}
       <div className="space-y-2.5">
         <ConnectionHeader
           icon={Sparkles}
@@ -329,7 +328,6 @@ function ConnectionsCard() {
 
       <div className="h-px bg-zinc-800 my-5" />
 
-      {/* OpenSubtitles */}
       <div className="space-y-2.5">
         <ConnectionHeader
           icon={Captions}

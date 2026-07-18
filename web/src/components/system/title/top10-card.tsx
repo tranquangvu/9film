@@ -4,8 +4,9 @@ import { Play, Heart } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import type { Title } from '@/types';
-import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
+import { OrangeGradient, ORANGE_GRADIENT_FILL } from '@/components/system/common/gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Top10CardProps {
   title: Title
@@ -67,7 +68,7 @@ export function Top10Card({ title, rank, className }: Top10CardProps) {
             title="Remove from favorites"
             className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full flex items-center justify-center bg-white/15 border border-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
           >
-            <OrangeGradientDefs />
+            <OrangeGradient />
             <Heart className="w-3 h-3" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
           </button>
         )}
@@ -82,6 +83,25 @@ export function Top10Card({ title, rank, className }: Top10CardProps) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function Top10CardSkeleton({ rank }: { rank: number }) {
+  return (
+    <div className="relative flex-shrink-0 flex items-end">
+      <span
+        className="select-none font-black text-[clamp(4rem,9vw,7rem)] leading-none tracking-tighter"
+        style={{
+          color: 'transparent',
+          WebkitTextStroke: '2px rgba(255,255,255,0.1)',
+          marginRight: '-0.5rem',
+          flexShrink: 0,
+        }}
+      >
+        {rank}
+      </span>
+      <Skeleton className="flex-shrink-0 w-32 rounded-xl" style={{ aspectRatio: '2/3' }} />
     </div>
   );
 }

@@ -6,12 +6,11 @@ import type { Title } from '@/types';
 import { useFavorites, useToggleFavorite } from '@/hooks/queries/use-favorites-query';
 import { useContinueWatching } from '@/hooks/queries/use-progress-query';
 import { TitleCard } from '@/components/system/title/title-card';
-import { HorizontalCarousel } from '@/components/system/title/title-carousel';
-import { VirtualTitleGrid } from '@/components/system/title/virtual-title-grid';
-import { CarouselSkeleton, TitleGridSkeleton } from '@/components/system/title/skeletons';
+import { HorizontalCarousel, CarouselSkeleton } from '@/components/system/title/title-carousel';
+import { TitleVirtualGrid, TitleGridSkeleton } from '@/components/system/title/title-virtual-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Empty } from '@/components/system/common/empty';
-import { LoadMoreIndicator } from '@/components/system/common/load-more-indicator';
+import { Loading } from '@/components/system/common/loading';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
 
@@ -187,7 +186,7 @@ export default function MyListPage() {
                   <RemovableCard key={title.id} title={title} onRemove={handleRemove} />
                 ))}
               </div>
-              {favLoadingMore && <LoadMoreIndicator className="mt-8" />}
+              {favLoadingMore && <Loading className="mt-8" />}
             </>
           ) : activeTab === 'all' && continueWatching.length > 0 ? (
             <>
@@ -212,22 +211,21 @@ export default function MyListPage() {
         </div>
       )}
 
-      {/* Continue Watching grid (Continue Watching tab) — backend-paginated,
-          infinite-scrolling, virtualized like the other lists. */}
+      {/* Backend-paginated, infinite-scrolling, virtualized like the other lists. */}
       {showContinueGrid && (
         <div className="px-4 md:px-8 lg:px-12 mt-6">
           {continueInitialLoading ? (
             <TitleGridSkeleton />
           ) : continueWatching.length > 0 ? (
             <>
-              <VirtualTitleGrid
+              <TitleVirtualGrid
                 items={continueWatching}
                 showProgress
                 hasMore={!!continueQ.hasNextPage}
                 isLoadingMore={continueQ.isFetchingNextPage}
                 onLoadMore={continueQ.fetchNextPage}
               />
-              {continueQ.isFetchingNextPage && <LoadMoreIndicator className="mt-8" />}
+              {continueQ.isFetchingNextPage && <Loading className="mt-8" />}
             </>
           ) : (
             <Empty

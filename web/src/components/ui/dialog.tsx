@@ -3,8 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-// Centered modal dialog built on @radix-ui/react-dialog, themed for NiceFilm's
-// dark palette. The off-canvas variant lives in drawer.tsx.
+// The off-canvas variant lives in drawer.tsx.
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;

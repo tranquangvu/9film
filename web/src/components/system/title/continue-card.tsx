@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { sizedImage } from '@/utils/image';
 import { formatDuration } from '@/utils/format';
 import type { Title } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ContinueWatchingCardProps {
   title: Title
@@ -74,6 +75,14 @@ export function ContinueWatchingCard({ title, className }: ContinueWatchingCardP
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ContinueCardSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn('flex-shrink-0 w-72', className)}>
+      <Skeleton className="w-full rounded-xl" style={{ aspectRatio: '16/9' }} />
     </div>
   );
 }

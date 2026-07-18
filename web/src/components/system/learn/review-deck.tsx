@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Volume2 } from 'lucide-react';
+import { X, Volume2, HelpCircle, Zap, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDueReviewsQuery, useSubmitReview } from '@/hooks/queries/use-words-query';
 import { SectionBreak, SECTION_SIZE } from '@/components/system/learn/section-break';
+import { CardField, DeckSkeleton } from '@/components/system/learn/deck-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDictionaryQuery } from '@/hooks/queries/use-dictionary-query';
 import { useWordTranslation } from '@/hooks/queries/use-translate-query';
 import { speak, canSpeak } from '@/utils/speak';
 import type { ReviewGrade, Word } from '@/services/user';
-import { wordColor } from '@/utils/word';
+import { wordColor, sceneLink } from '@/utils/word';
 
-// The four SM-2 recall ratings, in increasing confidence. Colors hint difficulty.
-const GRADES: { id: ReviewGrade; label: string; cls: string }[] = [
-  { id: 'again', label: 'Again', cls: 'bg-rose-500/20 text-rose-200 border-rose-400/30 hover:bg-rose-500/30' },
-  { id: 'hard', label: 'Hard', cls: 'bg-amber-500/20 text-amber-200 border-amber-400/30 hover:bg-amber-500/30' },
-  { id: 'good', label: 'Good', cls: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30 hover:bg-emerald-500/30' },
-  { id: 'easy', label: 'Easy', cls: 'bg-sky-500/20 text-sky-200 border-sky-400/30 hover:bg-sky-500/30' },
+// Ordered by increasing confidence; `hint` rides along as the button's tooltip.
+const GRADES: { id: ReviewGrade; label: string; hint: string; cls: string }[] = [
+  { id: 'again', label: 'Again', hint: 'Forgot it — resets and comes back tomorrow', cls: 'bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-lg shadow-rose-900/40 hover:brightness-110' },
+  { id: 'hard', label: 'Hard', hint: 'Recalled with effort — comes back a bit sooner', cls: 'bg-gradient-to-b from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-900/40 hover:brightness-110' },
+  { id: 'good', label: 'Good', hint: 'Recalled fine — next review is pushed further out', cls: 'bg-gradient-to-b from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-900/40 hover:brightness-110' },
+  { id: 'easy', label: 'Easy', hint: 'Too easy — waits the longest before returning', cls: 'bg-gradient-to-b from-sky-400 to-indigo-600 text-white shadow-lg shadow-sky-900/40 hover:brightness-110' },
 ];
+
+// Shared by the card and its loading skeleton so the swap doesn't shift layout.
+const CARD_H = 'h-[min(360px,calc(100vh-14rem))]';
 
 // A spaced-repetition review session over the words due today. Front shows the
 // word; flip to reveal the meaning, then rate recall (Again/Hard/Good/Easy)
@@ -89,17 +95,21 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
       </button>
 
       <div className="w-full max-w-md mb-6">
-        <div className="flex items-center justify-between text-xs font-medium text-sky-200/80 mb-1.5">
-          <span>{reviewed} reviewed</span>
-          <span>
-            {finished || empty
-              ? 'Done'
-              : paused
-                ? 'Break'
-                : sectioned
-                  ? `Section ${sectionIndex} · ${sectionDone}/${SECTION_SIZE}`
-                  : `${Math.min(pos + 1, total)} / ${total} due`}
-          </span>
+        <div className="flex h-4 items-center justify-between text-xs font-medium text-sky-200/80 mb-1.5">
+          {isLoading ? <Skeleton className="h-3 w-24 rounded-full" /> : <span>{reviewed} reviewed</span>}
+          {isLoading ? (
+            <Skeleton className="h-3 w-16 rounded-full" />
+          ) : (
+            <span>
+              {finished || empty
+                ? 'Done'
+                : paused
+                  ? 'Break'
+                  : sectioned
+                    ? `Section ${sectionIndex} · ${sectionDone}/${SECTION_SIZE}`
+                    : `${Math.min(pos + 1, total)} / ${total} due`}
+            </span>
+          )}
         </div>
         <div className="h-2 rounded-full bg-white/10 overflow-hidden">
           <motion.div
@@ -112,7 +122,7 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
 
       <AnimatePresence mode="wait">
         {isLoading ? (
-          <p key="loading" className="text-sky-200/70">Loading reviews…</p>
+          <DeckSkeleton key="loading" height={CARD_H} actions={1} wordSize="text-6xl" />
         ) : paused ? (
           <SectionBreak
             key={`break-${sectionIndex}`}
@@ -128,7 +138,7 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
             key={currentKey}
             word={current}
             flipped={flipped}
-            onFlip={() => setFlipped(true)}
+            onFlip={() => setFlipped((f) => !f)}
             onGrade={grade}
             grading={review.isPending}
           />
@@ -139,6 +149,14 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
           </button>
         )}
       </AnimatePresence>
+
+      {/* Pinned to the bottom so it never shifts the centred card when it appears. */}
+      {current && flipped && !paused && !finished && !empty && (
+        <p className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-1.5 px-4 text-center text-xs text-zinc-500">
+          <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+          How well did you recall it? Your rating sets when this word comes back.
+        </p>
+      )}
     </motion.div>
   );
 }
@@ -157,6 +175,9 @@ function ReviewCard({
   grading: boolean;
 }) {
   const c = wordColor(word.word);
+  // Same cached lookup the back uses (identical query key), so the front's
+  // phonetic costs no extra request. Only the meaning is withheld until flip.
+  const dict = useDictionaryQuery(word.word);
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0, y: 12 }}
@@ -171,28 +192,37 @@ function ReviewCard({
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[min(360px,calc(100vh-14rem))] cursor-pointer select-none"
+          className={`relative w-full cursor-pointer select-none ${CARD_H}`}
         >
-          {/* Front: the word alone — recall is the point */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-surface p-5"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-3xl border border-white/10 bg-surface p-5"
           >
-            <span
-              className="text-center text-5xl font-extrabold capitalize leading-tight tracking-tight break-words"
-              style={{ color: c }}
-            >
-              {word.word}
-            </span>
-            {canSpeak() && (
-              <button
-                onClick={(e) => { e.stopPropagation(); speak(word.word); }}
-                aria-label="Pronounce"
-                className="text-orange-400 hover:text-orange-300 transition-colors"
+            <p className="relative">
+              <span
+                className="text-center text-6xl font-extrabold capitalize leading-tight tracking-tight break-words"
+                style={{ color: c }}
               >
-                <Volume2 className="w-6 h-6" />
-              </button>
-            )}
+                {word.word}
+              </span>
+              {canSpeak() && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); speak(word.word); }}
+                  aria-label="Pronounce"
+                  style={{ color: c }}
+                  className="absolute top-2 -right-11 shrink-0 rounded-full p-1.5 transition-colors hover:bg-white/5"
+                >
+                  <Volume2 className="w-6 h-6" />
+                </button>
+              )}
+            </p>
+            {/* Phonetic only — the meaning is what the review asks you to recall. */}
+            <CardField
+              value={dict.data?.phonetic}
+              loading={dict.isLoading}
+              className="text-sm tracking-wide text-zinc-500"
+              skeletonWidth="w-20"
+            />
             <p className="absolute inset-x-0 bottom-5 text-center text-xs text-zinc-500">
               Recall the meaning, then tap to check
             </p>
@@ -209,8 +239,14 @@ function ReviewCard({
 
       <div className="mt-5">
         {!flipped ? (
-          <Button variant="outline" size="md" className="w-full rounded-2xl" onClick={onFlip}>
-            Show answer
+          <Button
+            variant="primary"
+            size="md"
+            className="w-full rounded-2xl text-zinc-950 shadow-none"
+            style={{ backgroundColor: c }}
+            onClick={onFlip}
+          >
+            <Zap className="w-4 h-4" /> Show answer
           </Button>
         ) : (
           <div className="grid grid-cols-4 gap-2">
@@ -220,7 +256,8 @@ function ReviewCard({
                 whileTap={{ scale: 0.94 }}
                 disabled={grading}
                 onClick={() => onGrade(g.id)}
-                className={`rounded-2xl border px-2 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${g.cls}`}
+                title={g.hint}
+                className={`rounded-2xl px-2 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${g.cls}`}
               >
                 {g.label}
               </motion.button>
@@ -235,28 +272,54 @@ function ReviewCard({
 function ReviewBack({ word }: { word: Word }) {
   const dict = useDictionaryQuery(word.word);
   const translation = useWordTranslation(word);
-  // Revealing the answer is one-way here (see onFlip), so the back never needs
-  // to pass a click through to the flip handler.
+  const color = wordColor(word.word);
+  // Tapping the back flips it to the front, same as the study deck; only the
+  // interactive controls below stop the click from reaching the flip handler.
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div>
       <div className="flex items-center gap-2">
-        <h3 className="text-lg font-bold capitalize text-white">{word.word}</h3>
-        {dict.data?.phonetic && <span className="text-sm text-zinc-500">{dict.data.phonetic}</span>}
+        <h3 className="text-lg font-bold capitalize" style={{ color }}>{word.word}</h3>
+        <CardField
+          value={dict.data?.phonetic}
+          loading={dict.isLoading}
+          className="text-sm text-zinc-500"
+          skeletonWidth="w-20"
+        />
       </div>
-      {translation && <p className="mt-1 text-orange-300 font-semibold">{translation}</p>}
+      <CardField
+        value={translation.text}
+        loading={translation.isLoading}
+        className="mt-1 font-semibold"
+        skeletonWidth="w-28"
+        style={{ color }}
+      />
       {word.sentence && (
         <div className="mt-2 flex items-start gap-2">
           <p className="italic text-sm text-zinc-400">“{word.sentence}”</p>
           {canSpeak() && (
             <button
-              onClick={() => speak(word.sentence)}
+              onClick={(e) => { e.stopPropagation(); speak(word.sentence); }}
               aria-label="Read sentence"
-              className="shrink-0 mt-0.5 text-orange-400 hover:text-orange-300"
+              style={{ color }}
+              className="shrink-0 mt-0.5 opacity-90 hover:opacity-100"
             >
               <Volume2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
+      )}
+      {/* Imported starter-pack words carry no imdbId — no scene to go back to.
+          stopPropagation so following the link doesn't also flip the card. */}
+      {word.imdbId && (
+        <Link
+          to={sceneLink(word)}
+          target="_blank"
+          onClick={(e) => e.stopPropagation()}
+          style={{ color }}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs opacity-90 hover:opacity-100"
+        >
+          <Play className="w-3.5 h-3.5" /> Watch the scene
+        </Link>
       )}
       {dict.data && (
         <div className="mt-3 space-y-2.5">

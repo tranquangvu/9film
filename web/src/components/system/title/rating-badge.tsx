@@ -1,7 +1,7 @@
 import { Star } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { formatRating } from '@/utils/format';
-import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
+import { OrangeGradient, ORANGE_GRADIENT_FILL } from '@/components/system/common/gradient';
 
 interface RatingBadgeProps {
   rating: number
@@ -17,7 +17,7 @@ export function RatingBadge({ rating, className }: RatingBadgeProps) {
         className,
       )}
     >
-      <OrangeGradientDefs />
+      <OrangeGradient />
       <Star className="w-3 h-3 mt-[2px]" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
       <span className="text-white text-xs">{formatRating(rating)}</span>
     </span>

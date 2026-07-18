@@ -2,6 +2,7 @@ import type { EmbedParams } from './stream';
 import type { TitleDetail } from './title';
 
 const LIMIT = 5;
+const PREF_KEY = 'nicefilm:subtitle-prefs';
 
 export interface SubtitleOption {
   fileId: number;
@@ -71,4 +72,38 @@ export function orderSubs(subs: SubtitleOption[], fileId: number | null): Subtit
   if (!selected) return subs;
 
   return [selected, ...subs.filter((s) => s.fileId !== fileId)].slice(0, LIMIT);
+}
+
+// Persists the subtitle a user picked on the watch page, keyed by title, so it
+// can be reselected when they return. We keep both the exact fileId (for the
+// same release) and the language (a stable fallback across episodes/releases).
+
+export interface SubtitlePref {
+  fileId: number;
+  language: string;
+}
+
+type PrefStore = Record<string, SubtitlePref>;
+
+function readPrefs(): PrefStore {
+  try {
+    return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}') as PrefStore;
+  } catch {
+    return {};
+  }
+}
+
+export function getSubtitlePref(titleId: string): SubtitlePref | null {
+  return readPrefs()[titleId] ?? null;
+}
+
+export function setSubtitlePref(titleId: string, pref: SubtitlePref | null): void {
+  const store = readPrefs();
+  if (pref) store[titleId] = pref;
+  else delete store[titleId];
+  try {
+    localStorage.setItem(PREF_KEY, JSON.stringify(store));
+  } catch {
+    /* storage full / unavailable — non-fatal */
+  }
 }

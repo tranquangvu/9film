@@ -7,8 +7,9 @@ import { formatDuration, formatYear } from '@/utils/format';
 import type { Title } from '@/types';
 import { RatingBadge } from '@/components/system/title/rating-badge';
 import { GenreBadge } from '@/components/system/title/genre-badge';
-import { OrangeGradientDefs, ORANGE_GRADIENT_FILL } from '@/components/system/common/orange-gradient';
+import { OrangeGradient, ORANGE_GRADIENT_FILL } from '@/components/system/common/gradient';
 import { useFavoriteButton } from '@/hooks/queries/use-favorites-query';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TitleCardProps {
   title: Title
@@ -73,7 +74,7 @@ export function TitleCard({ title, className, showProgress = false, size = 'md',
               title="Remove from favorites"
               className="w-6 h-6 rounded-full flex items-center justify-center bg-white/15 border border-white/15 backdrop-blur-sm transition-colors hover:bg-white/25"
             >
-              <OrangeGradientDefs />
+              <OrangeGradient />
               <Heart className="w-3 h-3" style={{ fill: ORANGE_GRADIENT_FILL, stroke: ORANGE_GRADIENT_FILL }} />
             </button>
           )}
@@ -143,6 +144,20 @@ export function TitleCard({ title, className, showProgress = false, size = 'md',
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+export function TitleCardSkeleton({
+  size = 'md',
+  className,
+}: {
+  size?: keyof typeof sizeClasses;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex-shrink-0', sizeClasses[size], className)}>
+      <Skeleton className="w-full rounded-xl" style={{ aspectRatio: '2/3' }} />
     </div>
   );
 }

@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, MoveRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
 import type { Title } from '@/types';
-import { TitleCard } from '@/components/system/title/title-card';
-import { ContinueWatchingCard } from '@/components/system/title/continue-card';
-import { Top10Card } from '@/components/system/title/top10-card';
+import { TitleCard, TitleCardSkeleton } from '@/components/system/title/title-card';
+import { ContinueWatchingCard, ContinueCardSkeleton } from '@/components/system/title/continue-card';
+import { Top10Card, Top10CardSkeleton } from '@/components/system/title/top10-card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface HorizontalCarouselProps {
   title: string
@@ -131,6 +132,30 @@ export function HorizontalCarousel({
             return <TitleCard key={title.id} title={title} showProgress />;
           })}
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function CarouselSkeleton({
+  cardType = 'poster',
+  count = 8,
+}: {
+  cardType?: HorizontalCarouselProps['cardType'];
+  count?: number;
+}) {
+  return (
+    <section className="relative">
+      <div className="flex items-center justify-between mb-4 px-6 md:px-12">
+        <Skeleton className="h-6 w-44" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="flex gap-4 py-4 pl-6 md:pl-12 pr-6 md:pr-12 overflow-hidden">
+        {Array.from({ length: count }).map((_, i) => {
+          if (cardType === 'backdrop') return <ContinueCardSkeleton key={i} />;
+          if (cardType === 'top10') return <Top10CardSkeleton key={i} rank={i + 1} />;
+          return <TitleCardSkeleton key={i} />;
+        })}
       </div>
     </section>
   );

@@ -3,9 +3,16 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useWordStatsQuery } from '@/hooks/queries/use-words-query';
-import { ProgressChart } from '@/components/system/learn/progress-chart';
+import { useTestsQuery } from '@/hooks/queries/use-tests-query';
+import { PageGradient } from '@/components/system/common/gradient';
+import {
+  ProgressChart,
+  NEW_WORDS_COLOR,
+  COMPLETED_COLOR,
+  TESTS_COLOR,
+} from '@/components/system/learn/progress-chart';
 
-export default function LearningInsightsPage() {
+export default function MyLearningInsightsPage() {
   const { isAuthenticated } = useAuth();
   const stats = useWordStatsQuery();
 
@@ -16,6 +23,25 @@ export default function LearningInsightsPage() {
   );
   const learned = words.filter((w) => w.completedAt).length;
   const toLearn = words.length - learned;
+
+  const tests = useTestsQuery();
+  const wordSeries = useMemo(
+    () => [
+      { label: 'New words', color: NEW_WORDS_COLOR, dates: words.map((w) => w.createdAt) },
+      { label: 'Completed words', color: COMPLETED_COLOR, dates: words.map((w) => w.completedAt) },
+    ],
+    [words],
+  );
+  const testSeries = useMemo(
+    () => [
+      {
+        label: 'Tests completed',
+        color: TESTS_COLOR,
+        dates: (tests.data ?? []).map((t) => t.createdAt),
+      },
+    ],
+    [tests.data],
+  );
 
   if (!isAuthenticated) {
     return (
@@ -28,8 +54,10 @@ export default function LearningInsightsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">
+      <PageGradient className="from-indigo-950/40" />
+      {/* Positioned so the content paints above the wash. */}
+      <div className="relative mx-auto max-w-3xl space-y-6">
         <Link to="/my-learning" className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white">
           <ChevronLeft className="w-4 h-4" /> My Learning
         </Link>
@@ -48,7 +76,10 @@ export default function LearningInsightsPage() {
             <p>No activity yet. Save words while watching to see your progress here.</p>
           </div>
         ) : (
-          <ProgressChart words={words} />
+          <>
+            <ProgressChart title="Words" series={wordSeries} />
+            <ProgressChart title="Tests" series={testSeries} />
+          </>
         )}
       </div>
     </div>

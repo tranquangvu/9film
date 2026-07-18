@@ -17,10 +17,14 @@ export function useTranslateQuery(text: string | null, target = 'vi') {
 
 // The meaning to show for a saved word. Prefers the translation captured when
 // the word was saved; falls back to a fresh lookup for words stored without one
-// — imported starter packs, or a save that beat the in-player lookup.
-export function useWordTranslation(word: Word): string {
+// — imported starter packs, or a save that beat the in-player lookup. Returns
+// the pending state too, so cards can show a placeholder rather than nothing.
+export function useWordTranslation(word: Word): { text: string; isLoading: boolean } {
   const { learningLang } = useSettings();
   const saved = word.translation?.trim() ?? '';
   const fetched = useTranslateQuery(saved ? null : word.word, learningLang);
-  return saved || (fetched.data ?? '');
+  return {
+    text: saved || (fetched.data ?? ''),
+    isLoading: !saved && fetched.isLoading,
+  };
 }

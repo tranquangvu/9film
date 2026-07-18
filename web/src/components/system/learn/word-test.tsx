@@ -94,7 +94,6 @@ export function WordTest({
         <X className="w-5 h-5" />
       </button>
 
-      {/* Progress */}
       <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs font-medium text-indigo-200/80 mb-1.5">
           <span className="truncate">{groupLabel} · spelling &amp; meaning test</span>
@@ -117,7 +116,7 @@ export function WordTest({
             onClose={onClose}
             onViewAll={() => {
               onClose();
-              navigate('/my-learning/tests');
+              navigate('/my-learning/test-results');
             }}
           />
         ) : phase === 'submitting' ? (
@@ -179,7 +178,6 @@ function StudyCard({
       </p>
 
       <div className="relative flex items-center justify-center min-h-[90px]">
-        {/* The letters scatter with blur + spin when vanishing. */}
         <div className="flex items-center justify-center gap-0.5">
           {word.split('').map((ch, i) => (
             <motion.span
@@ -198,7 +196,6 @@ function StudyCard({
           ))}
         </div>
 
-        {/* Rising sparkles during the vanish. */}
         {vanishing &&
           ['✨', '⭐', '💫', '✨', '⭐'].map((s, i) => (
             <motion.span

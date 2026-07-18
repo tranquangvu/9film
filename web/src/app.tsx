@@ -1,8 +1,7 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter, RouterProvider, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider, Toaster } from "@/components/ui/toast";
-import { AuthProvider } from "@/context/auth-context";
-import { RequireAuth } from "@/components/system/common/require-auth";
+import { AuthProvider, useAuth } from "@/context/auth-context";
 
 import MainLayout from "@/components/system/layout/main-layout";
 import WatchLayout from "@/components/system/layout/watch-layout";
@@ -13,8 +12,9 @@ import TitleDetailPage from "@/pages/title-detail-page";
 import { WatchPage } from "@/pages/watch-page";
 import MyListPage from "@/pages/my-list-page";
 import MyLearningPage from "@/pages/my-learning-page";
-import LearningInsightsPage from "@/pages/learning-insights-page";
-import TestResultsPage from "@/pages/test-results-page";
+import MyLearningOxford3000 from "@/pages/my-learning-oxford-3000-page";
+import MyLearningInsightsPage from "@/pages/my-learning-insights-page";
+import MyLearningTestResultsPage from "@/pages/my-learning-test-results-page";
 import SearchPage from "@/pages/search-page";
 import ProfilePage from "@/pages/profile-page";
 import TitlesPage from "@/pages/titles-page";
@@ -52,6 +52,28 @@ const queryClient = new QueryClient({
   },
 });
 
+// Layout route that gates its children behind authentication. Waits for the
+// initial session rehydrate to finish before deciding, so a logged-in user with
+// a stored token isn't flashed to /login on a hard refresh.
+function RequireAuth() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={`/login?from=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  }
+
+  return <Outlet />;
+}
+
 const router = createBrowserRouter([
   {
     element: <MainLayout />,
@@ -61,13 +83,18 @@ const router = createBrowserRouter([
       { path: "/movies", element: <TitlesPage /> },
       { path: "/tvs", element: <TvSeriesPage /> },
       { path: "/title/:id", element: <TitleDetailPage /> },
-      { path: "/my-list", element: <RequireAuth><MyListPage /></RequireAuth> },
-      { path: "/my-learning", element: <RequireAuth><MyLearningPage /></RequireAuth> },
-      { path: "/my-learning/insights", element: <RequireAuth><LearningInsightsPage /></RequireAuth> },
-      { path: "/my-learning/tests", element: <RequireAuth><TestResultsPage /></RequireAuth> },
-      { path: "/my-learning/the-oxford-3000", element: <RequireAuth><MyLearningPage list="oxford3000" /></RequireAuth> },
       { path: "/search", element: <SearchPage /> },
-      { path: "/profile", element: <RequireAuth><ProfilePage /></RequireAuth> },
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: "/my-list", element: <MyListPage /> },
+          { path: "/my-learning", element: <MyLearningPage /> },
+          { path: "/my-learning/insights", element: <MyLearningInsightsPage /> },
+          { path: "/my-learning/test-results", element: <MyLearningTestResultsPage /> },
+          { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
+          { path: "/profile", element: <ProfilePage /> },
+        ],
+      },
       { path: "/about", element: <AboutPage /> },
       { path: "/privacy", element: <PrivacyPage /> },
       { path: "/terms", element: <TermsPage /> },

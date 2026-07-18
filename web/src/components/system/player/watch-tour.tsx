@@ -104,7 +104,6 @@ export function WatchTour({ enabled }: { enabled: boolean }) {
 
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
-  // Keyboard: Esc skips, arrows navigate.
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -155,7 +154,6 @@ export function WatchTour({ enabled }: { enabled: boolean }) {
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Coach-mark card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
@@ -184,7 +182,6 @@ export function WatchTour({ enabled }: { enabled: boolean }) {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            {/* progress dots */}
             <div className="flex items-center gap-1.5">
               {steps.map((_, i) => (
                 <span

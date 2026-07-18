@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { HeroBanner } from '@/components/system/title/hero-banner';
 import { HorizontalCarousel } from '@/components/system/title/title-carousel';
-import { CarouselSkeleton, HeroBannerSkeleton } from '@/components/system/title/skeletons';
+import { CarouselSkeleton } from '@/components/system/title/title-carousel';
+import { HeroBannerSkeleton } from '@/components/system/title/hero-banner';
 import {
   useResumeTitles,
   usePopularTitles,

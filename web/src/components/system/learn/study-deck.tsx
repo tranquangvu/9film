@@ -9,28 +9,36 @@ import { useWordTranslation } from '@/hooks/queries/use-translate-query';
 import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { SpellBoxes } from '@/components/system/learn/spell-boxes';
 import { SectionBreak, SECTION_SIZE } from '@/components/system/learn/section-break';
+import { CardField, DeckSkeleton } from '@/components/system/learn/deck-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { speak, canSpeak } from '@/utils/speak';
 import type { Word } from '@/services/user';
 import { isSpelled, spelledCount, sceneLink, wordColor } from '@/utils/word';
 
 const SPELL_TIMES = 6; // times the word must be retyped before "Got it" unlocks
+// Shared by the card and its loading skeleton so the swap doesn't shift layout.
+const CARD_H = 'h-[min(320px,calc(100vh-14rem))]';
 
 // A playful flip-card study game. The front shows the word; flipping reveals the
 // meaning and the retype boxes. "Got it" marks the word learned once they all
 // match; "Again" requeues it to the back for another pass this session.
-export function FlashcardDeck({
+export function StudyDeck({
   words,
   total,
   hasMore,
   fetchMore,
   onClose,
   startWord,
+  loading = false,
 }: {
   words: Word[];
   total: number;
   hasMore: boolean;
   fetchMore: () => void;
   onClose: () => void;
+  // First page still in flight — show the skeleton instead of an empty deck,
+  // which would otherwise read as "All done!".
+  loading?: boolean;
   // Open on this word rather than the first — how tapping a word in the list
   // gets straight to its card, with the rest of the list still behind it.
   startWord?: string;
@@ -71,7 +79,7 @@ export function FlashcardDeck({
 
   const currentKey = queue[pos];
   const current = currentKey ? byKey.get(currentKey) : undefined;
-  const finished = pos >= queue.length && !hasMore;
+  const finished = !loading && pos >= queue.length && !hasMore;
   const loadingMore = pos >= queue.length && hasMore;
 
   function gotIt() {
@@ -80,7 +88,7 @@ export function FlashcardDeck({
     setLearned((n) => n + 1);
     setFlipped(false);
     // A full section just filled — pause here unless this was the final card
-    // (the last word always ends on DeckDone, never a break).
+    // (the last word always ends on StudyDone, never a break).
     const doneInSection = sectionDone + 1;
     const wasLast = pos >= queue.length - 1 && !hasMore;
     setPos((p) => p + 1);
@@ -120,8 +128,12 @@ export function FlashcardDeck({
       </button>
 
       <div className="w-full max-w-md mb-6">
-        <div className="flex items-center justify-between text-xs font-medium text-emerald-200/80 mb-1.5">
-          <span>{Math.min(learned, total)} / {total} learned</span>
+        <div className="flex h-4 items-center justify-between text-xs font-medium text-emerald-200/80 mb-1.5">
+          {loading ? (
+            <Skeleton className="h-3 w-28 rounded-full" />
+          ) : (
+            <span>{Math.min(learned, total)} / {total} learned</span>
+          )}
           <span>
             {finished
               ? 'Done'
@@ -142,7 +154,9 @@ export function FlashcardDeck({
       </div>
 
       <AnimatePresence mode="wait">
-        {paused ? (
+        {loading || loadingMore ? (
+          <DeckSkeleton key="loading" height={CARD_H} />
+        ) : paused ? (
           <SectionBreak
             key={`break-${sectionIndex}`}
             sectionIndex={sectionIndex}
@@ -151,9 +165,9 @@ export function FlashcardDeck({
             onClose={onClose}
           />
         ) : finished ? (
-          <DeckDone key="done" learned={learned} onClose={onClose} />
+          <StudyDone key="done" learned={learned} onClose={onClose} />
         ) : current ? (
-          <Flashcard
+          <StudyCard
             key={currentKey}
             word={current}
             flipped={flipped}
@@ -162,18 +176,16 @@ export function FlashcardDeck({
             onAgain={again}
             completing={complete.isPending}
           />
-        ) : loadingMore ? (
-          <p key="loading" className="text-emerald-200/70">Loading more words…</p>
         ) : (
           // Live word vanished (e.g. completed elsewhere) — skip to the next card.
-          <SkipCard key={`skip-${pos}`} onSkip={() => setPos((p) => p + 1)} />
+          <StudySkip key={`skip-${pos}`} onSkip={() => setPos((p) => p + 1)} />
         )}
       </AnimatePresence>
     </motion.div>
   );
 }
 
-function Flashcard({
+function StudyCard({
   word,
   flipped,
   onFlip,
@@ -193,7 +205,7 @@ function Flashcard({
   const isPhrase = word.kind === 'phrase';
   const translation = useWordTranslation(word);
   // Shares the back's cached lookup (same query key), so this costs no request.
-  const phonetic = useDictionaryQuery(isPhrase ? undefined : word.word).data?.phonetic;
+  const dict = useDictionaryQuery(isPhrase ? undefined : word.word);
   // Same retype gate as the word dialog: "Got it" unlocks once every box matches.
   // The parent keys this component by word, so the boxes clear on each new card.
   const [spellings, setSpellings] = useState<string[]>(() => Array(SPELL_TIMES).fill(''));
@@ -214,7 +226,7 @@ function Flashcard({
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
           style={{ transformStyle: 'preserve-3d' }}
-          className="relative w-full h-[min(320px,calc(100vh-14rem))] cursor-pointer select-none"
+          className={`relative w-full cursor-pointer select-none ${CARD_H}`}
         >
           <div
             style={{ backfaceVisibility: 'hidden' }}
@@ -239,12 +251,22 @@ function Flashcard({
                   </button>
                 )}
               </p>
-              {phonetic && (
-                <p className="text-sm tracking-wide text-zinc-500">{phonetic}</p>
+              {/* Idioms have no dictionary entry, so no phonetic line at all. */}
+              {!isPhrase && (
+                <CardField
+                  value={dict.data?.phonetic}
+                  loading={dict.isLoading}
+                  className="text-sm tracking-wide text-zinc-500"
+                  skeletonWidth="w-20"
+                />
               )}
-              {translation && (
-                <p className="text-center text-base font-semibold" style={{ color }}>{translation}</p>
-              )}
+              <CardField
+                value={translation.text}
+                loading={translation.isLoading}
+                className="text-center text-base font-semibold"
+                skeletonWidth="w-28"
+                style={{ color }}
+              />
             </div>
             {!isPhrase && (
               <div className="mt-3 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -273,7 +295,7 @@ function Flashcard({
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             className="absolute inset-0 overflow-y-auto rounded-3xl border border-white/10 bg-surface p-5"
           >
-            <CardBack word={word} />
+            <StudyBack word={word} />
           </div>
         </motion.div>
       </div>
@@ -285,8 +307,8 @@ function Flashcard({
         <Button
           variant="primary"
           size="md"
-          // Match the card's word colour. wordColor is a light pastel, so the
-          // label goes dark for contrast; the orange shadow is dropped to suit.
+          // Word-colour background; wordColor is a light pastel so the label goes
+          // dark for contrast, and the orange shadow is dropped to suit.
           className="rounded-2xl text-zinc-950 shadow-none"
           style={{ backgroundColor: color }}
           onClick={onGotIt}
@@ -300,7 +322,7 @@ function Flashcard({
   );
 }
 
-function CardBack({ word }: { word: Word }) {
+function StudyBack({ word }: { word: Word }) {
   // Idioms have no dictionary entry, so they get an AI breakdown in place of
   // the definitions list.
   const isPhrase = word.kind === 'phrase';
@@ -313,10 +335,21 @@ function CardBack({ word }: { word: Word }) {
   return (
     <div>
       <h3 className="text-lg font-bold capitalize" style={{ color }}>{word.word}</h3>
-      {dict.data?.phonetic && (
-        <p className="mt-0.5 text-sm tracking-wide text-zinc-500">{dict.data.phonetic}</p>
+      {!isPhrase && (
+        <CardField
+          value={dict.data?.phonetic}
+          loading={dict.isLoading}
+          className="mt-0.5 text-sm tracking-wide text-zinc-500"
+          skeletonWidth="w-20"
+        />
       )}
-      {translation && <p className="mt-1 font-semibold" style={{ color }}>{translation}</p>}
+      <CardField
+        value={translation.text}
+        loading={translation.isLoading}
+        className="mt-1 font-semibold"
+        skeletonWidth="w-28"
+        style={{ color }}
+      />
       {word.sentence && (
         <div className="mt-2 flex items-start gap-2">
           <p className="italic text-sm text-zinc-400">“{word.sentence}”</p>
@@ -382,7 +415,7 @@ function ExplainBlock({ label, text }: { label: string; text: string }) {
   );
 }
 
-function DeckDone({ learned, onClose }: { learned: number; onClose: () => void }) {
+function StudyDone({ learned, onClose }: { learned: number; onClose: () => void }) {
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
@@ -402,7 +435,7 @@ function DeckDone({ learned, onClose }: { learned: number; onClose: () => void }
   );
 }
 
-function SkipCard({ onSkip }: { onSkip: () => void }) {
+function StudySkip({ onSkip }: { onSkip: () => void }) {
   return (
     <div className="text-center text-zinc-400">
       <p>This word is no longer in your list.</p>
