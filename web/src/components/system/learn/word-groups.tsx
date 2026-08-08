@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { GraduationCap } from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { normId } from '@/utils/title';
 import type { LetterGroup, TitleGroup } from '@/utils/word';
@@ -14,12 +14,22 @@ export function WordBadge({ word, onClick }: { word: Word; onClick: () => void }
   );
 }
 
-// An A–Z index of a word pack. Each letter is its own card so the sections read
-// as separate blocks rather than one endless field of pills, and the letter bar
-// sticks while you scroll — a single letter can run ~200 words, far taller than
-// the viewport, so a header that scrolls away leaves you with no idea where you
-// are. It parks under the h-16 navbar; no `overflow-hidden` on the card, which
-// would make an ancestor scroll container and kill the stickiness.
+const ACTION =
+  'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors';
+
+// Right-hand control cluster of a section header. One `ml-auto` for the whole
+// group, never one per button: sibling auto margins *split* the free space
+// between them rather than the first taking it all, which strands the buttons
+// mid-row instead of grouping them on the right.
+function SectionControls({ children }: { children: React.ReactNode }) {
+  return <div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>;
+}
+
+// An A–Z index of a word pack — the same bare header-then-pills rhythm as the
+// title sections, no card. What marks the boundaries instead is the rule running
+// off the header to the right edge: one letter can be hundreds of pills long, so
+// without it a new section is just another row in an unbroken field. The extra
+// leading above each header does the rest.
 export function WordLetterGroupList({
   groups,
   onSelect,
@@ -28,25 +38,21 @@ export function WordLetterGroupList({
   onSelect: (w: Word) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {groups.map((g) => (
-        <motion.section
-          key={g.letter}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl border border-white/10 bg-white/[0.02]"
-        >
-          {/* Near-opaque, not glass: pills sliding under a translucent bar ghost
-              through it and turn the letter into visual noise. */}
-          <div className="sticky top-16 z-20 flex items-center gap-3 rounded-t-3xl border-b border-white/10 bg-[#101010]/95 px-4 py-3 backdrop-blur-md md:px-5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/25 to-emerald-500/5 text-xl font-extrabold leading-none text-emerald-200">
+        <motion.section key={g.letter} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-400/30 bg-gradient-to-br from-emerald-400/30 to-emerald-500/5 text-base font-extrabold leading-none text-emerald-300">
               {g.letter}
             </span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            {/* Same count style as the title sections, separator and all. */}
+            <span className="shrink-0 text-xs text-zinc-600">
+              <span className="mr-2">|</span>
               {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
             </span>
+            <div className="ml-1 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
           </div>
-          <div className="flex flex-wrap gap-2 p-4 md:p-5">
+          <div className="flex flex-wrap gap-2">
             {g.words.map((w) => (
               <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
             ))}
@@ -67,7 +73,7 @@ export function WordTitleGroupList({
   onTest?: (g: TitleGroup, label: string) => void;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {groups.map((g) => {
         const label = g.title || g.imdbId || 'Saved words';
         return (
@@ -87,14 +93,23 @@ export function WordTitleGroupList({
                 <span className="mr-2">|</span>
                 {g.words.length} {g.words.length === 1 ? 'word' : 'words'}
               </span>
-              {onTest && (
-                <button
-                  onClick={() => onTest(g, label)}
-                  className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25 transition-colors"
-                >
-                  <GraduationCap className="w-3.5 h-3.5" /> Test
-                </button>
-              )}
+              {/* Same section rule as the A–Z list. It takes the row's slack, so
+                  SectionControls' own `ml-auto` is a harmless no-op and the
+                  button still lands hard right. */}
+              <div className="ml-1 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
+              <SectionControls>
+                {onTest && (
+                  <button
+                    onClick={() => onTest(g, label)}
+                    className={`${ACTION} border-indigo-400/30 bg-indigo-500/15 text-indigo-200 hover:bg-indigo-500/25`}
+                  >
+                    {/* Clipboard family, pairing with the hero's ClipboardList
+                        "Test results" — the action and its history read as one
+                        feature. Not the cap: that belongs to the Study tab. */}
+                    <ClipboardCheck className="w-3.5 h-3.5" /> Make test
+                  </button>
+                )}
+              </SectionControls>
             </div>
             <div className="flex flex-wrap gap-2">
               {g.words.map((w) => (

@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, Gem } from 'lucide-react';
+import { ChevronRight, Leaf } from 'lucide-react';
 
 // Promo card on the personal page that links to the dedicated Oxford 3000 page.
 export function StarterPack() {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <Gem className="w-4 h-4 text-emerald-300" />
+        <Leaf className="w-4 h-4 text-emerald-300" />
         <h2 className="text-sm font-semibold text-white">Starter packs</h2>
       </div>
       <Link

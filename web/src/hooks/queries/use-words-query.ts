@@ -83,12 +83,12 @@ export function useIsWordSaved(word: string): boolean {
 }
 
 // The words due for spaced-repetition review right now (small set; no pagination).
-export function useDueReviewsQuery() {
+export function useDueReviewsQuery(enabled = true) {
   const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: REVIEWS_KEY,
     queryFn: () => getReviews(),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && enabled,
     staleTime: 30 * 1000,
   });
 }

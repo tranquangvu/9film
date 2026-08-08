@@ -11,7 +11,10 @@ import { wordColor } from '@/utils/word';
 
 const STUDY_MS = 5000; // how long the word is shown before it vanishes
 const VANISH_MS = 1300; // length of the magical hide animation
-const SPELL_COUNT = 3; // how many times the word is retyped
+// How many times the word is retyped from memory. Exported (under a name that
+// says which deck it belongs to) so the learning guide can quote it.
+export const TEST_SPELL_COUNT = 3;
+const SPELL_COUNT = TEST_SPELL_COUNT;
 
 type Phase = 'study' | 'vanish' | 'answer' | 'submitting' | 'done';
 

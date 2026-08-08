@@ -15,7 +15,9 @@ import { speak, canSpeak } from '@/utils/speak';
 import type { Word } from '@/services/user';
 import { isSpelled, spelledCount, sceneLink, wordColor } from '@/utils/word';
 
-const SPELL_TIMES = 6; // times the word must be retyped before "Got it" unlocks
+// Times the word must be retyped before "Got it" unlocks. Exported so the
+// learning guide quotes the real number instead of restating it.
+export const SPELL_TIMES = 6;
 // Shared by the card and its loading skeleton so the swap doesn't shift layout.
 const CARD_H = 'h-[min(320px,calc(100vh-14rem))]';
 

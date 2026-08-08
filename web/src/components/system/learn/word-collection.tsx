@@ -4,6 +4,7 @@ import { BookOpen, CheckCheck, GraduationCap, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Loading } from '@/components/system/common/loading';
 import { StudyDeck } from '@/components/system/learn/study-deck';
+import { ReviewDeck } from '@/components/system/learn/review-deck';
 import { WordTest } from '@/components/system/learn/word-test';
 import { WordLetterGroupList, WordTitleGroupList } from '@/components/system/learn/word-groups';
 import { useInfiniteWordsQuery } from '@/hooks/queries/use-words-query';
@@ -87,7 +88,10 @@ export function WordCollection({
         <>
           {alpha
             ? letterGroups.length > 0 && (
-                <WordLetterGroupList groups={letterGroups} onSelect={setSelected} />
+                <WordLetterGroupList
+                  groups={letterGroups}
+                  onSelect={setSelected}
+                />
               )
             : groups.length > 0 && (
                 <WordTitleGroupList
@@ -109,16 +113,29 @@ export function WordCollection({
         </>
       )}
 
-      {/* Tapping a word opens the same deck, parked on that word, over the tab's
-          own list — so you can keep going from there rather than just read one. */}
+      {/* Tapping a word opens a deck parked on it, over the tab's own list — so
+          you can keep going from there rather than just read one. Which deck
+          depends on the tab: a word still being learned gets the study card with
+          its retype gate, an already-learned one gets the review card, where the
+          only thing left to do is rate recall and reschedule. */}
       <AnimatePresence>
-        {selected && (
+        {selected && tab === 'learn' && (
           <StudyDeck
             words={words}
-            total={tab === 'learn' ? addedCount : completedCount}
+            total={addedCount}
             hasMore={!!tabQuery.hasNextPage}
             fetchMore={tabQuery.fetchNextPage}
             loading={tabQuery.isLoading}
+            startWord={selected.word}
+            onClose={() => setSelected(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selected && tab === 'completed' && (
+          <ReviewDeck
+            words={words}
             startWord={selected.word}
             onClose={() => setSelected(null)}
           />
@@ -135,6 +152,7 @@ export function WordCollection({
           />
         )}
       </AnimatePresence>
+
     </>
   );
 }

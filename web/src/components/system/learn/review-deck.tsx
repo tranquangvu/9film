@@ -24,12 +24,26 @@ const GRADES: { id: ReviewGrade; label: string; hint: string; cls: string }[] = 
 // Shared by the card and its loading skeleton so the swap doesn't shift layout.
 const CARD_H = 'h-[min(360px,calc(100vh-14rem))]';
 
-// A spaced-repetition review session over the words due today. Front shows the
-// word; flip to reveal the meaning, then rate recall (Again/Hard/Good/Easy)
-// which reschedules the word via SM-2. The due list is snapshotted once so
-// optimistic removals don't reshuffle the session mid-way.
-export function ReviewDeck({ onClose }: { onClose: () => void }) {
-  const { data, isLoading } = useDueReviewsQuery();
+// A spaced-repetition review session — over the words due today, or over an
+// explicit set the caller passes. Front shows the word; flip to reveal the
+// meaning, then rate recall (Again/Hard/Good/Easy) which reschedules the word
+// via SM-2. The list is snapshotted once so optimistic removals don't reshuffle
+// the session mid-way.
+export function ReviewDeck({ onClose, words, startWord }: {
+  onClose: () => void;
+  // Review exactly these words instead of today's due queue — how tapping a
+  // learned word opens its card. They need not be due: grading one early just
+  // reschedules it, which is an ordinary SM-2 outcome. Pass a stable reference
+  // (held in state or memoised); it seeds the queue.
+  words?: Word[];
+  // Open on this word rather than the first, with the rest still behind it.
+  startWord?: string;
+}) {
+  // Skipped entirely when the caller supplies the words — no reason to ask the
+  // server what's due just to review a word the user already pointed at.
+  const dueQuery = useDueReviewsQuery(!words);
+  const data = words ?? dueQuery.data;
+  const isLoading = words ? false : dueQuery.isLoading;
   const review = useSubmitReview();
   const [queue, setQueue] = useState<string[]>([]);
   const [pos, setPos] = useState(0);
@@ -41,13 +55,15 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
   const [sectionDone, setSectionDone] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(1);
 
-  // Snapshot the due set once, the first time it loads.
+  // Snapshot the set once, the first time it loads.
   useEffect(() => {
     if (queue.length === 0 && data && data.length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setQueue(data.map((w) => w.word));
+      const i = startWord ? data.findIndex((w) => w.word === startWord) : 0;
+      if (i > 0) setPos(i);
     }
-  }, [data, queue.length]);
+  }, [data, queue.length, startWord]);
 
   const byKey = useMemo(() => new Map((data ?? []).map((w) => [w.word, w])), [data]);
   const total = queue.length;
@@ -107,7 +123,9 @@ export function ReviewDeck({ onClose }: { onClose: () => void }) {
                   ? 'Break'
                   : sectioned
                     ? `Section ${sectionIndex} · ${sectionDone}/${SECTION_SIZE}`
-                    : `${Math.min(pos + 1, total)} / ${total} due`}
+                    : // "due" only when the deck really is today's due queue —
+                      // a tapped learned word need not be due at all.
+                      `${Math.min(pos + 1, total)} / ${total}${words ? '' : ' due'}`}
             </span>
           )}
         </div>
