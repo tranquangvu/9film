@@ -51,8 +51,16 @@ func Recovery() gin.HandlerFunc {
 	})
 }
 
+// hlsPath is the manifest/segment proxy, mounted at the engine root. One
+// playback fires a request per segment — several a second, for the length of the
+// film — and at Info level they bury every other line in the log. Successful
+// ones are therefore dropped; failures still log, since this is the route that
+// explains why a stream stopped playing.
+const hlsPath = "/hls"
+
 // Logger logs every request as a single structured line, with status-based
-// level and the error reason on 4xx/5xx.
+// level and the error reason on 4xx/5xx. Healthy HLS proxy traffic is skipped
+// (see hlsPath).
 func Logger() gin.HandlerFunc {
 	log := logger.Get()
 	return func(c *gin.Context) {
@@ -67,6 +75,10 @@ func Logger() gin.HandlerFunc {
 
 		latency := time.Since(start)
 		status := c.Writer.Status()
+
+		if path == hlsPath && status < 400 && len(c.Errors) == 0 {
+			return
+		}
 
 		fields := []zap.Field{
 			zap.Int("status", status),
