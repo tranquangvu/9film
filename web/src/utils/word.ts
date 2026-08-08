@@ -97,6 +97,31 @@ export function groupByTitle(words: Word[], dateOf: (w: Word) => string | undefi
   });
 }
 
+export interface LetterGroup {
+  letter: string; // 'A'–'Z', or '#' for words not starting with a letter
+  words: Word[];
+}
+
+// Group a word list into alphabetical A/B/C… sections — how imported packs (the
+// Oxford 3000) are browsed, since they arrive `word ASC` and have no per-day or
+// per-title structure to group by. Words that don't start with a letter collect
+// under '#', which always sorts last. Word order within a letter is preserved,
+// so appending a page of results extends the sections rather than reshuffling.
+export function groupByLetter(words: Word[]): LetterGroup[] {
+  const map = new Map<string, LetterGroup>();
+  for (const w of words) {
+    const first = w.word.trim().charAt(0).toUpperCase();
+    const letter = first >= 'A' && first <= 'Z' ? first : '#';
+    const entry = map.get(letter);
+    if (entry) entry.words.push(w);
+    else map.set(letter, { letter, words: [w] });
+  }
+  return [...map.values()].sort((a, b) => {
+    if (a.letter === '#' || b.letter === '#') return a.letter === '#' ? 1 : -1;
+    return a.letter.localeCompare(b.letter);
+  });
+}
+
 // Deep link back to the exact scene a word was saved from. Season/episode are
 // omitted for films, and the timestamp for words saved without one, so the URL
 // stays as short as the context allows. Words with no imdbId (imported starter

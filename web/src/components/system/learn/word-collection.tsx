@@ -5,15 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Loading } from '@/components/system/common/loading';
 import { StudyDeck } from '@/components/system/learn/study-deck';
 import { WordTest } from '@/components/system/learn/word-test';
-import { WordBadge, WordTitleGroupList } from '@/components/system/learn/word-groups';
+import { WordLetterGroupList, WordTitleGroupList } from '@/components/system/learn/word-groups';
 import { useInfiniteWordsQuery } from '@/hooks/queries/use-words-query';
-import { groupByTitle } from '@/utils/word';
+import { groupByLetter, groupByTitle } from '@/utils/word';
 import type { Word } from '@/services/user';
 
 // The Study / Completed tabs of one word list: the paginated word grid, the
 // per-group self-test, and the flashcard deck a tapped word opens. Shared by the
 // personal vocabulary page and the Oxford 3000 page — they differ only in
-// `flatLearn` (imported packs list To-Learn alphabetically, ungrouped).
+// `flatLearn` (imported packs group To-Learn into A–Z sections, not by day).
 export function WordCollection({
   list = '',
   flatLearn = false,
@@ -32,13 +32,14 @@ export function WordCollection({
 
   const tabQuery = useInfiniteWordsQuery(tab, list);
   const words = useMemo(() => tabQuery.data?.pages.flatMap((p) => p.items) ?? [], [tabQuery.data]);
-  // Imported lists' To-Learn tab is a flat alphabetical list (no day grouping,
-  // since they're all added at once); everything else groups by day.
-  const flat = flatLearn && tab === 'learn';
+  // Imported lists' To-Learn tab is alphabetical (no day grouping, since they're
+  // all added at once), so it sections A–Z; everything else groups by day.
+  const alpha = flatLearn && tab === 'learn';
   const groups = useMemo(
-    () => (flat ? [] : groupByTitle(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt))),
-    [words, tab, flat],
+    () => (alpha ? [] : groupByTitle(words, (w) => (tab === 'learn' ? w.createdAt : w.completedAt))),
+    [words, tab, alpha],
   );
+  const letterGroups = useMemo(() => (alpha ? groupByLetter(words) : []), [words, alpha]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = tabQuery;
@@ -84,13 +85,9 @@ export function WordCollection({
         </div>
       ) : (
         <>
-          {flat
-            ? words.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {words.map((w) => (
-                    <WordBadge key={w.word} word={w} onClick={() => setSelected(w)} />
-                  ))}
-                </div>
+          {alpha
+            ? letterGroups.length > 0 && (
+                <WordLetterGroupList groups={letterGroups} onSelect={setSelected} />
               )
             : groups.length > 0 && (
                 <WordTitleGroupList
