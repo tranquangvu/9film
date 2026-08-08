@@ -8,6 +8,11 @@ import (
 
 const imdbGraphQLURL = "https://api.graphql.imdb.com/"
 
+// imdbReferer is required: api.graphql.imdb.com answers 403 to any request that
+// doesn't carry an imdb.com Referer, whatever the User-Agent. Sent as both
+// Referer and Origin so the request looks like the site's own browser call.
+const imdbReferer = "https://www.imdb.com/"
+
 // ErrTitleNotFound means the requested IMDb id doesn't resolve to a title —
 // either it doesn't exist or it's malformed (e.g. "tt12"). Callers should treat
 // this as a 404 / empty result rather than an upstream failure.

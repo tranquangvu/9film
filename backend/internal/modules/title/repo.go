@@ -57,6 +57,8 @@ func (r *repository) imdbRequest(query string, variables map[string]any, dataTar
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "NiceFilm/1.0")
+	req.Header.Set("Referer", imdbReferer)
+	req.Header.Set("Origin", strings.TrimSuffix(imdbReferer, "/"))
 
 	resp, err := r.client.Do(req)
 	if err != nil {
