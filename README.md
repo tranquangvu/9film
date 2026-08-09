@@ -100,7 +100,7 @@ SUBDL_API_KEY=
 
 Other backend commands: `make build` / `make run` (binary at `bin/server`), `make tidy`, `go test ./...`.
 
-**API keys for the optional integrations.** AI learning features (definitions, translations, word images, graded meaning tests) run on Gemini and are **per-user only** — there is no server-side key. Sign in and paste your own key at `/profile`; without it the AI features stay disabled. The SubDL key can also be set per-user there, and a user key takes precedence over the `.env` one.
+**API keys for the optional integrations.** Two learning features run on Gemini — idiom/phrase breakdowns and AI-graded meaning answers in a self-test — and the key is **per-user only**: there is no server-side fallback. Sign in and paste your own at `/profile`. Nothing breaks without it: a phrase breakdown falls back to a plain translation, and meaning answers are graded by a local string heuristic against the saved translation instead of by the model. Dictionary lookups and translations never touch Gemini at all — they use separate public APIs. The SubDL key can also be set per-user there, and a user key takes precedence over the `.env` one.
 
 ### 2. Frontend
 

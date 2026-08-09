@@ -306,7 +306,7 @@ function ConnectionsCard() {
           icon={Sparkles}
           title="Smarter learning"
           provider="Gemini"
-          desc="AI word pictures, idiom breakdowns & graded meaning tests."
+          desc="Idiom & phrase breakdowns, plus AI-graded meaning tests."
           href="https://aistudio.google.com/app/apikey"
           badge={status && <ConfiguredBadge on={status.geminiKeySet} />}
         />
