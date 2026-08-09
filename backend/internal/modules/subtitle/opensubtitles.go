@@ -1,245 +1,82 @@
 package subtitle
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/bentran/nicefilm/backend/internal/providers/opensubtitles"
+)
+
 // OpenSubtitles was the original subtitle source. It is NOT wired into the app:
 // Module registers SubDL alone, nothing calls NewOpenSubtitles, and no
 // credentials reach it — an "opensubtitles:" id returns "unknown provider".
 //
-// The implementation is kept whole and compiling so it doesn't rot. Wiring it
-// back in takes three steps:
-//  1. pass NewOpenSubtitles() to NewSubtitles in module.go (first argument if it
-//     should be the one that searches),
+// This adapter and the client in providers/opensubtitles are kept whole and
+// compiling so they don't rot. Wiring it back in takes three steps:
+//  1. pass NewOpenSubtitles(opensubtitles.New()) to subtitle.Module in app.go
+//     (first in the list if it should be the one that searches),
 //  2. give subtitleCreds in app.go an opensubtitles case, which means restoring
 //     the key/username/password on user.Credentials and the credentials table,
 //  3. re-expose those fields in the profile Connections form.
 
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"path"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-)
-
-const openSubsAPIBase = "https://api.opensubtitles.com/api/v1"
-
-type tokenEntry struct {
-	token     string
-	expiresAt time.Time
+// osAPI is the slice of the OpenSubtitles client this adapter uses, named here so
+// the adapter can be tested against a stub instead of the network.
+type osAPI interface {
+	Search(creds opensubtitles.Credentials, p opensubtitles.SearchParams) ([]opensubtitles.Subtitle, error)
+	Download(creds opensubtitles.Credentials, fileID int) (data []byte, filename string, err error)
 }
 
-// openSubtitles proxies the OpenSubtitles API using the caller-supplied
-// credentials, caching one auth token per OpenSubtitles account.
-type openSubtitles struct {
-	client  *http.Client
-	tokenMu sync.Mutex
-	tokens  map[string]*tokenEntry // keyed by OpenSubtitles username
-}
+type osProvider struct{ api osAPI }
 
-func NewOpenSubtitles() Provider {
-	return &openSubtitles{client: &http.Client{Timeout: 15 * time.Second}, tokens: map[string]*tokenEntry{}}
-}
+func NewOpenSubtitles(api osAPI) Provider { return &osProvider{api: api} }
 
-func (s *openSubtitles) Name() string { return ProviderOpenSubtitles }
+func (p *osProvider) Name() string { return ProviderOpenSubtitles }
 
-func baseSubsHeaders(apiKey string) map[string]string {
-	return map[string]string{
-		"Api-Key":    apiKey,
-		"User-Agent": userAgent,
-		"Accept":     "application/json",
-	}
-}
-
-func (s *openSubtitles) getAuthToken(creds Creds) (string, error) {
-	s.tokenMu.Lock()
-	defer s.tokenMu.Unlock()
-
-	if t := s.tokens[creds.Username]; t != nil && time.Now().Before(t.expiresAt) {
-		return t.token, nil
-	}
-
-	payload, _ := json.Marshal(map[string]string{
-		"username": creds.Username,
-		"password": creds.Password,
+func (p *osProvider) Search(creds Creds, params SubtitleSearchParams) ([]SubtitleOption, error) {
+	subs, err := p.api.Search(osCreds(creds), opensubtitles.SearchParams{
+		IMDbID:    params.IMDbID,
+		TMDbID:    params.TMDbID,
+		MediaType: params.MediaType,
+		Season:    params.Season,
+		Episode:   params.Episode,
+		Languages: params.Languages,
 	})
-	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/login", bytes.NewReader(payload))
-	applyHeaders(req, baseSubsHeaders(creds.APIKey))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("OpenSubtitles login: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenSubtitles login failed (%d): %s", resp.StatusCode, string(body))
+		return nil, rateLimited(err)
 	}
 
-	var result struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Token == "" {
-		return "", fmt.Errorf("OpenSubtitles: no token in login response")
-	}
-
-	s.tokens[creds.Username] = &tokenEntry{
-		token:     result.Token,
-		expiresAt: time.Now().Add(23 * time.Hour),
-	}
-	return result.Token, nil
-}
-
-func imdbToNumeric(imdb string) int {
-	numeric := strings.TrimPrefix(strings.ToLower(imdb), "tt")
-	n, _ := strconv.Atoi(numeric)
-	return n
-}
-
-func (s *openSubtitles) Search(creds Creds, params SubtitleSearchParams) ([]SubtitleOption, error) {
-	q := url.Values{}
-	lang := params.Languages
-	if lang == "" {
-		lang = "en"
-	}
-	q.Set("languages", lang)
-	q.Set("order_by", "new_download_count")
-	q.Set("order_direction", "desc")
-
-	if params.IMDbID != "" {
-		numeric := imdbToNumeric(params.IMDbID)
-		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
-			q.Set("parent_imdb_id", strconv.Itoa(numeric))
-			q.Set("season_number", strconv.Itoa(*params.Season))
-			q.Set("episode_number", strconv.Itoa(*params.Episode))
-		} else {
-			q.Set("imdb_id", strconv.Itoa(numeric))
-		}
-	} else if params.TMDbID > 0 {
-		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
-			q.Set("parent_tmdb_id", strconv.Itoa(params.TMDbID))
-			q.Set("season_number", strconv.Itoa(*params.Season))
-			q.Set("episode_number", strconv.Itoa(*params.Episode))
-		} else {
-			q.Set("tmdb_id", strconv.Itoa(params.TMDbID))
-		}
-	} else {
-		return nil, nil
-	}
-
-	req, _ := http.NewRequest(http.MethodGet, openSubsAPIBase+"/subtitles?"+q.Encode(), nil)
-	applyHeaders(req, baseSubsHeaders(creds.APIKey))
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("OpenSubtitles search: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("OpenSubtitles search failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		Data []struct {
-			Attributes struct {
-				Language         string `json:"language"`
-				Release          string `json:"release"`
-				DownloadCount    int    `json:"download_count"`
-				NewDownloadCount int    `json:"new_download_count"`
-				Files            []struct {
-					FileID   int    `json:"file_id"`
-					FileName string `json:"file_name"`
-				} `json:"files"`
-			} `json:"attributes"`
-		} `json:"data"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode OpenSubtitles search: %w", err)
-	}
-
-	options := make([]SubtitleOption, 0, len(result.Data))
-	for _, item := range result.Data {
-		attr := item.Attributes
-		if len(attr.Files) == 0 || attr.Files[0].FileID == 0 {
-			continue
-		}
-		file := attr.Files[0]
-		lang := attr.Language
+	options := make([]SubtitleOption, 0, len(subs))
+	for _, s := range subs {
+		lang := s.Language
 		if lang == "" {
 			lang = "und"
 		}
 		label := strings.ToUpper(lang)
-		if attr.Release != "" {
-			label = label + " — " + attr.Release
-		}
-		count := attr.NewDownloadCount
-		if count == 0 {
-			count = attr.DownloadCount
+		if s.Release != "" {
+			label = label + " — " + s.Release
 		}
 		options = append(options, SubtitleOption{
-			ID:            FormatID(ProviderOpenSubtitles, strconv.Itoa(file.FileID)),
+			ID:            FormatID(ProviderOpenSubtitles, strconv.Itoa(s.FileID)),
 			Language:      lang,
 			Label:         label,
-			DownloadCount: count,
-			Release:       attr.Release,
+			DownloadCount: s.DownloadCount,
+			Release:       s.Release,
 		})
 	}
-
 	return options, nil
 }
 
 // DownloadVTT takes an OpenSubtitles file id as its ref.
-func (s *openSubtitles) DownloadVTT(creds Creds, ref string) (string, error) {
+func (p *osProvider) DownloadVTT(creds Creds, ref string) (string, error) {
 	fileID, err := strconv.Atoi(ref)
 	if err != nil || fileID <= 0 {
 		return "", fmt.Errorf("invalid OpenSubtitles file id %q", ref)
 	}
-	if creds.Username == "" || creds.Password == "" {
-		return "", fmt.Errorf("OpenSubtitles download requires a username and password")
-	}
 
-	token, err := s.getAuthToken(creds)
+	raw, filename, err := p.api.Download(osCreds(creds), fileID)
 	if err != nil {
-		return "", err
-	}
-
-	payload, _ := json.Marshal(map[string]int{"file_id": fileID})
-	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/download", bytes.NewReader(payload))
-	applyHeaders(req, baseSubsHeaders(creds.APIKey))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("OpenSubtitles download: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		// 429 = rate-limited; 406 = daily download quota exhausted.
-		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNotAcceptable {
-			return "", fmt.Errorf("%w: %s", ErrRateLimited, strings.TrimSpace(string(body)))
-		}
-		return "", fmt.Errorf("OpenSubtitles download failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var dlResult struct {
-		Link string `json:"link"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&dlResult); err != nil || dlResult.Link == "" {
-		return "", fmt.Errorf("OpenSubtitles: no link in download response")
-	}
-
-	raw, err := fetchBytes(s.client, dlResult.Link, map[string]string{"User-Agent": userAgent})
-	if err != nil {
-		return "", err
+		return "", rateLimited(err)
 	}
 	name, data, err := subtitleFromArchive(raw, "")
 	if err != nil {
@@ -248,15 +85,11 @@ func (s *openSubtitles) DownloadVTT(creds Creds, ref string) (string, error) {
 	if name == "" {
 		// A plain (or header-less gzip) body: the link's own filename decides
 		// whether this is already VTT.
-		name = fileNameFromURL(dlResult.Link)
+		name = filename
 	}
 	return toVTT(name, data)
 }
 
-func fileNameFromURL(rawURL string) string {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return ""
-	}
-	return path.Base(u.Path)
+func osCreds(c Creds) opensubtitles.Credentials {
+	return opensubtitles.Credentials{APIKey: c.APIKey, Username: c.Username, Password: c.Password}
 }

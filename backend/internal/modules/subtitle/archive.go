@@ -13,13 +13,10 @@ import (
 	"strings"
 )
 
-const (
-	// Subtitle files are tens of kilobytes; these caps only exist so a wrong or
-	// hostile URL can't stream an unbounded body into memory. archive/zip needs an
-	// io.ReaderAt, so the whole download is buffered either way.
-	maxDownloadBytes = 16 << 20
-	maxSubtitleBytes = 8 << 20
-)
+// maxSubtitleBytes caps one unpacked subtitle. Real ones are tens of kilobytes;
+// the cap only exists so a hostile archive can't decompress into unbounded
+// memory. The download itself is bounded by the provider client.
+const maxSubtitleBytes = 8 << 20
 
 // subtitleExts is the priority order used to break ties inside an archive: SRT
 // and VTT convert cleanly, SUB is a last resort, and styled formats are only

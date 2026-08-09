@@ -5,10 +5,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Module(api *gin.RouterGroup, cfg *config.Config, creds CredsResolver) {
-	// SubDL is the only provider wired in. opensubtitles.go is kept but not
-	// registered here — adding it back is a matter of appending NewOpenSubtitles()
-	// and restoring its credentials (see the file's own note).
-	svc := NewSubtitles(creds, NewSubDL())
+// Module takes its providers already built, so the vendor clients are chosen in
+// the composition root rather than here. The first one is the provider that
+// searches; the rest stay reachable for downloads only.
+func Module(api *gin.RouterGroup, cfg *config.Config, creds CredsResolver, provs ...Provider) {
+	svc := NewSubtitles(creds, provs...)
 	RegisterRoutes(api, NewHandler(svc), cfg)
 }

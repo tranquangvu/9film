@@ -19,6 +19,7 @@ import (
 	"github.com/bentran/nicefilm/backend/internal/modules/subtitle"
 	"github.com/bentran/nicefilm/backend/internal/modules/title"
 	"github.com/bentran/nicefilm/backend/internal/modules/user"
+	"github.com/bentran/nicefilm/backend/internal/providers/subdl"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -70,7 +71,9 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
 	learning.Module(api, db, cfg, geminiKeys{store: creds})
 	stream.Module(r, api)
-	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg})
+	// SubDL is the only subtitle provider wired in; providers/opensubtitles is kept
+	// but never registered (see modules/subtitle/opensubtitles.go).
+	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg}, subtitle.NewSubDL(subdl.New()))
 }
 
 // geminiKeys resolves a user's Gemini key for the learning module. There is no

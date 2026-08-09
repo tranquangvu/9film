@@ -19,14 +19,19 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 │   │   ├── database/              SQLite open + migrations
 │   │   ├── logger/                zap setup
 │   │   ├── middleware/            CORS, auth, logging, recovery
+│   │   ├── httpx/                 bounded GET + shared rate-limit error
+│   │   ├── providers/             third-party clients (no app types)
+│   │   │   ├── subdl/             SubDL subtitle API
+│   │   │   ├── opensubtitles/     OpenSubtitles API (kept, not wired in)
+│   │   │   └── gemini/            Gemini generateContent
 │   │   └── modules/               vertical-slice features
 │   │       ├── user/              accounts, settings, per-user API keys
 │   │       ├── favorite/          watchlist
 │   │       ├── history/           watch progress, continue-watching
 │   │       ├── title/             IMDb metadata (GraphQL)
 │   │       ├── stream/            stream resolution + HLS proxy
-│   │       ├── subtitle/          SubDL behind a provider adapter (optional)
-│   │       └── learning/          vocabulary, AI helpers, tests, SRS
+│   │       ├── subtitle/          Provider contract + adapters (optional)
+│   │       └── learning/          vocabulary, AI prompts, tests, SRS
 │   ├── .env.example
 │   └── Makefile
 ├── web/                           React frontend
