@@ -25,7 +25,7 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 │   │       ├── history/           watch progress, continue-watching
 │   │       ├── title/             IMDb metadata (GraphQL)
 │   │       ├── stream/            stream resolution + HLS proxy
-│   │       ├── subtitle/          SubDL / OpenSubtitles behind a provider adapter (optional)
+│   │       ├── subtitle/          SubDL behind a provider adapter (optional)
 │   │       └── learning/          vocabulary, AI helpers, tests, SRS
 │   ├── .env.example
 │   └── Makefile
@@ -88,24 +88,14 @@ JWT_SECRET=your_secret     # required
 TOKEN_TTL_HOURS=168        # JWT lifetime, default 7 days
 DB_PATH=./nicefilm.db
 
-# Subtitles — which provider searches: subdl (default) | opensubtitles.
-# Both stay available either way, so a track saved under the other one still plays.
-SUBTITLE_PROVIDER=subdl
-
-# Optional — SubDL (https://subdl.com/panel/api)
-# Leave blank to disable; /api/subtitle/* then returns 503.
+# Optional — SubDL (https://subdl.com/panel/api), the only subtitle provider
+# wired in. Leave blank to disable; /api/subtitle/* then returns 503.
 SUBDL_API_KEY=
-
-# Optional — OpenSubtitles (legacy; only searched when SUBTITLE_PROVIDER=opensubtitles).
-# Username/password are needed for downloads, not for search.
-OPENSUBTITLES_API_KEY=
-OPENSUBTITLES_USERNAME=
-OPENSUBTITLES_PASSWORD=
 ```
 
 Other backend commands: `make build` / `make run` (binary at `bin/server`), `make tidy`, `go test ./...`.
 
-**API keys for the optional integrations.** AI learning features (definitions, translations, word images, graded meaning tests) run on Gemini and are **per-user only** — there is no server-side key. Sign in and paste your own key at `/profile`; without it the AI features stay disabled. The subtitle provider keys (SubDL and OpenSubtitles) can also be set per-user there, and a user key takes precedence over the `.env` one.
+**API keys for the optional integrations.** AI learning features (definitions, translations, word images, graded meaning tests) run on Gemini and are **per-user only** — there is no server-side key. Sign in and paste your own key at `/profile`; without it the AI features stay disabled. The SubDL key can also be set per-user there, and a user key takes precedence over the `.env` one.
 
 ### 2. Frontend
 

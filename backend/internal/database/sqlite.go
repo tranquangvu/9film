@@ -94,14 +94,14 @@ func Migrate(db *sql.DB) error {
 		)`,
 		// Per-user API credentials for the optional integrations. Each account
 		// supplies its own keys; the backend .env keys are a fallback.
+		// Databases created before OpenSubtitles was unwired still carry its three
+		// columns. They all default to '', so leaving them behind costs nothing and
+		// keeps the removal non-destructive.
 		`CREATE TABLE IF NOT EXISTS credentials (
-			user_id                INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-			gemini_api_key         TEXT NOT NULL DEFAULT '',
-			subdl_api_key          TEXT NOT NULL DEFAULT '',
-			opensubtitles_api_key  TEXT NOT NULL DEFAULT '',
-			opensubtitles_username TEXT NOT NULL DEFAULT '',
-			opensubtitles_password TEXT NOT NULL DEFAULT '',
-			updated_at             TEXT NOT NULL DEFAULT (datetime('now'))
+			user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			gemini_api_key TEXT NOT NULL DEFAULT '',
+			subdl_api_key  TEXT NOT NULL DEFAULT '',
+			updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
 		// A saved vocabulary word with its capture context, list membership, and
 		// SM-2 review schedule. list: ''=personal, 'oxford3000'=imported starter

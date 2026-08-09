@@ -135,10 +135,9 @@ func (r *repository) UpsertSettings(userID int64, st Settings) error {
 func (r *repository) GetCredentials(userID int64) (Credentials, error) {
 	var c Credentials
 	err := r.db.QueryRow(
-		`SELECT gemini_api_key, subdl_api_key, opensubtitles_api_key, opensubtitles_username, opensubtitles_password
-		   FROM credentials WHERE user_id = ?`,
+		`SELECT gemini_api_key, subdl_api_key FROM credentials WHERE user_id = ?`,
 		userID,
-	).Scan(&c.GeminiAPIKey, &c.SubDLAPIKey, &c.OpenSubtitlesAPIKey, &c.OpenSubtitlesUsername, &c.OpenSubtitlesPassword)
+	).Scan(&c.GeminiAPIKey, &c.SubDLAPIKey)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Credentials{}, nil
 	}
@@ -150,16 +149,13 @@ func (r *repository) GetCredentials(userID int64) (Credentials, error) {
 
 func (r *repository) SetCredentials(userID int64, c Credentials) error {
 	_, err := r.db.Exec(
-		`INSERT INTO credentials (user_id, gemini_api_key, subdl_api_key, opensubtitles_api_key, opensubtitles_username, opensubtitles_password, updated_at)
-		   VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+		`INSERT INTO credentials (user_id, gemini_api_key, subdl_api_key, updated_at)
+		   VALUES (?, ?, ?, datetime('now'))
 		   ON CONFLICT(user_id) DO UPDATE SET
 		     gemini_api_key = excluded.gemini_api_key,
 		     subdl_api_key = excluded.subdl_api_key,
-		     opensubtitles_api_key = excluded.opensubtitles_api_key,
-		     opensubtitles_username = excluded.opensubtitles_username,
-		     opensubtitles_password = excluded.opensubtitles_password,
 		     updated_at = datetime('now')`,
-		userID, c.GeminiAPIKey, c.SubDLAPIKey, c.OpenSubtitlesAPIKey, c.OpenSubtitlesUsername, c.OpenSubtitlesPassword,
+		userID, c.GeminiAPIKey, c.SubDLAPIKey,
 	)
 	return err
 }

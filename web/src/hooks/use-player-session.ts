@@ -208,8 +208,8 @@ export function usePlayerSession(
 
   // Prefer the exact release (id), else any track in the same language — which is
   // also what catches a preference saved under a provider that's no longer active.
-  // Language is compared case-insensitively: SubDL lowercases its codes and
-  // OpenSubtitles doesn't, so a pref can cross providers.
+  // Language is compared case-insensitively — prefs saved before SubDL started
+  // lowercasing its codes still match, and it costs nothing.
   const prefSubId = useMemo(() => {
     if (!savedSubPref) return null;
     const lang = savedSubPref.language?.toLowerCase();

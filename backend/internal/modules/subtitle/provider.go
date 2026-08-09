@@ -5,9 +5,10 @@ import (
 	"strings"
 )
 
-// The compiled-in subtitle sources. Both are always registered; SUBTITLE_PROVIDER
-// only decides which one *searches*, so a subtitle saved under the other one
-// still downloads.
+// The subtitle sources this package knows how to name. Only SubDL is wired into
+// the app (see Module); ProviderOpenSubtitles stays here because opensubtitles.go
+// still compiles against it and because ids minted before it was unwired are
+// still in the database.
 const (
 	ProviderSubDL         = "subdl"
 	ProviderOpenSubtitles = "opensubtitles"
@@ -15,7 +16,8 @@ const (
 
 // Creds are one provider's credentials for one request, resolved per-user (the
 // user's own keys, or the .env fallback) by the composition root. Username and
-// Password are OpenSubtitles-only — SubDL authenticates with the API key alone.
+// Password are OpenSubtitles-only — SubDL authenticates with the API key alone —
+// so nothing populates them while OpenSubtitles is unwired.
 type Creds struct {
 	APIKey   string
 	Username string
@@ -67,8 +69,9 @@ func FormatID(provider, ref string) string { return provider + ":" + ref }
 
 // ParseID splits an opaque "<provider>:<ref>" id on its first colon (refs may
 // contain colons of their own). A bare numeric id is read as a legacy
-// OpenSubtitles file id, so preferences saved before the prefix existed — in the
-// database and in the browser's localStorage — keep resolving.
+// OpenSubtitles file id: that provider is no longer wired in, so such an id now
+// resolves to a clean "unknown provider" error instead of being mistaken for a
+// SubDL ref.
 func ParseID(id string) (provider, ref string, ok bool) {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -98,8 +101,12 @@ func isDigits(s string) bool {
 
 // providerLabel is the human-facing name used in error copy.
 func providerLabel(name string) string {
-	if name == ProviderSubDL {
+	switch name {
+	case ProviderSubDL:
 		return "SubDL"
+	case ProviderOpenSubtitles:
+		return "OpenSubtitles"
+	default:
+		return name
 	}
-	return "OpenSubtitles"
 }

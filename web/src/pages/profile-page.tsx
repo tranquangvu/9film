@@ -279,26 +279,17 @@ function ConnectionsCard() {
 
   const [gemini, setGemini] = useState('');
   const [subdlKey, setSubdlKey] = useState('');
-  const [osKey, setOsKey] = useState('');
-  const [osUser, setOsUser] = useState('');
-  const [osPass, setOsPass] = useState('');
 
   const onSave = () => {
     save.mutate(
       {
         geminiApiKey: gemini || undefined,
         subdlApiKey: subdlKey || undefined,
-        openSubtitlesApiKey: osKey || undefined,
-        openSubtitlesUsername: osUser || undefined,
-        openSubtitlesPassword: osPass || undefined,
       },
       {
         onSuccess: () => {
           setGemini('');
           setSubdlKey('');
-          setOsKey('');
-          setOsUser('');
-          setOsPass('');
           toast({ title: 'Connections saved' });
         },
         onError: () => toast({ title: 'Could not save', description: 'Please try again.', variant: 'destructive' }),
@@ -348,49 +339,6 @@ function ConnectionsCard() {
           autoComplete="off"
           className={inputClass}
         />
-      </div>
-
-      <div className="h-px bg-zinc-800 my-5" />
-
-      <div className="space-y-2.5">
-        <ConnectionHeader
-          icon={Captions}
-          title="Subtitles (legacy)"
-          provider="Open Subtitles"
-          desc="The previous subtitle source, kept for saved tracks."
-          href="https://www.opensubtitles.com/en/consumers"
-          badge={status && <ConfiguredBadge on={status.openSubtitlesApiKeySet} />}
-        />
-        <Input
-          type="password"
-          value={osKey}
-          onChange={(e) => setOsKey(e.target.value)}
-          placeholder={status?.openSubtitlesApiKeySet ? '•••••••••• (set — type to replace)' : 'Open Subtitles API key'}
-          autoComplete="off"
-          className={inputClass}
-        />
-        <div className="grid sm:grid-cols-2 gap-2">
-          <Input
-            type="text"
-            value={osUser}
-            onChange={(e) => setOsUser(e.target.value)}
-            placeholder={status?.openSubtitlesUsernameSet ? 'Username (set — type to replace)' : 'Username'}
-            autoComplete="off"
-            className={inputClass}
-          />
-          <Input
-            type="password"
-            value={osPass}
-            onChange={(e) => setOsPass(e.target.value)}
-            placeholder={status?.openSubtitlesPasswordSet ? '•••••• (set)' : 'Password'}
-            autoComplete="off"
-            className={inputClass}
-          />
-        </div>
-        <p className="text-[11px] text-zinc-600">
-          Username &amp; password only needed to download files. Only searched when the server runs with
-          SUBTITLE_PROVIDER=opensubtitles.
-        </p>
       </div>
 
       <div className="flex mt-5">

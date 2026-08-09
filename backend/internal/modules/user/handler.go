@@ -142,11 +142,8 @@ func (h *Handler) PutCredentials(c *gin.Context) {
 		return
 	}
 	st, err := h.svc.SaveCredentials(middleware.UserID(c), Credentials{
-		GeminiAPIKey:          strings.TrimSpace(req.GeminiApiKey),
-		SubDLAPIKey:           strings.TrimSpace(req.SubdlApiKey),
-		OpenSubtitlesAPIKey:   strings.TrimSpace(req.OpenSubtitlesApiKey),
-		OpenSubtitlesUsername: strings.TrimSpace(req.OpenSubtitlesUsername),
-		OpenSubtitlesPassword: strings.TrimSpace(req.OpenSubtitlesPassword),
+		GeminiAPIKey: strings.TrimSpace(req.GeminiApiKey),
+		SubDLAPIKey:  strings.TrimSpace(req.SubdlApiKey),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save credentials"})

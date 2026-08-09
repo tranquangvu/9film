@@ -3,14 +3,13 @@ package subtitle
 import (
 	"errors"
 	"fmt"
-
-	"github.com/bentran/nicefilm/backend/internal/logger"
-	"go.uber.org/zap"
 )
 
 // Subtitles resolves per-user credentials and dispatches to a provider. Search
 // always goes to the active provider; download follows the provider named in the
-// id, so a track picked before the server switched providers still plays.
+// id, so a track picked before the server switched providers still plays — and
+// an id naming a provider that is no longer wired in fails cleanly rather than
+// being sent to the wrong API.
 type Subtitles interface {
 	Configured(userID int64) bool
 	ActiveName() string
@@ -24,19 +23,13 @@ type subtitles struct {
 	creds     CredsResolver
 }
 
-// NewSubtitles registers every compiled-in provider and marks `active` (from
-// SUBTITLE_PROVIDER) as the one search uses. An unknown name falls back to the
-// first provider passed rather than failing the boot on a typo in .env.
-func NewSubtitles(active string, creds CredsResolver, provs ...Provider) Subtitles {
-	s := &subtitles{providers: make(map[string]Provider, len(provs)), creds: creds}
+// NewSubtitles registers the providers it is given; the first is the one search
+// goes to. The rest stay reachable for download only, which is what lets an id
+// saved under another provider keep resolving.
+func NewSubtitles(creds CredsResolver, provs ...Provider) Subtitles {
+	s := &subtitles{providers: make(map[string]Provider, len(provs)), creds: creds, active: provs[0]}
 	for _, p := range provs {
 		s.providers[p.Name()] = p
-	}
-	s.active = s.providers[active]
-	if s.active == nil {
-		s.active = provs[0]
-		logger.Get().Warn("unknown subtitle provider, falling back",
-			zap.String("requested", active), zap.String("using", s.active.Name()))
 	}
 	return s
 }

@@ -6,8 +6,9 @@ import (
 )
 
 func Module(api *gin.RouterGroup, cfg *config.Config, creds CredsResolver) {
-	// Every provider is registered; cfg.SubtitleProvider only picks the one that
-	// searches. The rest stay reachable so ids saved under them still download.
-	svc := NewSubtitles(cfg.SubtitleProvider, creds, NewSubDL(), NewOpenSubtitles())
+	// SubDL is the only provider wired in. opensubtitles.go is kept but not
+	// registered here — adding it back is a matter of appending NewOpenSubtitles()
+	// and restoring its credentials (see the file's own note).
+	svc := NewSubtitles(creds, NewSubDL())
 	RegisterRoutes(api, NewHandler(svc), cfg)
 }

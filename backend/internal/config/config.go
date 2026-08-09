@@ -3,17 +3,10 @@ package config
 import (
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 )
-
-type OpenSubtitlesConfig struct {
-	APIKey   string
-	Username string
-	Password string
-}
 
 type SubDLConfig struct {
 	APIKey string
@@ -22,12 +15,9 @@ type SubDLConfig struct {
 type Config struct {
 	Port int
 	Host string
-	// SubtitleProvider is the source subtitle searches go to: "subdl" (default)
-	// or "opensubtitles". Both stay compiled in either way, so a track saved under
-	// the other one still downloads.
-	SubtitleProvider string
-	SubDL            *SubDLConfig
-	OpenSubtitles    *OpenSubtitlesConfig
+	// SubDL is the shared .env fallback for the only wired-in subtitle provider;
+	// nil when no key is set, which leaves subtitles to users with their own key.
+	SubDL *SubDLConfig
 
 	JWTSecret string
 	TokenTTL  time.Duration
@@ -58,36 +48,18 @@ func Load() *Config {
 		dbPath = "./nicefilm.db"
 	}
 
-	var openSubs *OpenSubtitlesConfig
-	if apiKey := trim(os.Getenv("OPENSUBTITLES_API_KEY")); apiKey != "" {
-		openSubs = &OpenSubtitlesConfig{
-			APIKey:   apiKey,
-			Username: trim(os.Getenv("OPENSUBTITLES_USERNAME")),
-			Password: trim(os.Getenv("OPENSUBTITLES_PASSWORD")),
-		}
-	}
-
 	var subDL *SubDLConfig
 	if apiKey := trim(os.Getenv("SUBDL_API_KEY")); apiKey != "" {
 		subDL = &SubDLConfig{APIKey: apiKey}
 	}
 
-	// Anything but an explicit opt-out lands on SubDL, so a typo can't quietly
-	// leave the server on the legacy provider.
-	provider := strings.ToLower(trim(os.Getenv("SUBTITLE_PROVIDER")))
-	if provider != "opensubtitles" {
-		provider = "subdl"
-	}
-
 	return &Config{
-		Port:             port,
-		Host:             host,
-		SubtitleProvider: provider,
-		SubDL:            subDL,
-		OpenSubtitles:    openSubs,
-		JWTSecret:        trim(os.Getenv("JWT_SECRET")),
-		TokenTTL:         time.Duration(ttlHours) * time.Hour,
-		DBPath:           dbPath,
+		Port:      port,
+		Host:      host,
+		SubDL:     subDL,
+		JWTSecret: trim(os.Getenv("JWT_SECRET")),
+		TokenTTL:  time.Duration(ttlHours) * time.Hour,
+		DBPath:    dbPath,
 	}
 }
 

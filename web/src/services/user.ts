@@ -88,26 +88,17 @@ export function getSettings(): Promise<UserSettings> {
 
 // Secret-free status of the per-user integration keys. `*Set` is whether the
 // user stored their own key. `geminiConfigured` is per-user only (== key set);
-// the subtitle `*Configured` flags also count the server's .env fallback.
-// `subtitleProvider` is the source the server actually searches.
+// `subdlConfigured` also counts the server's .env fallback.
 export interface CredentialStatus {
   geminiKeySet: boolean;
   geminiConfigured: boolean;
   subdlApiKeySet: boolean;
   subdlConfigured: boolean;
-  openSubtitlesApiKeySet: boolean;
-  openSubtitlesUsernameSet: boolean;
-  openSubtitlesPasswordSet: boolean;
-  openSubtitlesConfigured: boolean;
-  subtitleProvider: 'subdl' | 'opensubtitles';
 }
 
 export interface CredentialPatch {
   geminiApiKey?: string;
   subdlApiKey?: string;
-  openSubtitlesApiKey?: string;
-  openSubtitlesUsername?: string;
-  openSubtitlesPassword?: string;
 }
 
 export function getCredentials(): Promise<CredentialStatus> {

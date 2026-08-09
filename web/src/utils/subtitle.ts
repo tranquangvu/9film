@@ -50,6 +50,11 @@ export interface SubtitlePref {
 /** Prefs written before ids carried a provider hold a bare OpenSubtitles file id. */
 type StoredPref = SubtitlePref | { fileId: number; language: string };
 
+// A saved id that no longer resolves — an OpenSubtitles one, now that only SubDL
+// is wired in — keeps its language, which is the half of the preference still
+// worth honouring. No option ever has an empty id, so the id match just misses.
+const UNRESOLVABLE_ID = '';
+
 type PrefStore = Record<string, StoredPref>;
 
 function readPrefs(): PrefStore {
@@ -61,14 +66,13 @@ function readPrefs(): PrefStore {
 }
 
 // Migrated on read rather than in bulk; the store normalizes the next time it's
-// written. A migrated opensubtitles: id won't match any SubDL option, so the
-// caller falls through to matching by language — and it still downloads if the
-// user does have OpenSubtitles credentials.
+// written. A bare fileId was an OpenSubtitles track, which nothing can fetch
+// anymore, so only its language carries over.
 function migratePref(pref: StoredPref | undefined): SubtitlePref | null {
   if (!pref) return null;
   if ('id' in pref && typeof pref.id === 'string') return { id: pref.id, language: pref.language };
   if ('fileId' in pref && typeof pref.fileId === 'number') {
-    return { id: `opensubtitles:${pref.fileId}`, language: pref.language };
+    return { id: UNRESOLVABLE_ID, language: pref.language };
   }
   return null;
 }

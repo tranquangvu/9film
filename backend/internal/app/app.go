@@ -51,8 +51,7 @@ func NewApp() *App {
 		zap.Int("port", cfg.Port),
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),
-		zap.String("subtitle_provider", cfg.SubtitleProvider),
-		zap.Bool("subtitles_configured", subtitlesConfigured(cfg)),
+		zap.Bool("subtitles_configured", cfg.SubDL != nil),
 	)
 
 	return &App{Config: cfg, Router: engine, DB: db}
@@ -74,15 +73,6 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg})
 }
 
-// subtitlesConfigured reports whether the active provider has a key to work
-// with, from either the .env fallback or (not visible here) a signed-in user.
-func subtitlesConfigured(cfg *config.Config) bool {
-	if cfg.SubtitleProvider == subtitle.ProviderOpenSubtitles {
-		return cfg.OpenSubtitles != nil
-	}
-	return cfg.SubDL != nil
-}
-
 // geminiKeys resolves a user's Gemini key for the learning module. There is no
 // .env fallback — AI features require the user to supply their own key.
 type geminiKeys struct {
@@ -95,30 +85,24 @@ func (g geminiKeys) Resolve(userID int64) (apiKey, model string) {
 
 // subtitleCreds resolves a user's credentials for one subtitle provider: their
 // own stored key first, then the .env fallback (flagged Shared so the handler
-// can nudge them to add their own when the shared account gets throttled). It is
-// keyed by provider so a track saved under the inactive one still downloads.
+// can nudge them to add their own when the shared account gets throttled). It
+// stays keyed by provider even though SubDL is the only one wired in — any other
+// name resolves to empty creds, which is what an id from an unwired provider
+// should get.
 type subtitleCreds struct {
 	store *user.CredentialStore
 	cfg   *config.Config
 }
 
 func (s subtitleCreds) For(provider string, userID int64) subtitle.Creds {
-	c := s.store.Get(userID)
-	switch provider {
-	case subtitle.ProviderSubDL:
-		if c.SubDLAPIKey != "" {
-			return subtitle.Creds{APIKey: c.SubDLAPIKey}
-		}
-		if s.cfg.SubDL != nil {
-			return subtitle.Creds{APIKey: s.cfg.SubDL.APIKey, Shared: true}
-		}
-	case subtitle.ProviderOpenSubtitles:
-		if c.OpenSubtitlesAPIKey != "" {
-			return subtitle.Creds{APIKey: c.OpenSubtitlesAPIKey, Username: c.OpenSubtitlesUsername, Password: c.OpenSubtitlesPassword}
-		}
-		if o := s.cfg.OpenSubtitles; o != nil {
-			return subtitle.Creds{APIKey: o.APIKey, Username: o.Username, Password: o.Password, Shared: true}
-		}
+	if provider != subtitle.ProviderSubDL {
+		return subtitle.Creds{}
+	}
+	if key := s.store.Get(userID).SubDLAPIKey; key != "" {
+		return subtitle.Creds{APIKey: key}
+	}
+	if s.cfg.SubDL != nil {
+		return subtitle.Creds{APIKey: s.cfg.SubDL.APIKey, Shared: true}
 	}
 	return subtitle.Creds{}
 }

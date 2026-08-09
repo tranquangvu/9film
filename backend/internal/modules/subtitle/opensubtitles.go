@@ -1,8 +1,16 @@
 package subtitle
 
-// OpenSubtitles was the original subtitle source. It is no longer the default
-// (see SUBTITLE_PROVIDER) but stays registered so ids saved under it keep
-// downloading, and so switching back is a config change.
+// OpenSubtitles was the original subtitle source. It is NOT wired into the app:
+// Module registers SubDL alone, nothing calls NewOpenSubtitles, and no
+// credentials reach it — an "opensubtitles:" id returns "unknown provider".
+//
+// The implementation is kept whole and compiling so it doesn't rot. Wiring it
+// back in takes three steps:
+//  1. pass NewOpenSubtitles() to NewSubtitles in module.go (first argument if it
+//     should be the one that searches),
+//  2. give subtitleCreds in app.go an opensubtitles case, which means restoring
+//     the key/username/password on user.Credentials and the credentials table,
+//  3. re-expose those fields in the profile Connections form.
 
 import (
 	"bytes"

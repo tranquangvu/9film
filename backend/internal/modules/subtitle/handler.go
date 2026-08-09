@@ -109,8 +109,8 @@ func (h *Handler) GetSubtitleVTT(c *gin.Context) {
 				"code":  "shared_rate_limited",
 			})
 		case errors.Is(err, ErrNotConfigured):
-			// Name the id's own provider: a legacy "opensubtitles:" track can be
-			// unplayable while the active provider is perfectly well configured.
+			// Name the id's own provider rather than the active one — they are the
+			// same today, but the id is what the user is actually blocked on.
 			provider, _, ok := ParseID(id)
 			if !ok {
 				provider = h.subs.ActiveName()
