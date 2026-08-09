@@ -124,6 +124,9 @@ func (p *subdl) Search(creds Creds, params SubtitleSearchParams) ([]SubtitleOpti
 // DownloadVTT takes "<archive path>[|SxxEyy]" as its ref — see subdlRef.
 func (p *subdl) DownloadVTT(creds Creds, ref string) (string, error) {
 	archivePath, hint, _ := strings.Cut(ref, "|")
+	// Ids minted before stripQuery existed still carry "?api_key=…"; drop it here
+	// too so an old id doesn't put a key (possibly a rotated one) back on the wire.
+	archivePath = stripQuery(archivePath)
 	if archivePath == "" {
 		return "", fmt.Errorf("invalid SubDL subtitle ref %q", ref)
 	}
@@ -154,8 +157,23 @@ func (p *subdl) DownloadVTT(creds Creds, ref string) (string, error) {
 // and doesn't collide with the ':' that ParseID splits on, so the ref stays
 // opaque to everything above this provider.
 func subdlRef(archivePath string, p SubtitleSearchParams) string {
+	archivePath = stripQuery(archivePath)
 	if p.MediaType == "tv" && p.Season != nil && p.Episode != nil {
 		return fmt.Sprintf("%s|S%02dE%02d", archivePath, *p.Season, *p.Episode)
+	}
+	return archivePath
+}
+
+// stripQuery drops the query string from a SubDL archive path. Search results
+// come back with the account's own key already spliced in
+// ("/subtitle/x.zip?api_key=…"), and the path becomes part of the subtitle id
+// that is handed to the browser and stored in watch history — so leaving it
+// would publish the server's shared key to every caller of /api/subtitle/search.
+// dl.subdl.com serves the archive without it; DownloadVTT authenticates with the
+// X-API-KEY header instead.
+func stripQuery(archivePath string) string {
+	if i := strings.IndexByte(archivePath, '?'); i >= 0 {
+		return archivePath[:i]
 	}
 	return archivePath
 }

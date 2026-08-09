@@ -185,6 +185,23 @@ func Migrate(db *sql.DB) error {
 		return err
 	}
 
+	// SubDL search results arrive with the account's API key spliced into the
+	// archive path, and it used to ride along into the stored subtitle id. Cut it
+	// back out, keeping any "|SxxEyy" episode hint that follows it — without that
+	// the season-pack unpacker would lose track of which episode a ref means.
+	// Idempotent: after this no row still matches. The keys that already reached a
+	// browser are not recoverable, so rotate SUBDL_API_KEY as well.
+	if _, err := db.Exec(
+		`UPDATE history
+		    SET sub_ref = substr(sub_ref, 1, instr(sub_ref, '?api_key=') - 1) ||
+		                  CASE WHEN instr(sub_ref, '|') > 0
+		                       THEN substr(sub_ref, instr(sub_ref, '|'))
+		                       ELSE '' END
+		  WHERE instr(sub_ref, '?api_key=') > 0`,
+	); err != nil {
+		return err
+	}
+
 	// Word illustrations were removed; drop what older databases still carry.
 	if _, err := db.Exec(`DROP TABLE IF EXISTS word_images`); err != nil {
 		return err

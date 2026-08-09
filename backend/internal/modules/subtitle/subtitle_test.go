@@ -269,3 +269,56 @@ func TestSubDLDownloadUnpacksSeasonPack(t *testing.T) {
 		t.Fatal("DownloadVTT() returned the wrong episode from the pack")
 	}
 }
+
+// SubDL hands back archive paths with the caller's own API key already in the
+// query string. That path becomes the subtitle id the browser sees, so the key
+// must not survive into it — and an id minted before that was true must still
+// download, without putting the key back on the wire.
+func TestSubDLKeepsAPIKeyOutOfIDs(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":true,"subtitles":[
+			{"release_name":"Show.S01E02.WEB","language":"EN","url":"/subtitle/1-2.zip?api_key=secret"}
+		]}`))
+	}))
+	defer srv.Close()
+
+	restoreAPI := subdlAPIBase
+	subdlAPIBase = srv.URL
+	defer func() { subdlAPIBase = restoreAPI }()
+
+	season, episode := 1, 2
+	opts, err := NewSubDL().Search(Creds{APIKey: "secret"}, SubtitleSearchParams{
+		IMDbID: "tt1375666", MediaType: "tv", Season: &season, Episode: &episode,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if want := "subdl:/subtitle/1-2.zip|S01E02"; opts[0].ID != want {
+		t.Errorf("ID = %q, want %q — the api_key must be stripped, the episode hint kept", opts[0].ID, want)
+	}
+
+	// A legacy id that still carries the key downloads, and the key reaches the
+	// CDN only as a header.
+	var gotURL, gotHeader string
+	dl := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotURL, gotHeader = r.URL.String(), r.Header.Get("X-API-KEY")
+		_, _ = w.Write(makeZip(t, map[string]string{
+			"Show.S01E02.srt": "1\n00:00:01,000 --> 00:00:02,000\nhello\n",
+		}))
+	}))
+	defer dl.Close()
+
+	restoreDL := subdlDownloadBase
+	subdlDownloadBase = dl.URL
+	defer func() { subdlDownloadBase = restoreDL }()
+
+	if _, err := NewSubDL().DownloadVTT(Creds{APIKey: "secret"}, "/subtitle/1-2.zip?api_key=secret|S01E02"); err != nil {
+		t.Fatalf("DownloadVTT on a legacy ref: %v", err)
+	}
+	if gotURL != "/subtitle/1-2.zip" {
+		t.Errorf("download URL = %q, want the key stripped", gotURL)
+	}
+	if gotHeader != "secret" {
+		t.Errorf("X-API-KEY = %q, want the key sent as a header", gotHeader)
+	}
+}
