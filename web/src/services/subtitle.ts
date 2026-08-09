@@ -34,7 +34,7 @@ export async function getSubtitles(
   const query = buildSearchQuery(ctx);
   if (!query) return [];
 
-  // Authed so the user's own OpenSubtitles key is used (falls back to .env).
+  // Authed so the user's own subtitle-provider key is used (falls back to .env).
   const json = await apiFetch<{ subtitles?: SubtitleOption[] }>(`/api/subtitle/search?${query}`, { signal });
   return json.subtitles ?? [];
 }

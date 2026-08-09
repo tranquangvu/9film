@@ -68,7 +68,9 @@ func Migrate(db *sql.DB) error {
 		)`,
 		// A row per (user, title, episode) holding both the resume point and the
 		// chosen subtitle. position/duration are 0 for a subtitle-only row (a track
-		// picked before any progress); sub_file_id is NULL when no subtitle is set.
+		// picked before any progress). sub_ref is the opaque "<provider>:<ref>"
+		// subtitle id, empty when none is set; sub_file_id is the legacy
+		// OpenSubtitles-only id, kept for the backfill below and no longer written.
 		`CREATE TABLE IF NOT EXISTS history (
 			user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id      TEXT NOT NULL,
@@ -77,6 +79,7 @@ func Migrate(db *sql.DB) error {
 			position     REAL NOT NULL DEFAULT 0,
 			duration     REAL NOT NULL DEFAULT 0,
 			sub_file_id  INTEGER,
+			sub_ref      TEXT NOT NULL DEFAULT '',
 			sub_language TEXT NOT NULL DEFAULT '',
 			updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
 			PRIMARY KEY (user_id, imdb_id, season, episode)
@@ -94,6 +97,7 @@ func Migrate(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS credentials (
 			user_id                INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			gemini_api_key         TEXT NOT NULL DEFAULT '',
+			subdl_api_key          TEXT NOT NULL DEFAULT '',
 			opensubtitles_api_key  TEXT NOT NULL DEFAULT '',
 			opensubtitles_username TEXT NOT NULL DEFAULT '',
 			opensubtitles_password TEXT NOT NULL DEFAULT '',
@@ -162,6 +166,22 @@ func Migrate(db *sql.DB) error {
 	// CREATE TABLE IF NOT EXISTS won't add columns to an existing table, so these
 	// backfill them in place (idempotent — skipped when the column is present).
 	if err := ensureColumn(db, "words", "title", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "history", "sub_ref", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "credentials", "subdl_api_key", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+
+	// Subtitle ids became opaque "<provider>:<ref>" strings when SubDL was added;
+	// rows written before that hold a bare OpenSubtitles file id. Idempotent —
+	// only rows the backfill hasn't touched yet match.
+	if _, err := db.Exec(
+		`UPDATE history SET sub_ref = 'opensubtitles:' || sub_file_id
+		   WHERE sub_ref = '' AND sub_file_id IS NOT NULL AND sub_file_id > 0`,
+	); err != nil {
 		return err
 	}
 

@@ -21,6 +21,7 @@ type Settings struct {
 // Credentials are a user's own API keys for the optional integrations.
 type Credentials struct {
 	GeminiAPIKey          string
+	SubDLAPIKey           string
 	OpenSubtitlesAPIKey   string
 	OpenSubtitlesUsername string
 	OpenSubtitlesPassword string
@@ -33,8 +34,13 @@ type Credentials struct {
 type CredentialStatus struct {
 	GeminiKeySet             bool `json:"geminiKeySet"`
 	GeminiConfigured         bool `json:"geminiConfigured"`
+	SubDLAPIKeySet           bool `json:"subdlApiKeySet"`
+	SubDLConfigured          bool `json:"subdlConfigured"`
 	OpenSubtitlesAPIKeySet   bool `json:"openSubtitlesApiKeySet"`
 	OpenSubtitlesUsernameSet bool `json:"openSubtitlesUsernameSet"`
 	OpenSubtitlesPasswordSet bool `json:"openSubtitlesPasswordSet"`
 	OpenSubtitlesConfigured  bool `json:"openSubtitlesConfigured"`
+	// SubtitleProvider is the source the server actually searches, so the UI can
+	// name it and mark the other one as inactive.
+	SubtitleProvider string `json:"subtitleProvider"`
 }

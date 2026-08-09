@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -14,10 +15,19 @@ type OpenSubtitlesConfig struct {
 	Password string
 }
 
+type SubDLConfig struct {
+	APIKey string
+}
+
 type Config struct {
-	Port          int
-	Host          string
-	OpenSubtitles *OpenSubtitlesConfig
+	Port int
+	Host string
+	// SubtitleProvider is the source subtitle searches go to: "subdl" (default)
+	// or "opensubtitles". Both stay compiled in either way, so a track saved under
+	// the other one still downloads.
+	SubtitleProvider string
+	SubDL            *SubDLConfig
+	OpenSubtitles    *OpenSubtitlesConfig
 
 	JWTSecret string
 	TokenTTL  time.Duration
@@ -57,13 +67,27 @@ func Load() *Config {
 		}
 	}
 
+	var subDL *SubDLConfig
+	if apiKey := trim(os.Getenv("SUBDL_API_KEY")); apiKey != "" {
+		subDL = &SubDLConfig{APIKey: apiKey}
+	}
+
+	// Anything but an explicit opt-out lands on SubDL, so a typo can't quietly
+	// leave the server on the legacy provider.
+	provider := strings.ToLower(trim(os.Getenv("SUBTITLE_PROVIDER")))
+	if provider != "opensubtitles" {
+		provider = "subdl"
+	}
+
 	return &Config{
-		Port:          port,
-		Host:          host,
-		OpenSubtitles: openSubs,
-		JWTSecret:     trim(os.Getenv("JWT_SECRET")),
-		TokenTTL:      time.Duration(ttlHours) * time.Hour,
-		DBPath:        dbPath,
+		Port:             port,
+		Host:             host,
+		SubtitleProvider: provider,
+		SubDL:            subDL,
+		OpenSubtitles:    openSubs,
+		JWTSecret:        trim(os.Getenv("JWT_SECRET")),
+		TokenTTL:         time.Duration(ttlHours) * time.Hour,
+		DBPath:           dbPath,
 	}
 }
 

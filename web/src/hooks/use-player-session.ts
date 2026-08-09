@@ -10,7 +10,7 @@ import {
   type EpisodeMap,
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
-import { orderSubs, pickSubs, getSubtitlePref, setSubtitlePref } from '@/utils/subtitle';
+import { listSubs, getSubtitlePref, setSubtitlePref } from '@/utils/subtitle';
 import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
@@ -36,7 +36,7 @@ export function usePlayerSession(
       : null,
   );
   const [userStreamUrl, setStreamUrl] = useState<string | null>(null);
-  const [userSubId, setUserSubId] = useState<number | null>(null);
+  const [userSubId, setUserSubId] = useState<string | null>(null);
 
   const mediaId = parseId(titleId);
 
@@ -191,12 +191,12 @@ export function usePlayerSession(
 
   const subtitleQuery = useSubtitlesQuery(resolvedStreamParams, imdbId, settings.defaultSubtitleLang);
 
-  const resolvedSubs = useMemo(() => {
-    if (!subtitleQuery.data || !titleData || !resolvedStreamParams) return null;
-    return pickSubs(subtitleQuery.data, titleData, resolvedStreamParams, settings.defaultSubtitleLang);
-  }, [subtitleQuery.data, titleData, resolvedStreamParams, settings.defaultSubtitleLang]);
+  // Everything the provider returned, in the order it returned it.
+  const subList = useMemo(() => listSubs(subtitleQuery.data ?? []), [subtitleQuery.data]);
 
-  const autoSubId = resolvedSubs?.fileId ?? null;
+  // Nothing saved and nothing picked yet — take the provider's first result,
+  // which is the one it ranked most relevant for this title/episode.
+  const autoSubId = subList[0]?.id ?? null;
 
   const saveSubtitleMut = useSaveSubtitle();
   // Per-episode (DB-backed, follows the signed-in user across devices), falling
@@ -206,22 +206,21 @@ export function usePlayerSession(
     [currentProgress?.subtitlePref, titleId],
   );
 
-  // Prefer the exact release (fileId), else any track in the same language.
+  // Prefer the exact release (id), else any track in the same language — which is
+  // also what catches a preference saved under a provider that's no longer active.
+  // Language is compared case-insensitively: SubDL lowercases its codes and
+  // OpenSubtitles doesn't, so a pref can cross providers.
   const prefSubId = useMemo(() => {
-    if (!resolvedSubs || !savedSubPref) return null;
+    if (!savedSubPref) return null;
+    const lang = savedSubPref.language?.toLowerCase();
     const match =
-      resolvedSubs.list.find((s) => s.fileId === savedSubPref.fileId) ??
-      resolvedSubs.list.find((s) => s.language === savedSubPref.language);
-    return match?.fileId ?? null;
-  }, [resolvedSubs, savedSubPref]);
+      subList.find((s) => s.id === savedSubPref.id) ??
+      subList.find((s) => s.language?.toLowerCase() === lang);
+    return match?.id ?? null;
+  }, [subList, savedSubPref]);
 
   // In-session pick wins; then the persisted preference; then the auto pick.
   const selectedSubId = userSubId ?? prefSubId ?? autoSubId;
-
-  const subList = useMemo(
-    () => orderSubs(resolvedSubs?.list ?? [], selectedSubId),
-    [resolvedSubs, selectedSubId],
-  );
 
   function handleEpisodeChange(nextSeason: number, nextEpisode: number) {
     setSelected({ season: nextSeason, episode: nextEpisode });
@@ -229,10 +228,10 @@ export function usePlayerSession(
     setUserSubId(null);
   }
 
-  function handleSubtitleTrackChange(fileId: number | null) {
-    setUserSubId(fileId);
-    const opt = fileId != null ? resolvedSubs?.list.find((s) => s.fileId === fileId) : null;
-    const pref = opt ? { fileId: opt.fileId, language: opt.language } : null;
+  function handleSubtitleTrackChange(id: string | null) {
+    setUserSubId(id);
+    const opt = id != null ? subList.find((s) => s.id === id) : null;
+    const pref = opt ? { id: opt.id, language: opt.language } : null;
     setSubtitlePref(titleId, pref); // localStorage (instant + offline fallback)
     if (isAuthenticated && pref) {
       saveSubtitleMut.mutate({
@@ -244,15 +243,15 @@ export function usePlayerSession(
     }
   }
 
-  const selectedSub = subList.find((s) => s.fileId === selectedSubId) ?? null;
+  const selectedSub = subList.find((s) => s.id === selectedSubId) ?? null;
 
   // Parsed subtitle cues drive the interactive overlay + transcript panel. Only
   // fetched/parsed when learning mode is on; reuses the browser-cached VTT file.
   const cuesQuery = useSubtitleCues(settings.learningMode ? selectedSubId : null);
   const cues = useMemo(() => cuesQuery.data ?? [], [cuesQuery.data]);
 
-  // The shared OpenSubtitles account got rate-limited and the user has no key of
-  // their own — drives the "add your own credentials" prompt on the watch page.
+  // The shared subtitle account got rate-limited and the user has no key of their
+  // own — drives the "add your own credentials" prompt on the watch page.
   const subtitleRateLimited =
     cuesQuery.error instanceof ApiError && cuesQuery.error.code === 'shared_rate_limited';
 

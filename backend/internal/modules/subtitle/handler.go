@@ -2,8 +2,10 @@ package subtitle
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bentran/nicefilm/backend/internal/logger"
 	"github.com/bentran/nicefilm/backend/internal/middleware"
@@ -11,31 +13,28 @@ import (
 	"go.uber.org/zap"
 )
 
-// CredsResolver returns the OpenSubtitles credentials to use for a user — the
-// user's own keys, or the .env fallback — composed at the root.
-type CredsResolver interface {
-	For(userID int64) Creds
-}
+// maxSubtitleIDLen bounds the opaque id: real ones are well under 100 bytes, and
+// it goes straight into an upstream URL and the history table.
+const maxSubtitleIDLen = 512
 
 type Handler struct {
-	subs  Subtitles
-	creds CredsResolver
+	subs Subtitles
 }
 
-func NewHandler(subs Subtitles, creds CredsResolver) *Handler {
-	return &Handler{subs: subs, creds: creds}
+func NewHandler(subs Subtitles) *Handler {
+	return &Handler{subs: subs}
 }
 
-func notConfigured(c *gin.Context) {
+func (h *Handler) notConfigured(c *gin.Context, provider string) {
 	c.JSON(http.StatusServiceUnavailable, gin.H{
-		"error": "OpenSubtitles is not configured. Add your API key in Connections.",
+		"error": fmt.Sprintf("%s is not configured. Add your API key in Connections.", providerLabel(provider)),
 	})
 }
 
 func (h *Handler) SearchSubtitles(c *gin.Context) {
-	creds := h.creds.For(middleware.UserID(c))
-	if !creds.Configured() {
-		notConfigured(c)
+	userID := middleware.UserID(c)
+	if !h.subs.Configured(userID) {
+		h.notConfigured(c, h.subs.ActiveName())
 		return
 	}
 
@@ -72,8 +71,12 @@ func (h *Handler) SearchSubtitles(c *gin.Context) {
 		params.Episode = &n
 	}
 
-	subs, err := h.subs.SearchSubtitles(creds, params)
+	subs, err := h.subs.Search(userID, params)
 	if err != nil {
+		if errors.Is(err, ErrNotConfigured) {
+			h.notConfigured(c, h.subs.ActiveName())
+			return
+		}
 		logger.Get().Warn("subtitle search failed", zap.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -83,32 +86,41 @@ func (h *Handler) SearchSubtitles(c *gin.Context) {
 }
 
 func (h *Handler) GetSubtitleVTT(c *gin.Context) {
-	creds := h.creds.For(middleware.UserID(c))
-	if !creds.Configured() {
-		notConfigured(c)
+	id := strings.TrimSpace(c.Query("id"))
+	if id == "" {
+		// Deprecated alias: a browser still running the pre-provider bundle sends a
+		// bare OpenSubtitles file id, which ParseID resolves.
+		id = strings.TrimSpace(c.Query("file_id"))
+	}
+	if id == "" || len(id) > maxSubtitleIDLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "valid id required"})
 		return
 	}
 
-	fileIDRaw := c.Query("file_id")
-	fileID, err := strconv.Atoi(fileIDRaw)
-	if err != nil || fileID <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "valid file_id required"})
-		return
-	}
-
-	vtt, err := h.subs.DownloadSubtitleVTT(creds, fileID)
+	vtt, err := h.subs.DownloadVTT(middleware.UserID(c), id)
 	if err != nil {
-		logger.Get().Warn("subtitle VTT failed", zap.Int("file_id", fileID), zap.Error(err))
+		logger.Get().Warn("subtitle VTT failed", zap.String("id", id), zap.Error(err))
+		switch {
 		// When the shared .env account is the one being throttled, tell the client
-		// so it can prompt the user to add their own OpenSubtitles credentials.
-		if errors.Is(err, ErrRateLimited) && creds.Shared {
+		// so it can prompt the user to add their own key.
+		case errors.Is(err, ErrSharedRateLimited):
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "The shared OpenSubtitles account hit its rate limit. Add your own OpenSubtitles API key, username, and password in Connections to keep downloading subtitles.",
+				"error": "The shared subtitle account hit its rate limit. Add your own subtitle provider API key in Connections to keep downloading subtitles.",
 				"code":  "shared_rate_limited",
 			})
-			return
+		case errors.Is(err, ErrNotConfigured):
+			// Name the id's own provider: a legacy "opensubtitles:" track can be
+			// unplayable while the active provider is perfectly well configured.
+			provider, _, ok := ParseID(id)
+			if !ok {
+				provider = h.subs.ActiveName()
+			}
+			h.notConfigured(c, provider)
+		case errors.Is(err, ErrUnknownProvider):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		}
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -9,6 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// maxSubtitleIDLen bounds the opaque "<provider>:<ref>" subtitle id we store.
+// Real ones are well under 100 bytes.
+const maxSubtitleIDLen = 512
+
 type Handler struct {
 	svc Service
 }
@@ -72,8 +76,9 @@ func (h *Handler) PutSubtitle(c *gin.Context) {
 		return
 	}
 	p.ImdbID = strings.TrimSpace(p.ImdbID)
-	if p.ImdbID == "" || p.FileID <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId and a positive fileId are required"})
+	p.ID = strings.TrimSpace(p.ID)
+	if p.ImdbID == "" || p.ID == "" || len(p.ID) > maxSubtitleIDLen {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "imdbId and a subtitle id are required"})
 		return
 	}
 	if err := h.svc.UpsertSubtitle(middleware.UserID(c), p); err != nil {

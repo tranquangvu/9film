@@ -49,7 +49,7 @@ function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
   // A <track> can't send headers, so the JWT rides as ?token= for the user's key.
   const { token } = useAuth();
   const src =
-    `/api/subtitle/download?file_id=${subtitle.fileId}` +
+    `/api/subtitle/download?id=${encodeURIComponent(subtitle.id)}` +
     (token ? `&token=${encodeURIComponent(token)}` : '');
   return (
     <track

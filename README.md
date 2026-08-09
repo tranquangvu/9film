@@ -1,6 +1,6 @@
 # 9Film - NiceFilm
 
-A streaming app built with React on the frontend and Go on the backend. It streams real video from any IMDb title ID (HLS proxying, OpenSubtitles subtitles, TV episode selection) and layers an English-learning toolkit on top — vocabulary, AI definitions/translations, spelling and meaning self-tests, and SM-2 spaced-repetition review.
+A streaming app built with React on the frontend and Go on the backend. It streams real video from any IMDb title ID (HLS proxying, SubDL subtitles, TV episode selection) and layers an English-learning toolkit on top — vocabulary, AI definitions/translations, spelling and meaning self-tests, and SM-2 spaced-repetition review.
 
 ## Stack
 
@@ -25,7 +25,7 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 │   │       ├── history/           watch progress, continue-watching
 │   │       ├── title/             IMDb metadata (GraphQL)
 │   │       ├── stream/            stream resolution + HLS proxy
-│   │       ├── subtitle/          OpenSubtitles (optional)
+│   │       ├── subtitle/          SubDL / OpenSubtitles behind a provider adapter (optional)
 │   │       └── learning/          vocabulary, AI helpers, tests, SRS
 │   ├── .env.example
 │   └── Makefile
@@ -53,7 +53,7 @@ Each backend module follows a layered layout (`repo.go` → `service.go` → `ha
 | GET | `/api/title/search`, `/trending`, `/browse` | Discovery lists (cached 1h) |
 | GET | `/api/stream` | Resolve stream URLs from the CDN |
 | GET | `/hls` | HLS segment/manifest proxy with URL rewriting (mounted at root) |
-| GET | `/api/subtitle/search`, `/api/subtitle/download` | OpenSubtitles search / WebVTT download (optional) |
+| GET | `/api/subtitle/search`, `/api/subtitle/download` | Subtitle search / WebVTT download (optional) |
 | GET | `/api/learn/define`, `/api/learn/translate` | Public dictionary + translation helpers |
 | * | `/api/me/*` | Auth-required: profile, settings, API keys, favorites, history, words, tests, SRS reviews |
 
@@ -88,8 +88,16 @@ JWT_SECRET=your_secret     # required
 TOKEN_TTL_HOURS=168        # JWT lifetime, default 7 days
 DB_PATH=./nicefilm.db
 
-# Optional — subtitles (https://www.opensubtitles.com/en/consumers)
+# Subtitles — which provider searches: subdl (default) | opensubtitles.
+# Both stay available either way, so a track saved under the other one still plays.
+SUBTITLE_PROVIDER=subdl
+
+# Optional — SubDL (https://subdl.com/panel/api)
 # Leave blank to disable; /api/subtitle/* then returns 503.
+SUBDL_API_KEY=
+
+# Optional — OpenSubtitles (legacy; only searched when SUBTITLE_PROVIDER=opensubtitles).
+# Username/password are needed for downloads, not for search.
 OPENSUBTITLES_API_KEY=
 OPENSUBTITLES_USERNAME=
 OPENSUBTITLES_PASSWORD=
@@ -97,7 +105,7 @@ OPENSUBTITLES_PASSWORD=
 
 Other backend commands: `make build` / `make run` (binary at `bin/server`), `make tidy`, `go test ./...`.
 
-**API keys for the optional integrations.** AI learning features (definitions, translations, word images, graded meaning tests) run on Gemini and are **per-user only** — there is no server-side key. Sign in and paste your own key at `/profile`; without it the AI features stay disabled. OpenSubtitles can also be set per-user there, and a user key takes precedence over the `.env` one.
+**API keys for the optional integrations.** AI learning features (definitions, translations, word images, graded meaning tests) run on Gemini and are **per-user only** — there is no server-side key. Sign in and paste your own key at `/profile`; without it the AI features stay disabled. The subtitle provider keys (SubDL and OpenSubtitles) can also be set per-user there, and a user key takes precedence over the `.env` one.
 
 ### 2. Frontend
 

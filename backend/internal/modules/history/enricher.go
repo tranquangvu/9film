@@ -46,8 +46,8 @@ func (e *Enricher) Progress(userID int64, imdbID string) []title.TitleProgress {
 			DurationSeconds: r.DurationSeconds,
 			UpdatedAt:       r.UpdatedAt,
 		}
-		if r.SubFileID > 0 {
-			out[i].SubtitlePref = &title.TitleSubtitle{FileID: r.SubFileID, Language: r.SubLanguage}
+		if r.SubRef != "" {
+			out[i].SubtitlePref = &title.TitleSubtitle{ID: r.SubRef, Language: r.SubLanguage}
 		}
 	}
 	return out

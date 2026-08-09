@@ -7,8 +7,8 @@ import (
 )
 
 func RegisterRoutes(api *gin.RouterGroup, h *Handler, cfg *config.Config) {
-	// AuthOptional so a signed-in user's own OpenSubtitles keys are used; falls
-	// back to the .env keys (the resolver handles userID 0).
+	// AuthOptional so a signed-in user's own provider keys are used; falls back to
+	// the .env keys (the resolver handles userID 0).
 	sub := api.Group("/subtitle", middleware.AuthOptional(cfg))
 	sub.GET("/search", h.SearchSubtitles)
 	sub.GET("/download", h.GetSubtitleVTT)

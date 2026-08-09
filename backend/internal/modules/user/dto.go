@@ -17,6 +17,7 @@ type updateMeRequest struct {
 // unchanged so the client can update one key without resending the others.
 type updateCredentialsRequest struct {
 	GeminiApiKey          string `json:"geminiApiKey"`
+	SubdlApiKey           string `json:"subdlApiKey"`
 	OpenSubtitlesApiKey   string `json:"openSubtitlesApiKey"`
 	OpenSubtitlesUsername string `json:"openSubtitlesUsername"`
 	OpenSubtitlesPassword string `json:"openSubtitlesPassword"`

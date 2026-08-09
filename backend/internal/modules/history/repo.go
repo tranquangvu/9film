@@ -26,7 +26,7 @@ func NewRepository(db *sql.DB) Repository {
 // progress yet) are included so the saved track survives.
 func (r *repository) GetTitleProgress(userID int64, imdbID string) ([]Progress, error) {
 	rows, err := r.db.Query(
-		`SELECT imdb_id, season, episode, position, duration, sub_file_id, sub_language, updated_at
+		`SELECT imdb_id, season, episode, position, duration, sub_ref, sub_language, updated_at
 		   FROM history WHERE user_id = ? AND imdb_id = ?
 		   ORDER BY updated_at DESC`,
 		userID, imdbID,
@@ -47,14 +47,11 @@ func (r *repository) GetTitleProgress(userID int64, imdbID string) ([]Progress, 
 	return items, rows.Err()
 }
 
-// scanProgress reads one history row, mapping a NULL sub_file_id to 0.
 func scanProgress(rows *sql.Rows) (Progress, error) {
 	var p Progress
-	var subFileID sql.NullInt64
-	if err := rows.Scan(&p.ImdbID, &p.Season, &p.Episode, &p.PositionSeconds, &p.DurationSeconds, &subFileID, &p.SubLanguage, &p.UpdatedAt); err != nil {
+	if err := rows.Scan(&p.ImdbID, &p.Season, &p.Episode, &p.PositionSeconds, &p.DurationSeconds, &p.SubRef, &p.SubLanguage, &p.UpdatedAt); err != nil {
 		return Progress{}, err
 	}
-	p.SubFileID = subFileID.Int64
 	return p, nil
 }
 
@@ -64,8 +61,8 @@ func scanProgress(rows *sql.Rows) (Progress, error) {
 // list — unlike GetTitleProgress, which returns every per-episode row.
 func (r *repository) GetHistory(userID int64, limit, offset int) ([]Progress, error) {
 	rows, err := r.db.Query(
-		`SELECT imdb_id, season, episode, position, duration, sub_file_id, sub_language, updated_at FROM (
-		   SELECT imdb_id, season, episode, position, duration, sub_file_id, sub_language, updated_at,
+		`SELECT imdb_id, season, episode, position, duration, sub_ref, sub_language, updated_at FROM (
+		   SELECT imdb_id, season, episode, position, duration, sub_ref, sub_language, updated_at,
 		          ROW_NUMBER() OVER (PARTITION BY imdb_id ORDER BY updated_at DESC, rowid DESC) AS rn
 		     FROM history WHERE user_id = ? AND duration > 0
 		 ) WHERE rn = 1
@@ -112,12 +109,12 @@ func (r *repository) UpsertProgress(userID int64, p Progress) error {
 // subtitle doesn't reorder Continue Watching.
 func (r *repository) UpsertSubtitle(userID int64, p Subtitle) error {
 	_, err := r.db.Exec(
-		`INSERT INTO history (user_id, imdb_id, season, episode, position, duration, sub_file_id, sub_language)
+		`INSERT INTO history (user_id, imdb_id, season, episode, position, duration, sub_ref, sub_language)
 		   VALUES (?, ?, ?, ?, 0, 0, ?, ?)
 		   ON CONFLICT(user_id, imdb_id, season, episode) DO UPDATE SET
-		     sub_file_id = excluded.sub_file_id,
+		     sub_ref = excluded.sub_ref,
 		     sub_language = excluded.sub_language`,
-		userID, p.ImdbID, p.Season, p.Episode, p.FileID, p.Language,
+		userID, p.ImdbID, p.Season, p.Episode, p.ID, p.Language,
 	)
 	return err
 }

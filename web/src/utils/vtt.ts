@@ -1,5 +1,5 @@
 // Minimal WebVTT parser. The backend already serves VTT (converted from SRT) at
-// /api/subtitle/download?file_id=…; we parse it into timed cues so the player can
+// /api/subtitle/download?id=…; we parse it into timed cues so the player can
 // render an interactive, clickable transcript synced to playback.
 
 export interface Cue {

@@ -51,7 +51,8 @@ func NewApp() *App {
 		zap.Int("port", cfg.Port),
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),
-		zap.Bool("subtitles_configured", cfg.OpenSubtitles != nil),
+		zap.String("subtitle_provider", cfg.SubtitleProvider),
+		zap.Bool("subtitles_configured", subtitlesConfigured(cfg)),
 	)
 
 	return &App{Config: cfg, Router: engine, DB: db}
@@ -61,7 +62,7 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	api := r.Group("/api")
 
 	// Per-user API keys for the optional integrations, resolved at request time.
-	// Gemini is per-user only; OpenSubtitles falls back to the .env key.
+	// Gemini is per-user only; the subtitle providers fall back to the .env keys.
 	creds := user.NewCredentialStore(db)
 
 	user.Module(api, db, cfg)
@@ -70,7 +71,16 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
 	learning.Module(api, db, cfg, geminiKeys{store: creds})
 	stream.Module(r, api)
-	subtitle.Module(api, cfg, openSubtitlesCreds{store: creds, cfg: cfg.OpenSubtitles})
+	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg})
+}
+
+// subtitlesConfigured reports whether the active provider has a key to work
+// with, from either the .env fallback or (not visible here) a signed-in user.
+func subtitlesConfigured(cfg *config.Config) bool {
+	if cfg.SubtitleProvider == subtitle.ProviderOpenSubtitles {
+		return cfg.OpenSubtitles != nil
+	}
+	return cfg.SubDL != nil
 }
 
 // geminiKeys resolves a user's Gemini key for the learning module. There is no
@@ -83,18 +93,32 @@ func (g geminiKeys) Resolve(userID int64) (apiKey, model string) {
 	return g.store.Get(userID).GeminiAPIKey, "" // user key → generator's default model
 }
 
-// openSubtitlesCreds resolves a user's OpenSubtitles credentials (then .env).
-type openSubtitlesCreds struct {
+// subtitleCreds resolves a user's credentials for one subtitle provider: their
+// own stored key first, then the .env fallback (flagged Shared so the handler
+// can nudge them to add their own when the shared account gets throttled). It is
+// keyed by provider so a track saved under the inactive one still downloads.
+type subtitleCreds struct {
 	store *user.CredentialStore
-	cfg   *config.OpenSubtitlesConfig
+	cfg   *config.Config
 }
 
-func (o openSubtitlesCreds) For(userID int64) subtitle.Creds {
-	if c := o.store.Get(userID); c.OpenSubtitlesAPIKey != "" {
-		return subtitle.Creds{APIKey: c.OpenSubtitlesAPIKey, Username: c.OpenSubtitlesUsername, Password: c.OpenSubtitlesPassword}
-	}
-	if o.cfg != nil {
-		return subtitle.Creds{APIKey: o.cfg.APIKey, Username: o.cfg.Username, Password: o.cfg.Password, Shared: true}
+func (s subtitleCreds) For(provider string, userID int64) subtitle.Creds {
+	c := s.store.Get(userID)
+	switch provider {
+	case subtitle.ProviderSubDL:
+		if c.SubDLAPIKey != "" {
+			return subtitle.Creds{APIKey: c.SubDLAPIKey}
+		}
+		if s.cfg.SubDL != nil {
+			return subtitle.Creds{APIKey: s.cfg.SubDL.APIKey, Shared: true}
+		}
+	case subtitle.ProviderOpenSubtitles:
+		if c.OpenSubtitlesAPIKey != "" {
+			return subtitle.Creds{APIKey: c.OpenSubtitlesAPIKey, Username: c.OpenSubtitlesUsername, Password: c.OpenSubtitlesPassword}
+		}
+		if o := s.cfg.OpenSubtitles; o != nil {
+			return subtitle.Creds{APIKey: o.APIKey, Username: o.Username, Password: o.Password, Shared: true}
+		}
 	}
 	return subtitle.Creds{}
 }

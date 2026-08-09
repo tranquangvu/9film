@@ -95,20 +95,23 @@ export function useSaveProgress() {
   return useMutation({
     mutationFn: (item: ProgressItem) => putProgress(item),
     onSuccess: (saved) => {
-      const entry: TitleProgress = {
-        season: saved.season,
-        episode: saved.episode,
-        positionSeconds: saved.positionSeconds,
-        durationSeconds: saved.durationSeconds,
-        updatedAt: saved.updatedAt ?? new Date().toISOString(),
-      };
       qc.setQueriesData<TitleDetail>({ queryKey: ['title'] }, (old) => {
         if (!old || old.id !== saved.imdbId) return old;
         // Replace this episode's row (movies use season/episode 0) and move it to
-        // the front so progress stays ordered most-recent-first.
-        const rest = (old.progress ?? []).filter(
-          (p) => !(p.season === saved.season && p.episode === saved.episode),
-        );
+        // the front so progress stays ordered most-recent-first. The response
+        // carries no subtitle preference, so carry the existing one over — a save
+        // fires every few seconds during playback and would otherwise drop it.
+        const isSameEpisode = (p: TitleProgress) =>
+          p.season === saved.season && p.episode === saved.episode;
+        const entry: TitleProgress = {
+          season: saved.season,
+          episode: saved.episode,
+          positionSeconds: saved.positionSeconds,
+          durationSeconds: saved.durationSeconds,
+          subtitlePref: (old.progress ?? []).find(isSameEpisode)?.subtitlePref,
+          updatedAt: saved.updatedAt ?? new Date().toISOString(),
+        };
+        const rest = (old.progress ?? []).filter((p) => !isSameEpisode(p));
         return { ...old, progress: [entry, ...rest] };
       });
     },

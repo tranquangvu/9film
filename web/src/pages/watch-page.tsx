@@ -227,9 +227,9 @@ export function WatchPage() {
                           <span data-tour="subtitles" className="inline-flex">
                             <SelectField
                               icon={<Captions size={16} />}
-                              value={selectedSubId !== null ? String(selectedSubId) : ''}
-                              onValueChange={(v) => handleSubtitleTrackChange(v ? Number(v) : null)}
-                              options={subList.map((s) => ({ id: String(s.fileId), label: s.label }))}
+                              value={selectedSubId ?? ''}
+                              onValueChange={(v) => handleSubtitleTrackChange(v || null)}
+                              options={subList.map((s) => ({ id: s.id, label: s.label }))}
                               iconOnly
                             />
                           </span>

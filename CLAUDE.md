@@ -44,7 +44,7 @@ Shared infrastructure lives directly under `internal/`: `config/`, `database/`, 
 
 Cross-module seams are kept thin:
 - `title.Module` receives a `title.Enricher` so per-user state (favorites, watch progress, chosen subtitle) folds into title responses. `app.go` injects `history.NewEnricher(db)`, which satisfies the interface directly and forwards `FavoritedIds` to the `favorite` module — no adapter needed.
-- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `openSubtitlesCreds`). `geminiKeys` resolves the user's stored key only (no `.env` fallback); `openSubtitlesCreds` tries the user's stored key first, then the `.env` fallback.
+- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `subtitleCreds`). `geminiKeys` resolves the user's stored key only (no `.env` fallback); `subtitleCreds` is keyed by *provider* and tries the user's stored key first, then the `.env` fallback.
 
 ### Modules
 
@@ -53,7 +53,7 @@ Cross-module seams are kept thin:
 - `history/` — watch progress, continue-watching, subtitle preference; imports `title` to hydrate (one batched request per page) and `favorite` to flag favorites; provides the `title.Enricher`
 - `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO. The repo caches raw IMDb responses (single title, search/trending lists, browse pages) with a 1h TTL — *before* the service folds in per-user favorites/progress, so the cache stays user-independent. `FetchTitle`/`GetTitle` resolve one id; `FetchTitles`/`GetTitles` resolve many via IMDb's `titles(ids:[...])`, checking the cache first and batch-fetching only the misses (chunked by `titleBatchSize`) — used by the favorite/history page hydration.
 - `stream/` — stream resolution + HLS proxy (see below)
-- `subtitle/` — OpenSubtitles (optional)
+- `subtitle/` — subtitle search/download behind a provider adapter (optional; see below)
 - `learning/` — vocabulary, AI definitions/translations, self-tests, spaced repetition (see below)
 
 ### The three upstream integrations
@@ -66,14 +66,16 @@ Cross-module seams are kept thin:
 
 ### Optional integrations (degrade gracefully)
 
-- **OpenSubtitles** (`OPENSUBTITLES_API_KEY`, gated in `config.Load`) — `subtitle/` handler returns 503 when unconfigured. A per-user key (stored via `user.CredentialStore`) takes precedence over the `.env` key; otherwise the `.env` key is the fallback.
+- **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `opensubtitles.go` and `subdl.go` are the two implementations; `vtt.go`/`archive.go`/`httpx.go` hold the shared SRT→VTT, zip/gzip and fetch helpers. `service.go` resolves creds and dispatches.
+  - Subtitles are identified by an **opaque `"<provider>:<ref>"` id** (`subdl:/subtitle/x.zip|S01E02`, `opensubtitles:12345`) that flows all the way to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` into it so a season-pack ZIP can be unpacked to the right episode. `ParseID` also accepts a bare numeric id as a legacy OpenSubtitles one, and `Migrate` backfills old `history.sub_file_id` rows into `sub_ref`.
+  - `SUBTITLE_PROVIDER` (default `subdl`) picks which provider *searches*; every provider stays registered so a track saved under the other one still downloads. `SUBDL_API_KEY`/`OPENSUBTITLES_API_KEY` are shared `.env` fallbacks behind per-user keys stored via `user.CredentialStore`; the handler returns 503 when neither is set, and 429 `code:"shared_rate_limited"` when the shared account is the throttled one.
 - **Gemini** (default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests (`modules/learning/gemini.go`). **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
 
 ### Learning module
 
 Routes under `/api/learn` (public dictionary/translate helpers) and `/api/me/*` (auth-required): word list CRUD + import, per-word stats, AI word images, phrase/idiom explanation, test submission/history, and SRS reviews. Spaced repetition uses the SM-2 algorithm in `srs.go` (covered by `srs_test.go`).
 
-Config (`internal/config/config.go`): `Port` (8081), `Host` (`0.0.0.0`), `DBPath` (`./nicefilm.db`), required `JWTSecret`, and the optional `OpenSubtitles`/`Gemini` sub-configs. Auth is JWT via `middleware.AuthRequired(cfg)`.
+Config (`internal/config/config.go`): `Port` (8081), `Host` (`0.0.0.0`), `DBPath` (`./nicefilm.db`), required `JWTSecret`, `SubtitleProvider` (`subdl`), and the optional `SubDL`/`OpenSubtitles` sub-configs. Auth is JWT via `middleware.AuthRequired(cfg)`.
 
 ## Frontend architecture
 

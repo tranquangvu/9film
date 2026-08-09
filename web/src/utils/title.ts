@@ -16,7 +16,7 @@ export interface TitleProgress {
   positionSeconds: number;
   durationSeconds: number;
   // The subtitle the user picked for this episode (absent when none is set).
-  subtitlePref?: { fileId: number; language: string };
+  subtitlePref?: { id: string; language: string };
   updatedAt?: string;
 }
 

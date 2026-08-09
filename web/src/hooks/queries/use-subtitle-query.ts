@@ -12,7 +12,7 @@ export function useSaveSubtitle() {
     onSuccess: (saved) => {
       qc.setQueriesData<TitleDetail>({ queryKey: ['title'] }, (old) => {
         if (!old || old.id !== saved.imdbId) return old;
-        const subtitlePref = { fileId: saved.fileId, language: saved.language };
+        const subtitlePref = { id: saved.id, language: saved.language };
         const progress = [...(old.progress ?? [])];
         const idx = progress.findIndex((p) => p.season === saved.season && p.episode === saved.episode);
         if (idx >= 0) {

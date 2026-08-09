@@ -143,6 +143,7 @@ func (h *Handler) PutCredentials(c *gin.Context) {
 	}
 	st, err := h.svc.SaveCredentials(middleware.UserID(c), Credentials{
 		GeminiAPIKey:          strings.TrimSpace(req.GeminiApiKey),
+		SubDLAPIKey:           strings.TrimSpace(req.SubdlApiKey),
 		OpenSubtitlesAPIKey:   strings.TrimSpace(req.OpenSubtitlesApiKey),
 		OpenSubtitlesUsername: strings.TrimSpace(req.OpenSubtitlesUsername),
 		OpenSubtitlesPassword: strings.TrimSpace(req.OpenSubtitlesPassword),

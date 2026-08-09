@@ -130,6 +130,9 @@ func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialSt
 	if patch.GeminiAPIKey != "" {
 		cur.GeminiAPIKey = patch.GeminiAPIKey
 	}
+	if patch.SubDLAPIKey != "" {
+		cur.SubDLAPIKey = patch.SubDLAPIKey
+	}
 	if patch.OpenSubtitlesAPIKey != "" {
 		cur.OpenSubtitlesAPIKey = patch.OpenSubtitlesAPIKey
 	}
@@ -145,12 +148,15 @@ func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialSt
 	return s.statusOf(cur), nil
 }
 
-// statusOf reports usability. Gemini is per-user only (no .env fallback);
-// OpenSubtitles is usable from either the user's key or the server default.
+// statusOf reports usability. Gemini is per-user only (no .env fallback); the
+// subtitle providers are usable from either the user's key or the server default.
 func (s *service) statusOf(c Credentials) CredentialStatus {
 	return CredentialStatus{
 		GeminiKeySet:             c.GeminiAPIKey != "",
 		GeminiConfigured:         c.GeminiAPIKey != "",
+		SubDLAPIKeySet:           c.SubDLAPIKey != "",
+		SubDLConfigured:          c.SubDLAPIKey != "" || s.cfg.SubDL != nil,
+		SubtitleProvider:         s.cfg.SubtitleProvider,
 		OpenSubtitlesAPIKeySet:   c.OpenSubtitlesAPIKey != "",
 		OpenSubtitlesUsernameSet: c.OpenSubtitlesUsername != "",
 		OpenSubtitlesPasswordSet: c.OpenSubtitlesPassword != "",

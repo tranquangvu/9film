@@ -1,13 +1,15 @@
 import type { EmbedParams } from './stream';
-import type { TitleDetail } from './title';
 
-const LIMIT = 5;
 const PREF_KEY = 'nicefilm:subtitle-prefs';
 
 export interface SubtitleOption {
-  fileId: number;
+  // Opaque "<provider>:<ref>" handle minted by the backend (e.g. "subdl:/subtitle/x.zip").
+  // Never parsed here — it just round-trips to /api/subtitle/download.
+  id: string;
   language: string;
   label: string;
+  // 0 for providers that publish no download count (SubDL). Informational only —
+  // the list is never reordered by it.
   downloadCount: number;
   release: string;
 }
@@ -18,72 +20,37 @@ export interface SubtitleSearchContext {
   languages?: string;
 }
 
-export function pickSubs(
-  subs: SubtitleOption[],
-  title: TitleDetail,
-  params: EmbedParams,
-  preferredLang?: string,
-): { list: SubtitleOption[]; fileId: number | null } {
-  const sorted = [...subs].sort((a, b) => b.downloadCount - a.downloadCount);
-  if (!sorted.length) return { list: [], fileId: null };
-
-  // If the user has a preferred subtitle language and any match it, choose the
-  // default from that pool; otherwise fall back to the most-downloaded overall.
-  const langPool = preferredLang
-    ? sorted.filter((s) => s.language?.toLowerCase().startsWith(preferredLang.toLowerCase()))
-    : [];
-  const pool = langPool.length ? langPool : sorted;
-
-  let fileId = pool[0].fileId;
-  const name = title.title?.trim();
-
-  if (name) {
-    const base = name.replace(/\s+/g, '.');
-    let pattern = base;
-
-    if (params.mediaType === 'tv' && params.season != null && params.episode != null) {
-      const s = String(params.season).padStart(2, '0');
-      const e = String(params.episode).padStart(2, '0');
-      pattern = `${base}.S${s}E${e}`;
-    } else if (title.year) {
-      pattern = `${base}.${title.year}`;
-    }
-
-    const pl = pattern.toLowerCase();
-    const matches = pool.filter((s) => s.release.toLowerCase().includes(pl));
-    if (matches.length) {
-      fileId = (matches.find((s) => s.release.toLowerCase().includes('.bluray')) ?? matches[0]).fileId;
-    }
-  }
-
-  const top = sorted.slice(0, LIMIT);
-  const selected = sorted.find((s) => s.fileId === fileId);
-  const list = selected
-    ? [selected, ...top.filter((s) => s.fileId !== fileId)].slice(0, LIMIT)
-    : top;
-
-  return { list, fileId };
-}
-
-export function orderSubs(subs: SubtitleOption[], fileId: number | null): SubtitleOption[] {
-  if (fileId == null) return subs;
-
-  const selected = subs.find((s) => s.fileId === fileId);
-  if (!selected) return subs;
-
-  return [selected, ...subs.filter((s) => s.fileId !== fileId)].slice(0, LIMIT);
+// The provider's response, listed as-is: its own relevance order, every track it
+// returned. No sorting by download count, no preferred-language pool, no
+// release-name/BluRay heuristic, no top-N cut — the search is already scoped to
+// one title, episode and language server-side, so anything we drop here is a
+// track the user can no longer reach.
+//
+// The one thing removed is a repeated id: SubDL returns a row per release, but
+// every row of a season pack points at the same archive and so collapses onto
+// one id, which would mean duplicate keys and an ambiguous selection.
+export function listSubs(subs: SubtitleOption[]): SubtitleOption[] {
+  const seen = new Set<string>();
+  return subs.filter((s) => {
+    if (seen.has(s.id)) return false;
+    seen.add(s.id);
+    return true;
+  });
 }
 
 // Persists the subtitle a user picked on the watch page, keyed by title, so it
-// can be reselected when they return. We keep both the exact fileId (for the
-// same release) and the language (a stable fallback across episodes/releases).
+// can be reselected when they return. We keep both the exact id (for the same
+// release) and the language (a stable fallback across episodes/releases).
 
 export interface SubtitlePref {
-  fileId: number;
+  id: string;
   language: string;
 }
 
-type PrefStore = Record<string, SubtitlePref>;
+/** Prefs written before ids carried a provider hold a bare OpenSubtitles file id. */
+type StoredPref = SubtitlePref | { fileId: number; language: string };
+
+type PrefStore = Record<string, StoredPref>;
 
 function readPrefs(): PrefStore {
   try {
@@ -93,8 +60,21 @@ function readPrefs(): PrefStore {
   }
 }
 
+// Migrated on read rather than in bulk; the store normalizes the next time it's
+// written. A migrated opensubtitles: id won't match any SubDL option, so the
+// caller falls through to matching by language — and it still downloads if the
+// user does have OpenSubtitles credentials.
+function migratePref(pref: StoredPref | undefined): SubtitlePref | null {
+  if (!pref) return null;
+  if ('id' in pref && typeof pref.id === 'string') return { id: pref.id, language: pref.language };
+  if ('fileId' in pref && typeof pref.fileId === 'number') {
+    return { id: `opensubtitles:${pref.fileId}`, language: pref.language };
+  }
+  return null;
+}
+
 export function getSubtitlePref(titleId: string): SubtitlePref | null {
-  return readPrefs()[titleId] ?? null;
+  return migratePref(readPrefs()[titleId]);
 }
 
 export function setSubtitlePref(titleId: string, pref: SubtitlePref | null): void {

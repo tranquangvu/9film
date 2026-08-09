@@ -50,9 +50,10 @@ type TitleProgress struct {
 	UpdatedAt    string         `json:"updatedAt,omitempty"`
 }
 
-// TitleSubtitle is a saved subtitle selection embedded in a progress entry.
+// TitleSubtitle is a saved subtitle selection embedded in a progress entry: the
+// opaque "<provider>:<ref>" id plus its language.
 type TitleSubtitle struct {
-	FileID   int64  `json:"fileId"`
+	ID       string `json:"id"`
 	Language string `json:"language"`
 }
 

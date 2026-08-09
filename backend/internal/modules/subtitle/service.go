@@ -1,357 +1,83 @@
 package subtitle
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"regexp"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+
+	"github.com/bentran/nicefilm/backend/internal/logger"
+	"go.uber.org/zap"
 )
 
-const openSubsAPIBase = "https://api.opensubtitles.com/api/v1"
-const openSubsUserAgent = "NiceFilm/1.0"
-
-// ErrRateLimited is returned when OpenSubtitles rejects a request because the
-// account hit its rate limit (HTTP 429) or exhausted its daily download quota
-// (HTTP 406). The handler surfaces it specially when the shared .env account is
-// the one being throttled, so the user can be nudged to add their own key.
-var ErrRateLimited = errors.New("OpenSubtitles rate limit reached or download quota exceeded")
-
-// SRT-parsing regexes, compiled once (they were previously recompiled per call
-// and per cue block inside srtToVTT's loop — pure overhead on every download).
-var (
-	srtBlockSplitRe = regexp.MustCompile(`\n{2,}`)
-	srtIndexLineRe  = regexp.MustCompile(`^\d+$`)
-	srtTimeRe       = regexp.MustCompile(`^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s+-->\s+(\d{2}:\d{2}:\d{2}[,.]\d{3})`)
-)
-
-// Creds are the OpenSubtitles credentials to use for one request, resolved
-// per-user (the user's own keys, or the .env fallback) by the composition root.
-type Creds struct {
-	APIKey   string
-	Username string
-	Password string
-	// Shared is true when these came from the server's .env fallback rather than
-	// the user's own stored keys — used to nudge the user to add their own when
-	// the shared account gets rate-limited.
-	Shared bool
-}
-
-func (c Creds) Configured() bool { return c.APIKey != "" }
-
-type tokenEntry struct {
-	token     string
-	expiresAt time.Time
-}
-
-// Subtitles proxies the OpenSubtitles API using the caller-supplied credentials,
-// caching one auth token per OpenSubtitles account.
+// Subtitles resolves per-user credentials and dispatches to a provider. Search
+// always goes to the active provider; download follows the provider named in the
+// id, so a track picked before the server switched providers still plays.
 type Subtitles interface {
-	SearchSubtitles(creds Creds, params SubtitleSearchParams) ([]SubtitleOption, error)
-	DownloadSubtitleVTT(creds Creds, fileID int) (string, error)
+	Configured(userID int64) bool
+	ActiveName() string
+	Search(userID int64, params SubtitleSearchParams) ([]SubtitleOption, error)
+	DownloadVTT(userID int64, id string) (string, error)
 }
 
 type subtitles struct {
-	client  *http.Client
-	tokenMu sync.Mutex
-	tokens  map[string]*tokenEntry // keyed by OpenSubtitles username
+	active    Provider
+	providers map[string]Provider
+	creds     CredsResolver
 }
 
-func NewSubtitles() Subtitles {
-	return &subtitles{client: &http.Client{Timeout: 15 * time.Second}, tokens: map[string]*tokenEntry{}}
-}
-
-func baseSubsHeaders(apiKey string) map[string]string {
-	return map[string]string{
-		"Api-Key":    apiKey,
-		"User-Agent": openSubsUserAgent,
-		"Accept":     "application/json",
+// NewSubtitles registers every compiled-in provider and marks `active` (from
+// SUBTITLE_PROVIDER) as the one search uses. An unknown name falls back to the
+// first provider passed rather than failing the boot on a typo in .env.
+func NewSubtitles(active string, creds CredsResolver, provs ...Provider) Subtitles {
+	s := &subtitles{providers: make(map[string]Provider, len(provs)), creds: creds}
+	for _, p := range provs {
+		s.providers[p.Name()] = p
 	}
+	s.active = s.providers[active]
+	if s.active == nil {
+		s.active = provs[0]
+		logger.Get().Warn("unknown subtitle provider, falling back",
+			zap.String("requested", active), zap.String("using", s.active.Name()))
+	}
+	return s
 }
 
-func applyHeaders(req *http.Request, headers map[string]string) {
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
+func (s *subtitles) ActiveName() string { return s.active.Name() }
+
+func (s *subtitles) Configured(userID int64) bool {
+	return s.creds.For(s.active.Name(), userID).Configured()
 }
 
-func (s *subtitles) getAuthToken(creds Creds) (string, error) {
-	s.tokenMu.Lock()
-	defer s.tokenMu.Unlock()
+func (s *subtitles) Search(userID int64, params SubtitleSearchParams) ([]SubtitleOption, error) {
+	creds := s.creds.For(s.active.Name(), userID)
+	if !creds.Configured() {
+		return nil, ErrNotConfigured
+	}
+	return s.active.Search(creds, params)
+}
 
-	if t := s.tokens[creds.Username]; t != nil && time.Now().Before(t.expiresAt) {
-		return t.token, nil
+func (s *subtitles) DownloadVTT(userID int64, id string) (string, error) {
+	name, ref, ok := ParseID(id)
+	if !ok {
+		return "", fmt.Errorf("%w: malformed subtitle id %q", ErrUnknownProvider, id)
+	}
+	p := s.providers[name]
+	if p == nil {
+		return "", fmt.Errorf("%w: %q", ErrUnknownProvider, name)
 	}
 
-	payload, _ := json.Marshal(map[string]string{
-		"username": creds.Username,
-		"password": creds.Password,
-	})
-	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/login", bytes.NewReader(payload))
-	applyHeaders(req, baseSubsHeaders(creds.APIKey))
-	req.Header.Set("Content-Type", "application/json")
+	creds := s.creds.For(name, userID)
+	if !creds.Configured() {
+		return "", fmt.Errorf("%w: %s", ErrNotConfigured, providerLabel(name))
+	}
 
-	resp, err := s.client.Do(req)
+	vtt, err := p.DownloadVTT(creds, ref)
 	if err != nil {
-		return "", fmt.Errorf("OpenSubtitles login: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("OpenSubtitles login failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		Token string `json:"token"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Token == "" {
-		return "", fmt.Errorf("OpenSubtitles: no token in login response")
-	}
-
-	s.tokens[creds.Username] = &tokenEntry{
-		token:     result.Token,
-		expiresAt: time.Now().Add(23 * time.Hour),
-	}
-	return result.Token, nil
-}
-
-func imdbToNumeric(imdb string) int {
-	numeric := strings.TrimPrefix(strings.ToLower(imdb), "tt")
-	n, _ := strconv.Atoi(numeric)
-	return n
-}
-
-func (s *subtitles) SearchSubtitles(creds Creds, params SubtitleSearchParams) ([]SubtitleOption, error) {
-	q := url.Values{}
-	lang := params.Languages
-	if lang == "" {
-		lang = "en"
-	}
-	q.Set("languages", lang)
-	q.Set("order_by", "new_download_count")
-	q.Set("order_direction", "desc")
-
-	if params.IMDbID != "" {
-		numeric := imdbToNumeric(params.IMDbID)
-		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
-			q.Set("parent_imdb_id", strconv.Itoa(numeric))
-			q.Set("season_number", strconv.Itoa(*params.Season))
-			q.Set("episode_number", strconv.Itoa(*params.Episode))
-		} else {
-			q.Set("imdb_id", strconv.Itoa(numeric))
+		// Only the shared .env account being throttled is worth a special nudge —
+		// the user can fix that by adding their own key.
+		if creds.Shared && errors.Is(err, ErrRateLimited) {
+			return "", fmt.Errorf("%w: %w", ErrSharedRateLimited, err)
 		}
-	} else if params.TMDbID > 0 {
-		if params.MediaType == "tv" && params.Season != nil && params.Episode != nil {
-			q.Set("parent_tmdb_id", strconv.Itoa(params.TMDbID))
-			q.Set("season_number", strconv.Itoa(*params.Season))
-			q.Set("episode_number", strconv.Itoa(*params.Episode))
-		} else {
-			q.Set("tmdb_id", strconv.Itoa(params.TMDbID))
-		}
-	} else {
-		return nil, nil
-	}
-
-	req, _ := http.NewRequest(http.MethodGet, openSubsAPIBase+"/subtitles?"+q.Encode(), nil)
-	applyHeaders(req, baseSubsHeaders(creds.APIKey))
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("OpenSubtitles search: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("OpenSubtitles search failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		Data []struct {
-			Attributes struct {
-				Language         string `json:"language"`
-				Release          string `json:"release"`
-				DownloadCount    int    `json:"download_count"`
-				NewDownloadCount int    `json:"new_download_count"`
-				Files            []struct {
-					FileID   int    `json:"file_id"`
-					FileName string `json:"file_name"`
-				} `json:"files"`
-			} `json:"attributes"`
-		} `json:"data"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode OpenSubtitles search: %w", err)
-	}
-
-	options := make([]SubtitleOption, 0, len(result.Data))
-	for _, item := range result.Data {
-		attr := item.Attributes
-		if len(attr.Files) == 0 || attr.Files[0].FileID == 0 {
-			continue
-		}
-		file := attr.Files[0]
-		lang := attr.Language
-		if lang == "" {
-			lang = "und"
-		}
-		label := strings.ToUpper(lang)
-		if attr.Release != "" {
-			label = label + " — " + attr.Release
-		}
-		count := attr.NewDownloadCount
-		if count == 0 {
-			count = attr.DownloadCount
-		}
-		options = append(options, SubtitleOption{
-			FileID:        file.FileID,
-			Language:      lang,
-			Label:         label,
-			DownloadCount: count,
-			Release:       attr.Release,
-		})
-	}
-
-	return options, nil
-}
-
-func (s *subtitles) DownloadSubtitleVTT(creds Creds, fileID int) (string, error) {
-	if creds.Username == "" || creds.Password == "" {
-		return "", fmt.Errorf("OpenSubtitles download requires a username and password")
-	}
-
-	token, err := s.getAuthToken(creds)
-	if err != nil {
 		return "", err
 	}
-
-	payload, _ := json.Marshal(map[string]int{"file_id": fileID})
-	req, _ := http.NewRequest(http.MethodPost, openSubsAPIBase+"/download", bytes.NewReader(payload))
-	headers := baseSubsHeaders(creds.APIKey)
-	applyHeaders(req, headers)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("OpenSubtitles download: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		// 429 = rate-limited; 406 = daily download quota exhausted.
-		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNotAcceptable {
-			return "", fmt.Errorf("%w: %s", ErrRateLimited, strings.TrimSpace(string(body)))
-		}
-		return "", fmt.Errorf("OpenSubtitles download failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var dlResult struct {
-		Link string `json:"link"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&dlResult); err != nil || dlResult.Link == "" {
-		return "", fmt.Errorf("OpenSubtitles: no link in download response")
-	}
-
-	text, err := s.fetchSubtitleText(dlResult.Link)
-	if err != nil {
-		return "", err
-	}
-
-	lower := strings.ToLower(dlResult.Link)
-	if strings.HasSuffix(lower, ".vtt") {
-		if strings.HasPrefix(text, "WEBVTT") {
-			return text, nil
-		}
-		return "WEBVTT\n\n" + text, nil
-	}
-	return srtToVTT(text), nil
-}
-
-func (s *subtitles) fetchSubtitleText(downloadURL string) (string, error) {
-	req, _ := http.NewRequest(http.MethodGet, downloadURL, nil)
-	req.Header.Set("User-Agent", openSubsUserAgent)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("subtitle file fetch: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("subtitle file fetch failed (%d)", resp.StatusCode)
-	}
-
-	rawBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read subtitle: %w", err)
-	}
-
-	if len(rawBytes) >= 2 && rawBytes[0] == 0x1f && rawBytes[1] == 0x8b {
-		gr, err := gzip.NewReader(bytes.NewReader(rawBytes))
-		if err != nil {
-			return "", fmt.Errorf("gzip reader: %w", err)
-		}
-		defer gr.Close()
-		decompressed, err := io.ReadAll(gr)
-		if err != nil {
-			return "", fmt.Errorf("gzip decompress: %w", err)
-		}
-		rawBytes = decompressed
-	}
-
-	return string(rawBytes), nil
-}
-
-func srtToVTT(srt string) string {
-	normalized := strings.ReplaceAll(srt, "\r\n", "\n")
-	normalized = strings.ReplaceAll(normalized, "\r", "\n")
-
-	if strings.TrimSpace(normalized) == "" {
-		return "WEBVTT\n\n"
-	}
-
-	blocks := srtBlockSplitRe.Split(normalized, -1)
-	var cues []string
-
-	for _, block := range blocks {
-		block = strings.TrimSpace(block)
-		if block == "" {
-			continue
-		}
-		lines := strings.Split(block, "\n")
-		if len(lines) < 2 {
-			continue
-		}
-
-		timeIdx := 0
-		if srtIndexLineRe.MatchString(strings.TrimSpace(lines[0])) {
-			timeIdx = 1
-		}
-
-		if timeIdx >= len(lines) {
-			continue
-		}
-
-		timeLine := strings.TrimSpace(lines[timeIdx])
-		if !srtTimeRe.MatchString(timeLine) {
-			continue
-		}
-
-		vttTimeLine := strings.ReplaceAll(timeLine, ",", ".")
-		text := strings.TrimSpace(strings.Join(lines[timeIdx+1:], "\n"))
-		if text == "" {
-			continue
-		}
-		cues = append(cues, vttTimeLine+"\n"+text)
-	}
-
-	return "WEBVTT\n\n" + strings.Join(cues, "\n\n") + "\n"
+	return vtt, nil
 }

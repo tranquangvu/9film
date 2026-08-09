@@ -278,6 +278,7 @@ function ConnectionsCard() {
   const { toast } = useToast();
 
   const [gemini, setGemini] = useState('');
+  const [subdlKey, setSubdlKey] = useState('');
   const [osKey, setOsKey] = useState('');
   const [osUser, setOsUser] = useState('');
   const [osPass, setOsPass] = useState('');
@@ -286,6 +287,7 @@ function ConnectionsCard() {
     save.mutate(
       {
         geminiApiKey: gemini || undefined,
+        subdlApiKey: subdlKey || undefined,
         openSubtitlesApiKey: osKey || undefined,
         openSubtitlesUsername: osUser || undefined,
         openSubtitlesPassword: osPass || undefined,
@@ -293,6 +295,7 @@ function ConnectionsCard() {
       {
         onSuccess: () => {
           setGemini('');
+          setSubdlKey('');
           setOsKey('');
           setOsUser('');
           setOsPass('');
@@ -332,8 +335,29 @@ function ConnectionsCard() {
         <ConnectionHeader
           icon={Captions}
           title="Subtitles"
-          provider="Open Subtitles"
+          provider="SubDL"
           desc="Captions for any title + clickable Learn-English mode."
+          href="https://subdl.com/panel/api"
+          badge={status && <ConfiguredBadge on={status.subdlApiKeySet} />}
+        />
+        <Input
+          type="password"
+          value={subdlKey}
+          onChange={(e) => setSubdlKey(e.target.value)}
+          placeholder={status?.subdlApiKeySet ? '•••••••••• (set — type to replace)' : 'SubDL API key'}
+          autoComplete="off"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="h-px bg-zinc-800 my-5" />
+
+      <div className="space-y-2.5">
+        <ConnectionHeader
+          icon={Captions}
+          title="Subtitles (legacy)"
+          provider="Open Subtitles"
+          desc="The previous subtitle source, kept for saved tracks."
           href="https://www.opensubtitles.com/en/consumers"
           badge={status && <ConfiguredBadge on={status.openSubtitlesApiKeySet} />}
         />
@@ -363,7 +387,10 @@ function ConnectionsCard() {
             className={inputClass}
           />
         </div>
-        <p className="text-[11px] text-zinc-600">Username &amp; password only needed to download files.</p>
+        <p className="text-[11px] text-zinc-600">
+          Username &amp; password only needed to download files. Only searched when the server runs with
+          SUBTITLE_PROVIDER=opensubtitles.
+        </p>
       </div>
 
       <div className="flex mt-5">
