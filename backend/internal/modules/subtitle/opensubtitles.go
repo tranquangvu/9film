@@ -5,14 +5,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/providers/opensubtitles"
+	"github.com/bentran/nicefilm/backend/internal/clients/opensubtitles"
 )
 
 // OpenSubtitles was the original subtitle source. It is NOT wired into the app:
 // Module registers SubDL alone, nothing calls NewOpenSubtitles, and no
 // credentials reach it — an "opensubtitles:" id returns "unknown provider".
 //
-// This adapter and the client in providers/opensubtitles are kept whole and
+// This adapter and the client in clients/opensubtitles are kept whole and
 // compiling so they don't rot. Wiring it back in takes three steps:
 //  1. pass NewOpenSubtitles(opensubtitles.New()) to subtitle.Module in app.go
 //     (first in the list if it should be the one that searches),
@@ -43,7 +43,7 @@ func (p *osProvider) Search(creds Creds, params SubtitleSearchParams) ([]Subtitl
 		Languages: params.Languages,
 	})
 	if err != nil {
-		return nil, rateLimited(err)
+		return nil, rateLimited(err, opensubtitles.ErrRateLimited)
 	}
 
 	options := make([]SubtitleOption, 0, len(subs))
@@ -76,7 +76,7 @@ func (p *osProvider) DownloadVTT(creds Creds, ref string) (string, error) {
 
 	raw, filename, err := p.api.Download(osCreds(creds), fileID)
 	if err != nil {
-		return "", rateLimited(err)
+		return "", rateLimited(err, opensubtitles.ErrRateLimited)
 	}
 	name, data, err := subtitleFromArchive(raw, "")
 	if err != nil {

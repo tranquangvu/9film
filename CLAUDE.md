@@ -36,14 +36,16 @@ The backend hides upstream sources, adds auth headers, rewrites responses, and d
 
 `Repository`/`Service` are interfaces so the layer above can be tested against a mock. Stateless proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go`.
 
-Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (a generic `cache.TTL[T]` in-memory cache with per-entry expiry, used for public user-independent upstream responses), `httpx/` (a bounded GET plus the shared `ErrRateLimited`).
+Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (a generic `cache.TTL[T]` in-memory cache with per-entry expiry, used for public user-independent upstream responses).
 
 ### Third-party clients
 
-Every vendor SDK-ish client lives under `internal/providers/`: `subdl/`, `opensubtitles/`, `gemini/`. **They depend on nothing of ours** (only `httpx`) — no gin, no app types, no domain vocabulary. Each speaks its vendor's own shapes: `subdl.Search` returns `[]subdl.Subtitle`, `gemini.Generate` returns text.
+Every vendor SDK-ish client lives under `internal/clients/`: `subdl/`, `opensubtitles/`, `gemini/`. **They depend on nothing of ours** (only their sibling `clients/httpx`) — no gin, no app types, no domain vocabulary. Each speaks its vendor's own shapes: `subdl.Search` returns `[]subdl.Subtitle`, `gemini.Generate` returns text.
+
+`clients/httpx/` is the shared leaf of that tree: a bounded GET, a header helper, and `httpx.ErrRateLimited`. Nothing outside `clients/` imports it — each client restates the throttling condition as its own sentinel (`subdl.ErrRateLimited`, `opensubtitles.ErrRateLimited`, wrapped with `%v` so the httpx chain stops there), so the modules above match on vendor vocabulary instead of on a transport detail.
 
 The translation into app terms is a thin adapter in the module that consumes it:
-- `modules/subtitle/subdl.go` and `modules/subtitle/opensubtitles.go` implement `Provider` over the clients — minting the opaque ids, building labels, turning an archive into WebVTT, restating `httpx.ErrRateLimited` as `subtitle.ErrRateLimited`.
+- `modules/subtitle/subdl.go` and `modules/subtitle/opensubtitles.go` implement `Provider` over the clients — minting the opaque ids, building labels, turning an archive into WebVTT, restating each client's `ErrRateLimited` as `subtitle.ErrRateLimited` via the shared `rateLimited(err, limit)` helper in `provider.go`.
 - `modules/learning/generator.go` owns the prompts and implements `Generator` over `gemini.Client`.
 
 Each adapter declares a small private interface for the slice of the client it uses (`subdlAPI`, `osAPI`, `llm`), so adapter tests run against a stub instead of the network.
@@ -76,12 +78,12 @@ Cross-module seams are kept thin:
 
 ### Optional integrations (degrade gracefully)
 
-- **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `subdl.go` adapts `providers/subdl` and is the one implementation wired in; `vtt.go`/`archive.go` hold the shared SRT→VTT and zip/gzip helpers. `service.go` resolves creds and dispatches. `Module` takes its providers already built, so `app.go` chooses them.
-  - `opensubtitles.go` (and `providers/opensubtitles`) is **kept but not wired in**: `app.go` passes SubDL alone, no credentials reach it, and an `opensubtitles:` id returns 400 "unknown provider". Both files compile so they can't rot; the adapter's header comment lists the three steps to wire it back in.
+- **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `subdl.go` adapts `clients/subdl` and is the one implementation wired in; `vtt.go`/`archive.go` hold the shared SRT→VTT and zip/gzip helpers. `service.go` resolves creds and dispatches. `Module` takes its providers already built, so `app.go` chooses them.
+  - `opensubtitles.go` (and `clients/opensubtitles`) is **kept but not wired in**: `app.go` passes SubDL alone, no credentials reach it, and an `opensubtitles:` id returns 400 "unknown provider". Both files compile so they can't rot; the adapter's header comment lists the three steps to wire it back in.
   - Subtitles are identified by an **opaque `"<provider>:<ref>"` id** (`subdl:/subtitle/x.zip|S01E02`) that flows all the way to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` into it so a season-pack ZIP can be unpacked to the right episode. `ParseID` still reads a bare numeric id as a legacy OpenSubtitles one so it fails cleanly rather than being taken for a SubDL ref, and `Migrate` backfills old `history.sub_file_id` rows into `sub_ref`.
   - `SUBDL_API_KEY` is a shared `.env` fallback behind the per-user key stored via `user.CredentialStore`; the handler returns 503 when neither is set, and 429 `code:"shared_rate_limited"` when the shared account is the throttled one.
   - The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, language filtering, release-name matching or top-N cut. Only a repeated id is dropped, since a SubDL season pack yields one row per release but a single archive.
-- **Gemini** (default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests. The client is `providers/gemini` (`Generate` / `GenerateJSONArray` / `GenerateJSONObject`, which find the JSON inside a fenced or prose-wrapped reply); the prompts live in `modules/learning/generator.go`. **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
+- **Gemini** (default model `gemini-2.5-flash`) — powers the learning module's AI definitions, translations, phrase/idiom explanations, word images, and AI-graded meaning tests. The client is `clients/gemini` (`Generate` / `GenerateJSONArray` / `GenerateJSONObject`, which find the JSON inside a fenced or prose-wrapped reply); the prompts live in `modules/learning/generator.go`. **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
 
 ### Learning module
 

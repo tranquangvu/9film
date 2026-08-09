@@ -6,8 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bentran/nicefilm/backend/internal/httpx"
-	"github.com/bentran/nicefilm/backend/internal/providers/subdl"
+	"github.com/bentran/nicefilm/backend/internal/clients/subdl"
 )
 
 // stubSubDL stands in for the SubDL client so these tests cover the adapter —
@@ -107,7 +106,7 @@ func TestSubDLProviderRejectsEmptyRef(t *testing.T) {
 // The handler tells a throttled shared account apart from any other failure, so
 // the client's rate-limit error has to arrive as this package's own.
 func TestSubDLProviderRestatesRateLimit(t *testing.T) {
-	stub := &stubSubDL{dlErr: fmt.Errorf("SubDL download: %w", httpx.ErrRateLimited)}
+	stub := &stubSubDL{dlErr: fmt.Errorf("SubDL download: %w", subdl.ErrRateLimited)}
 	_, err := NewSubDL(stub).DownloadVTT(Creds{}, "/subtitle/1-2.zip")
 	if !errors.Is(err, ErrRateLimited) {
 		t.Fatalf("DownloadVTT() error = %v, want it to wrap ErrRateLimited", err)

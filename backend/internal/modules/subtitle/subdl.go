@@ -1,12 +1,10 @@
 package subtitle
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/httpx"
-	"github.com/bentran/nicefilm/backend/internal/providers/subdl"
+	"github.com/bentran/nicefilm/backend/internal/clients/subdl"
 )
 
 // subdlAPI is the slice of the SubDL client this adapter uses, named here so the
@@ -38,7 +36,7 @@ func (p *subdlProvider) Search(creds Creds, params SubtitleSearchParams) ([]Subt
 		Languages: params.Languages,
 	})
 	if err != nil {
-		return nil, rateLimited(err)
+		return nil, rateLimited(err, subdl.ErrRateLimited)
 	}
 
 	options := make([]SubtitleOption, 0, len(subs))
@@ -81,7 +79,7 @@ func (p *subdlProvider) DownloadVTT(creds Creds, ref string) (string, error) {
 
 	raw, err := p.api.Download(creds.APIKey, archivePath)
 	if err != nil {
-		return "", rateLimited(err)
+		return "", rateLimited(err, subdl.ErrRateLimited)
 	}
 	name, data, err := subtitleFromArchive(raw, hint)
 	if err != nil {
@@ -100,14 +98,4 @@ func subdlRef(archivePath string, p SubtitleSearchParams) string {
 		return fmt.Sprintf("%s|S%02dE%02d", archivePath, *p.Season, *p.Episode)
 	}
 	return archivePath
-}
-
-// rateLimited restates a client's throttling error in this package's vocabulary,
-// which is what the handler matches on to decide between a plain error and the
-// "add your own key" nudge.
-func rateLimited(err error) error {
-	if errors.Is(err, httpx.ErrRateLimited) {
-		return fmt.Errorf("%w: %w", ErrRateLimited, err)
-	}
-	return err
 }

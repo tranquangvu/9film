@@ -12,6 +12,7 @@ package opensubtitles
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,8 +23,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/httpx"
+	"github.com/bentran/nicefilm/backend/internal/clients/httpx"
 )
+
+// ErrRateLimited reports that OpenSubtitles refused the request because the
+// account is throttled (429) or has spent its daily download quota (406). It is
+// this package's own name for the condition, so a caller can match it without
+// importing the HTTP helper this client happens to be built on.
+var ErrRateLimited = errors.New("opensubtitles: rate limit reached or download quota exhausted")
+
+// rateLimited restates the transport's throttling error as this package's, and
+// with %v rather than %w so httpx stays out of the chain callers inspect.
+func rateLimited(err error) error {
+	if errors.Is(err, httpx.ErrRateLimited) {
+		return fmt.Errorf("%w: %v", ErrRateLimited, err)
+	}
+	return err
+}
 
 const (
 	maxDownloadBytes = 16 << 20
@@ -174,7 +190,7 @@ func (c *Client) Search(creds Credentials, p SearchParams) ([]Subtitle, error) {
 // Download resolves a file id to a one-shot CDN link and fetches it, returning
 // the raw body together with the link's filename — the body may be a bare
 // subtitle with no name of its own, and the extension decides how to decode it.
-// Errors wrap httpx.ErrRateLimited when the account is throttled or out of quota.
+// Errors wrap ErrRateLimited when the account is throttled or out of quota.
 func (c *Client) Download(creds Credentials, fileID int) (data []byte, filename string, err error) {
 	if fileID <= 0 {
 		return nil, "", fmt.Errorf("invalid OpenSubtitles file id %d", fileID)
@@ -203,7 +219,7 @@ func (c *Client) Download(creds Credentials, fileID int) (data []byte, filename 
 		body, _ := io.ReadAll(resp.Body)
 		// 429 = rate-limited; 406 = daily download quota exhausted.
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusNotAcceptable {
-			return nil, "", fmt.Errorf("%w: %s", httpx.ErrRateLimited, strings.TrimSpace(string(body)))
+			return nil, "", fmt.Errorf("%w: %s", ErrRateLimited, strings.TrimSpace(string(body)))
 		}
 		return nil, "", fmt.Errorf("OpenSubtitles download failed (%d): %s", resp.StatusCode, string(body))
 	}
@@ -217,7 +233,7 @@ func (c *Client) Download(creds Credentials, fileID int) (data []byte, filename 
 
 	raw, err := httpx.GetBytes(c.http, dlResult.Link, map[string]string{"User-Agent": userAgent}, maxDownloadBytes)
 	if err != nil {
-		return nil, "", err
+		return nil, "", rateLimited(err)
 	}
 	return raw, fileNameFromURL(dlResult.Link), nil
 }

@@ -8,6 +8,7 @@ package subdl
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,8 +16,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/httpx"
+	"github.com/bentran/nicefilm/backend/internal/clients/httpx"
 )
+
+// ErrRateLimited reports that SubDL refused the request because the account hit
+// its rate limit or spent its quota. It is this package's own name for the
+// condition, so a caller can match it without importing the HTTP helper this
+// client happens to be built on.
+var ErrRateLimited = errors.New("subdl: rate limit reached or quota exhausted")
+
+// rateLimited restates the transport's throttling error as this package's, and
+// with %v rather than %w so httpx stays out of the chain callers inspect.
+func rateLimited(err error) error {
+	if errors.Is(err, httpx.ErrRateLimited) {
+		return fmt.Errorf("%w: %v", ErrRateLimited, err)
+	}
+	return err
+}
 
 const (
 	// perPage is the page size asked of SubDL. Results are returned whole, so this
@@ -99,7 +115,7 @@ func (c *Client) Search(apiKey string, p SearchParams) ([]Subtitle, error) {
 		"Accept":     "application/json",
 	}, maxArchiveBytes)
 	if err != nil {
-		return nil, fmt.Errorf("SubDL search: %w", err)
+		return nil, fmt.Errorf("SubDL search: %w", rateLimited(err))
 	}
 
 	var result struct {
@@ -144,8 +160,8 @@ func (c *Client) Search(apiKey string, p SearchParams) ([]Subtitle, error) {
 }
 
 // Download fetches an archive by its path and returns the raw bytes — a ZIP for
-// SubDL, which the caller unpacks. Errors wrap httpx.ErrRateLimited when the
-// account is throttled.
+// SubDL, which the caller unpacks. Errors wrap ErrRateLimited when the account
+// is throttled.
 func (c *Client) Download(apiKey, archivePath string) ([]byte, error) {
 	// Paths stored before cleanPath existed still carry "?api_key=…"; drop it here
 	// too so an old one doesn't put a key (possibly a rotated one) back on the wire.
@@ -165,7 +181,7 @@ func (c *Client) Download(apiKey, archivePath string) ([]byte, error) {
 
 	raw, err := httpx.GetBytes(c.http, c.downloadBase+archivePath, headers, maxArchiveBytes)
 	if err != nil {
-		return nil, fmt.Errorf("SubDL download: %w", err)
+		return nil, fmt.Errorf("SubDL download: %w", rateLimited(err))
 	}
 	return raw, nil
 }

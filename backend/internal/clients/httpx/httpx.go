@@ -1,6 +1,11 @@
-// Package httpx holds the small HTTP helpers the third-party clients share, so
-// that isolating each vendor into its own package doesn't mean copying the same
-// bounded GET three times.
+// Package httpx holds the small HTTP helpers the sibling vendor clients share,
+// so that isolating each vendor into its own package doesn't mean copying the
+// same bounded GET three times.
+//
+// It lives under clients/ because that is its whole audience: nothing outside
+// this tree imports it. Each client restates ErrRateLimited as its own sentinel
+// (subdl.ErrRateLimited, opensubtitles.ErrRateLimited) so the modules above
+// match on vendor vocabulary and never reach in here.
 package httpx
 
 import (

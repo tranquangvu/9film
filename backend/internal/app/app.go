@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bentran/nicefilm/backend/internal/clients/subdl"
 	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/bentran/nicefilm/backend/internal/database"
 	"github.com/bentran/nicefilm/backend/internal/logger"
@@ -19,7 +20,6 @@ import (
 	"github.com/bentran/nicefilm/backend/internal/modules/subtitle"
 	"github.com/bentran/nicefilm/backend/internal/modules/title"
 	"github.com/bentran/nicefilm/backend/internal/modules/user"
-	"github.com/bentran/nicefilm/backend/internal/providers/subdl"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -71,7 +71,7 @@ func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
 	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
 	learning.Module(api, db, cfg, geminiKeys{store: creds})
 	stream.Module(r, api)
-	// SubDL is the only subtitle provider wired in; providers/opensubtitles is kept
+	// SubDL is the only subtitle provider wired in; clients/opensubtitles is kept
 	// but never registered (see modules/subtitle/opensubtitles.go).
 	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg}, subtitle.NewSubDL(subdl.New()))
 }

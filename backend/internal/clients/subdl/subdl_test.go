@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-
-	"github.com/bentran/nicefilm/backend/internal/httpx"
 )
 
 func TestLangCodes(t *testing.T) {
@@ -160,7 +158,7 @@ func TestDownloadReportsRateLimit(t *testing.T) {
 	c.downloadBase = srv.URL
 
 	_, err := c.Download("k", "/subtitle/1-2.zip")
-	if !errors.Is(err, httpx.ErrRateLimited) {
-		t.Fatalf("Download() error = %v, want it to wrap httpx.ErrRateLimited", err)
+	if !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("Download() error = %v, want it to wrap ErrRateLimited", err)
 	}
 }

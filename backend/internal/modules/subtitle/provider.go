@@ -2,6 +2,7 @@ package subtitle
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -61,6 +62,18 @@ var (
 	ErrUnknownProvider   = errors.New("unknown subtitle provider")
 	ErrNotConfigured     = errors.New("subtitle provider not configured")
 )
+
+// rateLimited restates a client's own throttling error — passed as limit, e.g.
+// subdl.ErrRateLimited — in this package's vocabulary, which is what the handler
+// matches on to decide between a plain error and the "add your own key" nudge.
+// Taking the sentinel as an argument keeps each adapter naming its own vendor's
+// error instead of this helper growing a case per provider.
+func rateLimited(err, limit error) error {
+	if errors.Is(err, limit) {
+		return fmt.Errorf("%w: %w", ErrRateLimited, err)
+	}
+	return err
+}
 
 // FormatID builds the opaque subtitle id handed to the frontend and stored in
 // watch history. Refs are provider-private: an OpenSubtitles file id, a SubDL

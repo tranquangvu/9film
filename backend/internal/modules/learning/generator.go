@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/providers/gemini"
+	"github.com/bentran/nicefilm/backend/internal/clients/gemini"
 )
 
 // Generator is the AI-backed helper: it grades self-test meaning answers and
 // explains saved phrases/idioms — both using the API key + model resolved per
 // user.
 //
-// The prompts live here rather than in providers/gemini: what to ask and how to
+// The prompts live here rather than in clients/gemini: what to ask and how to
 // read the answer is this feature's business, and the client underneath only
 // knows how to run a prompt.
 type Generator interface {
