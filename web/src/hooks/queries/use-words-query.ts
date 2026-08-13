@@ -19,7 +19,6 @@ import {
   type WordStat,
   type WordStatus,
 } from '@/services/user';
-import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
 import { parseDate } from '@/utils/word';
 
@@ -34,24 +33,20 @@ const WORDS_PAGE_SIZE = 30;
 // Lightweight full vocabulary: drives the progress chart, the to-learn/completed
 // counts, and the saved-word lookup — all of which need every word, not a page.
 export function useWordStatsQuery() {
-  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: STATS_KEY,
     queryFn: getWordStats,
-    enabled: isAuthenticated,
     staleTime: 60 * 1000,
   });
 }
 
 // One tab+list's saved words, paginated for infinite scroll.
 export function useInfiniteWordsQuery(status: WordStatus, list = '') {
-  const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
     queryKey: wordsKey(status, list),
     queryFn: ({ pageParam }) => getWords(status, pageParam, WORDS_PAGE_SIZE, list),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
-    enabled: isAuthenticated,
     staleTime: 60 * 1000,
   });
 }
@@ -84,11 +79,10 @@ export function useIsWordSaved(word: string): boolean {
 
 // The words due for spaced-repetition review right now (small set; no pagination).
 export function useDueReviewsQuery(enabled = true) {
-  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: REVIEWS_KEY,
     queryFn: () => getReviews(),
-    enabled: isAuthenticated && enabled,
+    enabled,
     staleTime: 30 * 1000,
   });
 }

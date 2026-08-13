@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink, Link } from 'react-router-dom';
-import { Search, Menu, X, LogIn } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { genres } from '@/data/genres';
-import { useAuth } from '@/context/auth-context';
+import { useMe } from '@/hooks/queries/use-me-query';
 
 // One source of truth for both bars: the top bar splits these two groups
 // (browsing centered, personal by the avatar) while the drawer lists them in
@@ -39,7 +39,7 @@ interface TopNavbarProps {
 // hamburger opens LeftNavbar instead.
 export function TopNavbar({ onSearchOpen, onLeftNavbarOpen }: TopNavbarProps) {
   const [scrolled, setScrolled] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { data: user } = useMe();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -102,26 +102,17 @@ export function TopNavbar({ onSearchOpen, onLeftNavbarOpen }: TopNavbarProps) {
             ))}
           </nav>
 
-          {isAuthenticated ? (
-            <Link
-              to="/profile"
-              aria-label="Account"
-              className="ml-1 w-8 h-8 rounded-full overflow-hidden ring-1 ring-white/15 hover:ring-orange-500/60 transition-all bg-zinc-800 shrink-0"
-            >
-              <img
-                src={user?.avatar}
-                alt={user?.username ?? 'Account'}
-                className="w-full h-full object-cover"
-              />
-            </Link>
-          ) : (
-            <NavLink
-              to="/login"
-              className="ml-1 px-3 py-1.5 text-sm font-medium rounded-full text-zinc-300 hover:text-white hover:bg-white/5 transition-all"
-            >
-              Sign in
-            </NavLink>
-          )}
+          <Link
+            to="/profile"
+            aria-label="Account"
+            className="ml-1 w-8 h-8 rounded-full overflow-hidden ring-1 ring-white/15 hover:ring-orange-500/60 transition-all bg-zinc-800 shrink-0"
+          >
+            <img
+              src={user?.avatar}
+              alt={user?.username ?? 'Account'}
+              className="w-full h-full object-cover"
+            />
+          </Link>
         </div>
       </div>
     </header>
@@ -136,7 +127,7 @@ interface LeftNavbarProps {
 // The mobile drawer behind TopNavbar's hamburger: the same links plus the genre
 // list, sliding in from the left over a dimmed backdrop.
 export function LeftNavbar({ isOpen, onClose }: LeftNavbarProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { data: user } = useMe();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -217,36 +208,20 @@ export function LeftNavbar({ isOpen, onClose }: LeftNavbarProps) {
             </div>
 
             <div className="px-4 py-4 border-t border-white/5">
-              {isAuthenticated && user ? (
-                <NavLink
-                  to="/profile"
-                  onClick={onClose}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  <img
-                    src={user.avatar}
-                    alt={user.username}
-                    className="w-10 h-10 rounded-xl object-cover bg-zinc-800 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">@{user.username}</p>
-                  </div>
-                </NavLink>
-              ) : (
-                <NavLink
-                  to="/login"
-                  onClick={onClose}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-zinc-300"
-                >
-                  <span className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
-                    <LogIn size={18} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white">Sign in</p>
-                    <p className="text-xs text-zinc-500">Save your list &amp; progress</p>
-                  </div>
-                </NavLink>
-              )}
+              <NavLink
+                to="/profile"
+                onClick={onClose}
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <img
+                  src={user?.avatar}
+                  alt={user?.username ?? 'Account'}
+                  className="w-10 h-10 rounded-xl object-cover bg-zinc-800 flex-shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-white truncate">@{user?.username ?? 'you'}</p>
+                </div>
+              </NavLink>
             </div>
           </motion.div>
         </>

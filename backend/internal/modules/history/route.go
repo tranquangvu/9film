@@ -1,13 +1,9 @@
 package history
 
-import (
-	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/middleware"
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
-	me := rg.Group("/me", middleware.AuthRequired(cfg))
+func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
+	me := rg.Group("/me")
 	me.GET("/history", h.GetHistory)
 	me.PUT("/history", h.PutProgress)
 	me.PUT("/subtitles", h.PutSubtitle)

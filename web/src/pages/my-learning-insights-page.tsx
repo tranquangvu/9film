@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
 import { useWordStatsQuery } from '@/hooks/queries/use-words-query';
 import { useTestsQuery } from '@/hooks/queries/use-tests-query';
 import { PageGradient } from '@/components/system/common/gradient';
@@ -13,7 +12,6 @@ import {
 } from '@/components/system/learn/progress-chart';
 
 export default function MyLearningInsightsPage() {
-  const { isAuthenticated } = useAuth();
   const stats = useWordStatsQuery();
 
   // Personal vocabulary (the words saved while watching), matching the root page.
@@ -43,15 +41,6 @@ export default function MyLearningInsightsPage() {
     [tests.data],
   );
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-4 text-center text-zinc-400">
-        <p>
-          Please <Link to="/login" className="text-orange-400">sign in</Link> to use your vocabulary.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">

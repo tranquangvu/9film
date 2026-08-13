@@ -5,13 +5,10 @@ export default function PrivacyPage() {
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-6">Privacy Policy</h1>
         <div className="space-y-4 text-zinc-300 leading-relaxed text-sm md:text-base">
           <p>
-            9film stores only the data needed to power your account: your email, a hashed password, and
-            your personal lists, watch progress, and playback settings. Passwords are never stored in
-            plain text.
-          </p>
-          <p>
-            Your authentication token is kept in your browser's local storage to keep you signed in.
-            We do not sell your data or share it with third parties for advertising.
+            9film runs locally and has no accounts to sign in to. Your lists, watch progress,
+            playback settings and vocabulary live in a SQLite file on your own machine, alongside any
+            API keys you enter under Profile → Connections. Nothing is sent to a 9film server,
+            because there isn't one.
           </p>
           <p>
             Title metadata, streams, and subtitles are fetched from third-party sources at request

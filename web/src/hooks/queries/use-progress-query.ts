@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getContinueWatching, putProgress, type ProgressItem } from '@/services/user';
-import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './use-title-query';
 import { toTitle, type TitleDetail, type TitleProgress } from '@/utils/title';
 import type { Title } from '@/types';
@@ -11,13 +10,11 @@ const CONTINUE_PAGE = 20;
 // Paginated Continue Watching list (one row per title), infinite-scrolled.
 // Backed by a dedicated endpoint so it doesn't pull every per-episode row.
 export function useContinueWatchingInfinite() {
-  const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
     queryKey: ['continue-watching'],
     queryFn: ({ pageParam }) => getContinueWatching(pageParam, CONTINUE_PAGE),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
-    enabled: isAuthenticated,
     staleTime: 30 * 1000,
   });
 }

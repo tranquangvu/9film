@@ -1,9 +1,6 @@
 package subtitle
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 // Subtitles resolves per-user credentials and dispatches to a provider. Search
 // always goes to the active provider; download follows the provider named in the
@@ -63,14 +60,5 @@ func (s *subtitles) DownloadVTT(userID int64, id string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrNotConfigured, providerLabel(name))
 	}
 
-	vtt, err := p.DownloadVTT(creds, ref)
-	if err != nil {
-		// Only the shared .env account being throttled is worth a special nudge —
-		// the user can fix that by adding their own key.
-		if creds.Shared && errors.Is(err, ErrRateLimited) {
-			return "", fmt.Errorf("%w: %w", ErrSharedRateLimited, err)
-		}
-		return "", err
-	}
-	return vtt, nil
+	return p.DownloadVTT(creds, ref)
 }

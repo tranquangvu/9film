@@ -1,18 +1,10 @@
-// Thin authenticated fetch wrapper for the /api/me and /api/auth endpoints.
-// The auth context registers a token getter + a 401 handler at runtime so this
-// module stays decoupled from React.
-
-let getToken: () => string | null = () => null;
-let onUnauthorized: () => void = () => {};
-
-export function registerAuth(tokenGetter: () => string | null, unauthorized: () => void) {
-  getToken = tokenGetter;
-  onUnauthorized = unauthorized;
-}
+// Thin fetch wrapper for the /api/me endpoints. The app has no sign-in: the
+// backend resolves the single local account itself, so there is no token to
+// attach and no 401 to recover from.
 
 export class ApiError extends Error {
   status: number;
-  /** Optional machine-readable code from the JSON body (e.g. 'shared_rate_limited'). */
+  /** Optional machine-readable code from the JSON body (e.g. 'provider_key_missing'). */
   code?: string;
   constructor(status: number, message: string, code?: string) {
     super(message);
@@ -26,18 +18,13 @@ interface ApiFetchOptions {
   method?: string;
   body?: unknown;
   signal?: AbortSignal;
-  auth?: boolean; // attach bearer token (default true)
 }
 
 export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, signal, auth = true } = opts;
+  const { method = 'GET', body, signal } = opts;
 
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (auth) {
-    const token = getToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
 
   const res = await fetch(path, {
     method,
@@ -45,10 +32,6 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   });
-
-  if (res.status === 401) {
-    onUnauthorized();
-  }
 
   if (res.status === 204) return undefined as T;
 
@@ -60,19 +43,13 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiFetchOptions 
   return json as T;
 }
 
-// Authenticated GET returning binary data — used for endpoints a plain element
-// can't reach directly because it can't send the bearer token (e.g. a subtitle
-// download). The caller wraps the Blob in an object URL.
+// GET returning binary data — used where a plain element can't consume the
+// response directly (e.g. a subtitle download the caller wraps in an object URL).
 export async function apiFetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(path, { headers, signal });
-  if (res.status === 401) onUnauthorized();
+  const res = await fetch(path, { signal });
   if (!res.ok) {
     // Parse the JSON error body (if any) so callers can branch on `code` — e.g.
-    // the subtitle download surfaces 'shared_rate_limited'.
+    // the subtitle download surfaces 'provider_key_missing'.
     const { error, code } = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
     throw new ApiError(res.status, error ?? `Request failed (${res.status})`, code);
   }

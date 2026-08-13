@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/context/auth-context';
 import { useWordStatsQuery, useDueCount } from '@/hooks/queries/use-words-query';
 import { PageGradient } from '@/components/system/common/gradient';
 import { LearningHero } from '@/components/system/learn/learning-hero';
@@ -12,7 +10,6 @@ import { ReviewDeck } from '@/components/system/learn/review-deck';
 import { computeStreak } from '@/utils/word';
 
 export default function MyLearningPage() {
-  const { isAuthenticated } = useAuth();
   const stats = useWordStatsQuery();
   const [studying, setStudying] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -25,15 +22,6 @@ export default function MyLearningPage() {
   const streak = useMemo(() => computeStreak(all), [all]);
   const dueCount = useDueCount();
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-4 text-center text-zinc-400">
-        <p>
-          Please <Link to="/login" className="text-orange-400">sign in</Link> to use your vocabulary.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">

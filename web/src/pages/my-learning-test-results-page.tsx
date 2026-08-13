@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageGradient } from '@/components/system/common/gradient';
-import { useAuth } from '@/context/auth-context';
 import { useTestsQuery } from '@/hooks/queries/use-tests-query';
 import { cn } from '@/utils/cn';
 import type { TestResult, TestItem } from '@/services/user';
@@ -30,19 +29,9 @@ function when(s?: string): string {
 }
 
 export default function MyLearningTestResultsPage() {
-  const { isAuthenticated } = useAuth();
   const { data: tests, isLoading } = useTestsQuery();
   const [open, setOpen] = useState<number | null>(null);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-4 text-center text-zinc-400">
-        <p>
-          Please <Link to="/login" className="text-orange-400">sign in</Link> to view your test results.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">

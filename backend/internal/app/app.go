@@ -35,79 +35,73 @@ func NewApp() *App {
 	logger.Init(os.Getenv("GIN_MODE") != "release")
 	log := logger.Get()
 
-	if cfg.JWTSecret == "" {
-		log.Fatal("JWT_SECRET is required (set it in backend/.env)")
-	}
-
 	db, err := database.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatal("failed to open database", zap.Error(err))
 	}
 
+	// Every request runs as the one local account, resolved once here so the
+	// modules keep taking a user id (see middleware.LocalUser).
+	localUserID, err := user.LocalUserID(db)
+	if err != nil {
+		log.Fatal("failed to resolve the local account", zap.Error(err))
+	}
+
 	engine := gin.New()
 	engine.Use(middleware.Logger(), middleware.Recovery(), middleware.CORS())
-	registerRoutes(engine, db, cfg)
+	registerRoutes(engine, db, localUserID)
 
 	log.Info("starting 9film backend",
 		zap.Int("port", cfg.Port),
 		zap.String("host", cfg.Host),
 		zap.String("db_path", cfg.DBPath),
-		zap.Bool("subtitles_configured", cfg.SubDL != nil),
 	)
 
 	return &App{Config: cfg, Router: engine, DB: db}
 }
 
-func registerRoutes(r *gin.Engine, db *sql.DB, cfg *config.Config) {
-	api := r.Group("/api")
+func registerRoutes(r *gin.Engine, db *sql.DB, localUserID int64) {
+	api := r.Group("/api", middleware.LocalUser(localUserID))
 
-	// Per-user API keys for the optional integrations, resolved at request time.
-	// Gemini is per-user only; the subtitle providers fall back to the .env keys.
+	// API keys for the optional integrations, read from the database at request
+	// time. Both are the user's own — the server carries no key of its own, so an
+	// integration whose key isn't set is off rather than degraded.
 	creds := user.NewCredentialStore(db)
 
-	user.Module(api, db, cfg)
-	favorite.Module(api, db, cfg)
-	history.Module(api, db, cfg)
-	title.Module(api, cfg, history.NewEnricher(db)) // folds per-user state into title responses
-	learning.Module(api, db, cfg, geminiKeys{store: creds})
+	user.Module(api, db)
+	favorite.Module(api, db)
+	history.Module(api, db)
+	title.Module(api, history.NewEnricher(db)) // folds per-user state into title responses
+	learning.Module(api, db, geminiKeys{store: creds})
 	stream.Module(r, api)
 	// SubDL is the only subtitle provider wired in; clients/opensubtitles is kept
 	// but never registered (see modules/subtitle/opensubtitles.go).
-	subtitle.Module(api, cfg, subtitleCreds{store: creds, cfg: cfg}, subtitle.NewSubDL(subdl.New()))
+	subtitle.Module(api, subtitleCreds{store: creds}, subtitle.NewSubDL(subdl.New()))
 }
 
-// geminiKeys resolves a user's Gemini key for the learning module. There is no
-// .env fallback — AI features require the user to supply their own key.
+// geminiKeys resolves the stored Gemini key for the learning module. An empty
+// key leaves the AI features off; the module degrades on its own.
 type geminiKeys struct {
 	store *user.CredentialStore
 }
 
 func (g geminiKeys) Resolve(userID int64) (apiKey, model string) {
-	return g.store.Get(userID).GeminiAPIKey, "" // user key → generator's default model
+	return g.store.Get(userID).GeminiAPIKey, "" // stored key → generator's default model
 }
 
-// subtitleCreds resolves a user's credentials for one subtitle provider: their
-// own stored key first, then the .env fallback (flagged Shared so the handler
-// can nudge them to add their own when the shared account gets throttled). It
+// subtitleCreds resolves the stored credentials for one subtitle provider. It
 // stays keyed by provider even though SubDL is the only one wired in — any other
 // name resolves to empty creds, which is what an id from an unwired provider
 // should get.
 type subtitleCreds struct {
 	store *user.CredentialStore
-	cfg   *config.Config
 }
 
 func (s subtitleCreds) For(provider string, userID int64) subtitle.Creds {
 	if provider != subtitle.ProviderSubDL {
 		return subtitle.Creds{}
 	}
-	if key := s.store.Get(userID).SubDLAPIKey; key != "" {
-		return subtitle.Creds{APIKey: key}
-	}
-	if s.cfg.SubDL != nil {
-		return subtitle.Creds{APIKey: s.cfg.SubDL.APIKey, Shared: true}
-	}
-	return subtitle.Creds{}
+	return subtitle.Creds{APIKey: s.store.Get(userID).SubDLAPIKey}
 }
 
 func (a *App) Run() error {

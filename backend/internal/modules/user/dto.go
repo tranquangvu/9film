@@ -1,16 +1,7 @@
 package user
 
-type signupRequest struct {
-	Username string `json:"username"`
-}
-
-type loginRequest struct {
-	Username string `json:"username"`
-}
-
 type updateMeRequest struct {
-	Username string `json:"username"`
-	Avatar   string `json:"avatar"`
+	Avatar string `json:"avatar"`
 }
 
 // updateCredentialsRequest carries new key values; empty fields are left

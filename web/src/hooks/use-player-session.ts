@@ -11,7 +11,6 @@ import {
 } from '@/utils/stream';
 import { embedParams } from '@/utils/title';
 import { listSubs, getSubtitlePref, setSubtitlePref } from '@/utils/subtitle';
-import { useAuth } from '@/context/auth-context';
 import { useTitleQuery } from './queries/use-title-query';
 import { useStreamQuery } from './queries/use-stream-query';
 import { useSubtitlesQuery } from './queries/use-subtitles-query';
@@ -64,7 +63,6 @@ export function usePlayerSession(
   }, [epsQuery.data]);
 
   // ── Watch progress (resume + save) ──────────────────────────────────────────
-  const { isAuthenticated } = useAuth();
   const settings = useSettings();
   // Per-title resume points ride along in the title detail response.
   const progressItems = titleData?.progress ?? [];
@@ -138,7 +136,6 @@ export function usePlayerSession(
   }, [progressItems, isTv, season, episode]);
 
   const resumeAt =
-    isAuthenticated &&
     currentProgress &&
     currentProgress.positionSeconds > 5 &&
     currentProgress.durationSeconds > 0 &&
@@ -148,7 +145,6 @@ export function usePlayerSession(
 
   const saveProgress = useCallback(
     (positionSeconds: number, durationSeconds: number) => {
-      if (!isAuthenticated) return;
       saveProgressMut.mutate({
         imdbId: titleId,
         season: isTv ? season : 0,
@@ -157,7 +153,7 @@ export function usePlayerSession(
         durationSeconds,
       });
     },
-    [isAuthenticated, titleId, isTv, season, episode, saveProgressMut],
+    [titleId, isTv, season, episode, saveProgressMut],
   );
 
   // Next episode in the eps map (drives autoplay-next).
@@ -199,8 +195,7 @@ export function usePlayerSession(
   const autoSubId = subList[0]?.id ?? null;
 
   const saveSubtitleMut = useSaveSubtitle();
-  // Per-episode (DB-backed, follows the signed-in user across devices), falling
-  // back to the title-scoped localStorage pref for anonymous users.
+  // Per-episode (DB-backed), falling back to the title-scoped localStorage pref.
   const savedSubPref = useMemo(
     () => currentProgress?.subtitlePref ?? getSubtitlePref(titleId),
     [currentProgress?.subtitlePref, titleId],
@@ -233,7 +228,7 @@ export function usePlayerSession(
     const opt = id != null ? subList.find((s) => s.id === id) : null;
     const pref = opt ? { id: opt.id, language: opt.language } : null;
     setSubtitlePref(titleId, pref); // localStorage (instant + offline fallback)
-    if (isAuthenticated && pref) {
+    if (pref) {
       saveSubtitleMut.mutate({
         imdbId: titleId,
         season: isTv ? season : 0,
@@ -250,10 +245,12 @@ export function usePlayerSession(
   const cuesQuery = useSubtitleCues(settings.learningMode ? selectedSubId : null);
   const cues = useMemo(() => cuesQuery.data ?? [], [cuesQuery.data]);
 
-  // The shared subtitle account got rate-limited and the user has no key of their
-  // own — drives the "add your own credentials" prompt on the watch page.
-  const subtitleRateLimited =
-    cuesQuery.error instanceof ApiError && cuesQuery.error.code === 'shared_rate_limited';
+  // The subtitle provider has no API key stored, so the search came back empty by
+  // design — drives the optional "add a key" prompt on the watch page. Read off
+  // the search rather than the download: it is the first request to be told, and
+  // it fires whether or not a track was ever picked.
+  const subtitleKeyMissing =
+    subtitleQuery.error instanceof ApiError && subtitleQuery.error.code === 'provider_key_missing';
 
   const poster = streamData?.backdrop ?? titleData?.poster;
   // Prefer the clean IMDb title (just the name) — the upstream stream title often
@@ -290,7 +287,7 @@ export function usePlayerSession(
     nextEpisode,
     autoplayNext: settings.autoplayNext,
     cues,
-    subtitleRateLimited,
+    subtitleKeyMissing,
     learningMode: settings.learningMode,
     learningLang: settings.learningLang,
   };

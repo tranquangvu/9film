@@ -1,6 +1,6 @@
 import type { EmbedParams } from './stream';
 
-const PREF_KEY = 'nicefilm:subtitle-prefs';
+const PREF_KEY = '9film:subtitle-prefs';
 
 export interface SubtitleOption {
   // Opaque "<provider>:<ref>" handle minted by the backend (e.g. "subdl:/subtitle/x.zip").

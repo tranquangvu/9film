@@ -25,9 +25,13 @@ func NewHandler(subs Subtitles) *Handler {
 	return &Handler{subs: subs}
 }
 
+// notConfigured reports that the provider has no API key. The code is what the
+// client branches on to offer adding one — subtitles are optional, so this is a
+// prompt rather than a failure.
 func (h *Handler) notConfigured(c *gin.Context, provider string) {
 	c.JSON(http.StatusServiceUnavailable, gin.H{
 		"error": fmt.Sprintf("%s is not configured. Add your API key in Connections.", providerLabel(provider)),
+		"code":  "provider_key_missing",
 	})
 }
 
@@ -101,12 +105,10 @@ func (h *Handler) GetSubtitleVTT(c *gin.Context) {
 	if err != nil {
 		logger.Get().Warn("subtitle VTT failed", zap.String("id", id), zap.Error(err))
 		switch {
-		// When the shared .env account is the one being throttled, tell the client
-		// so it can prompt the user to add their own key.
-		case errors.Is(err, ErrSharedRateLimited):
+		case errors.Is(err, ErrRateLimited):
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "The shared subtitle account hit its rate limit. Add your own subtitle provider API key in Connections to keep downloading subtitles.",
-				"code":  "shared_rate_limited",
+				"error": "Your subtitle provider account hit its rate limit. Try again later.",
+				"code":  "provider_rate_limited",
 			})
 		case errors.Is(err, ErrNotConfigured):
 			// Name the id's own provider rather than the active one — they are the

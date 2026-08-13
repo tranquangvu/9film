@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api-fetch';
-import type { AuthUser } from '@/types';
+import type { LocalUser } from '@/types';
 import type { TitleDetail } from '@/utils/title';
 
 export interface FavoriteItem {
@@ -74,26 +74,26 @@ export function explainPhrase(phrase: string, sentence: string, target?: string)
   return apiFetch<PhraseExplanation>(`/api/me/words/explain?${p}`);
 }
 
-export function getMe(): Promise<AuthUser> {
-  return apiFetch<AuthUser>('/api/me');
+export function getMe(): Promise<LocalUser> {
+  return apiFetch<LocalUser>('/api/me');
 }
 
-export function updateMe(body: { username: string; avatar: string }): Promise<AuthUser> {
-  return apiFetch<AuthUser>('/api/me', { method: 'PUT', body });
+// Only the avatar is editable: the username identifies the local account to the
+// backend, so it is fixed.
+export function updateMe(body: { avatar: string }): Promise<LocalUser> {
+  return apiFetch<LocalUser>('/api/me', { method: 'PUT', body });
 }
 
 export function getSettings(): Promise<UserSettings> {
   return apiFetch<UserSettings>('/api/me/settings');
 }
 
-// Secret-free status of the per-user integration keys. `*Set` is whether the
-// user stored their own key. `geminiConfigured` is per-user only (== key set);
-// `subdlConfigured` also counts the server's .env fallback.
+// Secret-free status of the integration keys: whether each one is stored. There
+// is no server-side key behind them, so an unset key means that integration is
+// off — which is what drives the "add a key" prompts.
 export interface CredentialStatus {
   geminiKeySet: boolean;
-  geminiConfigured: boolean;
   subdlApiKeySet: boolean;
-  subdlConfigured: boolean;
 }
 
 export interface CredentialPatch {

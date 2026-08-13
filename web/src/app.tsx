@@ -1,7 +1,6 @@
-import { Navigate, Outlet, createBrowserRouter, RouterProvider, useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider, Toaster } from "@/components/ui/toast";
-import { AuthProvider, useAuth } from "@/context/auth-context";
 
 import MainLayout from "@/components/system/layout/main-layout";
 import WatchLayout from "@/components/system/layout/watch-layout";
@@ -20,8 +19,6 @@ import ProfilePage from "@/pages/profile-page";
 import TitlesPage from "@/pages/titles-page";
 import TvSeriesPage from "@/pages/tv-series-page";
 import NotFoundPage from "@/pages/not-found-page";
-import LoginPage from "@/pages/login-page";
-import SignupPage from "@/pages/signup-page";
 import AboutPage from "@/pages/about-page";
 import PrivacyPage from "@/pages/privacy-page";
 import TermsPage from "@/pages/terms-page";
@@ -35,7 +32,8 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000,
       // Keep unused data around for 30 min so back/forward nav stays a cache hit.
       gcTime: 30 * 60 * 1000,
-      // Don't retry client errors (404 for a bad title id, 401, etc.) — only transient ones.
+      // Don't retry client errors (404 for a bad title id, 503 for a missing
+      // provider key, etc.) — only transient ones.
       retry: (failureCount, error) => {
         const status = (error as { status?: number })?.status;
         if (status && status >= 400 && status < 500) return false;
@@ -52,28 +50,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Layout route that gates its children behind authentication. Waits for the
-// initial session rehydrate to finish before deciding, so a logged-in user with
-// a stored token isn't flashed to /login on a hard refresh.
-function RequireAuth() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const location = useLocation();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full border-2 border-white/15 border-t-orange-500 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to={`/login?from=${encodeURIComponent(location.pathname + location.search)}`} replace />;
-  }
-
-  return <Outlet />;
-}
-
 const router = createBrowserRouter([
   {
     element: <MainLayout />,
@@ -84,17 +60,12 @@ const router = createBrowserRouter([
       { path: "/tvs", element: <TvSeriesPage /> },
       { path: "/title/:id", element: <TitleDetailPage /> },
       { path: "/search", element: <SearchPage /> },
-      {
-        element: <RequireAuth />,
-        children: [
-          { path: "/my-list", element: <MyListPage /> },
-          { path: "/my-learning", element: <MyLearningPage /> },
-          { path: "/my-learning/insights", element: <MyLearningInsightsPage /> },
-          { path: "/my-learning/test-results", element: <MyLearningTestResultsPage /> },
-          { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
-          { path: "/profile", element: <ProfilePage /> },
-        ],
-      },
+      { path: "/my-list", element: <MyListPage /> },
+      { path: "/my-learning", element: <MyLearningPage /> },
+      { path: "/my-learning/insights", element: <MyLearningInsightsPage /> },
+      { path: "/my-learning/test-results", element: <MyLearningTestResultsPage /> },
+      { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
+      { path: "/profile", element: <ProfilePage /> },
       { path: "/about", element: <AboutPage /> },
       { path: "/privacy", element: <PrivacyPage /> },
       { path: "/terms", element: <TermsPage /> },
@@ -106,18 +77,14 @@ const router = createBrowserRouter([
     element: <WatchLayout />,
     children: [{ path: "/watch/:id", element: <WatchPage /> }],
   },
-  { path: "/login", element: <LoginPage /> },
-  { path: "/signup", element: <SignupPage /> },
 ]);
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <AuthProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster />
       </ToastProvider>
     </QueryClientProvider>
   );

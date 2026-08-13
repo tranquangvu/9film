@@ -12,7 +12,7 @@ type Repository interface {
 	CreateUser(username, avatar string) (*User, error)
 	GetUserByUsername(username string) (*User, error)
 	GetUserByID(id int64) (*User, error)
-	UpdateUser(id int64, username, avatar string) (*User, error)
+	UpdateAvatar(id int64, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	UpsertSettings(userID int64, st Settings) error
 	GetCredentials(userID int64) (Credentials, error)
@@ -56,10 +56,10 @@ func (r *repository) GetUserByID(id int64) (*User, error) {
 	))
 }
 
-func (r *repository) UpdateUser(id int64, username, avatar string) (*User, error) {
+func (r *repository) UpdateAvatar(id int64, avatar string) (*User, error) {
 	if _, err := r.db.Exec(
-		`UPDATE users SET username = ?, avatar = ? WHERE id = ?`,
-		username, avatar, id,
+		`UPDATE users SET avatar = ? WHERE id = ?`,
+		avatar, id,
 	); err != nil {
 		return nil, err
 	}

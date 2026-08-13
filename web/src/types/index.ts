@@ -63,8 +63,9 @@ export interface UserProfile {
   joinDate: string
 }
 
-// The authenticated user returned by the backend (/api/auth/*, /api/me).
-export interface AuthUser {
+// The local account returned by /api/me. There is no sign-in — the backend runs
+// every request as this one user.
+export interface LocalUser {
   id: number
   username: string
   avatar: string

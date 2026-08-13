@@ -55,10 +55,27 @@ func Migrate(db *sql.DB) error {
 			avatar     TEXT,
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
-		// Seed the default local account. The app is password-less and single-user
-		// by default: signing in with this username is enough to get in.
+		// Rename the account seeded under the old name, before the seed below can
+		// insert a fresh one. Without this, renaming the local account would leave
+		// every favorite, resume point and saved word behind on the old row while
+		// the app booted into an empty one. The guard keeps it a no-op once the
+		// rename has happened, and skips it entirely if both names somehow exist
+		// (username is UNIQUE, so the UPDATE would otherwise fail).
+		`UPDATE users SET username = '9film',
+			avatar = CASE avatar
+				-- Only the untouched generated default follows the rename; an avatar
+				-- the user picked themselves is left alone.
+				WHEN 'https://api.dicebear.com/10.x/thumbs/svg?seed=iami'
+					THEN 'https://api.dicebear.com/10.x/thumbs/svg?seed=9film'
+				ELSE avatar
+			END
+			WHERE username = 'iami'
+			  AND NOT EXISTS (SELECT 1 FROM users WHERE username = '9film')`,
+		// Seed the local account this app runs as — see user.LocalUserID, which
+		// looks it up by exactly this name. There is no sign-in; the row exists to
+		// own the user_id every other table is keyed by.
 		`INSERT OR IGNORE INTO users (username, avatar)
-			VALUES ('iami', 'https://api.dicebear.com/10.x/thumbs/svg?seed=iami')`,
+			VALUES ('9film', 'https://api.dicebear.com/10.x/thumbs/svg?seed=9film')`,
 		`CREATE TABLE IF NOT EXISTS favorites (
 			user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id    TEXT NOT NULL,

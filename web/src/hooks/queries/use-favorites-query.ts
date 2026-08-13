@@ -1,10 +1,8 @@
 import { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { getFavorites, addFavorite, removeFavorite, type FavoritesPage } from '@/services/user';
 import { toTitle } from '@/utils/title';
 import type { Title } from '@/types';
-import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
 
 const FAVORITES_KEY = ['favorites'] as const;
@@ -21,13 +19,11 @@ const OVERRIDES_KEY = ['favorite-overrides'] as const;
 type Overrides = Record<string, boolean>;
 
 export function useFavoritesInfinite() {
-  const { isAuthenticated } = useAuth();
   return useInfiniteQuery({
     queryKey: FAVORITES_KEY,
     queryFn: ({ pageParam }) => getFavorites(pageParam, FAVORITES_PAGE),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
-    enabled: isAuthenticated,
     staleTime: 60 * 1000,
   });
 }
@@ -113,11 +109,8 @@ export function useToggleFavorite() {
 }
 
 // Convenience for the favorite button on cards / detail page: derives current
-// membership (seeded by the backend `isFavorite`) and returns a toggle handler
-// that redirects to /login when signed out.
+// membership (seeded by the backend `isFavorite`) and returns a toggle handler.
 export function useFavoriteButton(imdbId: string, mediaType: 'movie' | 'series', seed = false) {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const active = useIsFavorite(imdbId, seed);
   const toggle = useToggleFavorite();
 
@@ -125,13 +118,9 @@ export function useFavoriteButton(imdbId: string, mediaType: 'movie' | 'series',
     (e?: { stopPropagation?: () => void; preventDefault?: () => void }) => {
       e?.stopPropagation?.();
       e?.preventDefault?.();
-      if (!isAuthenticated) {
-        navigate('/login');
-        return;
-      }
       toggle.mutate({ imdbId, mediaType, active });
     },
-    [isAuthenticated, navigate, toggle, imdbId, mediaType, active],
+    [toggle, imdbId, mediaType, active],
   );
 
   return { active, onToggle };

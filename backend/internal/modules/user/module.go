@@ -3,13 +3,12 @@ package user
 import (
 	"database/sql"
 
-	"github.com/bentran/nicefilm/backend/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
-func Module(rg *gin.RouterGroup, db *sql.DB, cfg *config.Config) {
+func Module(rg *gin.RouterGroup, db *sql.DB) {
 	repo := NewRepository(db)
-	svc := NewService(repo, cfg)
+	svc := NewService(repo)
 	h := NewHandler(svc)
-	RegisterRoutes(rg, h, cfg)
+	RegisterRoutes(rg, h)
 }

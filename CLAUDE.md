@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NiceFilm streams real HLS video for any IMDb title ID and layers an English-learning toolkit on top (vocabulary, spelling/meaning self-tests, spaced-repetition review). A Go/Gin backend acts as a proxy that hides upstream sources and credentials from the browser; a React 19 frontend (Vite) consumes it. Two independent apps in `backend/` and `web/` — there is no root `package.json`.
 
+**It runs on one person's machine and has no sign-in.** The backend resolves a single local account at startup and stamps every request with it (`middleware.LocalUser`), so there is no login, no token and no session anywhere in either app. The `user_id` columns stay — they are the key of every row — but they always hold that one id.
+
 ## Commands
 
 Backend (`cd backend`):
@@ -81,15 +83,19 @@ Cross-module seams are kept thin:
 - **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `subdl.go` adapts `clients/subdl` and is the one implementation wired in; `vtt.go`/`archive.go` hold the shared SRT→VTT and zip/gzip helpers. `service.go` resolves creds and dispatches. `Module` takes its providers already built, so `app.go` chooses them.
   - `opensubtitles.go` (and `clients/opensubtitles`) is **kept but not wired in**: `app.go` passes SubDL alone, no credentials reach it, and an `opensubtitles:` id returns 400 "unknown provider". Both files compile so they can't rot; the adapter's header comment lists the three steps to wire it back in.
   - Subtitles are identified by an **opaque `"<provider>:<ref>"` id** (`subdl:/subtitle/x.zip|S01E02`) that flows all the way to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` into it so a season-pack ZIP can be unpacked to the right episode. `ParseID` still reads a bare numeric id as a legacy OpenSubtitles one so it fails cleanly rather than being taken for a SubDL ref, and `Migrate` backfills old `history.sub_file_id` rows into `sub_ref`.
-  - `SUBDL_API_KEY` is a shared `.env` fallback behind the per-user key stored via `user.CredentialStore`; the handler returns 503 when neither is set, and 429 `code:"shared_rate_limited"` when the shared account is the throttled one.
+  - The SubDL key comes only from `user.CredentialStore` — there is no `.env` fallback and the server holds no key of its own. With none stored the handler returns 503 `code:"provider_key_missing"`, which the frontend turns into an optional "add a key" dialog; a throttled account returns 429 `code:"provider_rate_limited"`.
   - The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, language filtering, release-name matching or top-N cut. Only a repeated id is dropped, since a SubDL season pack yields one row per release but a single archive.
 - **Gemini** (default model `gemini-2.5-flash`) — powers exactly two things, both in the learning module: phrase/idiom explanations (`GET /me/words/explain`, which degrades to a plain machine translation when there's no key or the call fails) and AI-graded meaning answers inside a submitted self-test (`POST /me/tests`, which falls back to a local string heuristic against the saved translation). Dictionary definitions and translations are *not* Gemini — they hit separate public APIs and work without any key. The client is `clients/gemini` (`Generate` / `GenerateJSONArray` / `GenerateJSONObject`, which find the JSON inside a fenced or prose-wrapped reply); the prompts live in `modules/learning/generator.go`. **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
 
 ### Learning module
 
-Routes under `/api/learn` (public dictionary/translate helpers) and `/api/me/*` (auth-required): word list CRUD + import, per-word stats, phrase/idiom explanation, test submission/history, and SRS reviews. Spaced repetition uses the SM-2 algorithm in `srs.go` (covered by `srs_test.go`).
+Routes under `/api/learn` (dictionary/translate helpers) and `/api/me/*` (the local account's data): word list CRUD + import, per-word stats, phrase/idiom explanation, test submission/history, and SRS reviews. Spaced repetition uses the SM-2 algorithm in `srs.go` (covered by `srs_test.go`).
 
-Config (`internal/config/config.go`): `Port` (8081), `Host` (`0.0.0.0`), `DBPath` (`./nicefilm.db`), required `JWTSecret`, and the optional `SubDL` sub-config. Auth is JWT via `middleware.AuthRequired(cfg)`.
+Config (`internal/config/config.go`) is down to three values: `Port` (8081), `Host` (`127.0.0.1` — loopback because nothing authenticates the port), and `DBPath` (`./nicefilm.db`). No API keys and no secrets: every credential lives in the database, entered through Profile → Connections.
+
+`user.LocalUserID(db)` resolves the account by username (`9film`, the one `database.Open` seeds) and creates it if missing. The username is therefore **not editable** — `PUT /api/me` takes an avatar and nothing else (`Service.UpdateAvatar`), because a rename would strand every row on the old account while the seed re-created the original name on the next boot. It matches on the name rather than the lowest id because a database from before auth was removed can hold several accounts, and picking by id would silently switch to a stale one's history and keys.
+
+That makes the seeded username load-bearing: renaming it means adding an `UPDATE users SET username = …` to `Migrate` *before* the seed, or the next boot inserts a fresh empty account and leaves every favorite, resume point and saved word behind on the old row. The `iami` → `9film` rename in `sqlite.go` is the worked example.
 
 ## Frontend architecture
 
@@ -102,11 +108,13 @@ Key utilities in `utils/stream.ts`:
 
 `components/system/player/video-player.tsx` decides playback: HLS sources (`.m3u8`) route through `/hls` **only in dev** (`import.meta.env.DEV`); otherwise the raw src is used. This mirrors the backend HLS rewriting and is the seam to check when streams play locally but not in production.
 
-Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend: `auth.ts`, `title.ts`, `stream.ts`, `subtitle.ts`, `user.ts`, `learn.ts`, `dictionary.ts`. Path alias `@/` → `web/src/`.
+Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend: `title.ts`, `stream.ts`, `subtitle.ts`, `user.ts`, `learn.ts`, `dictionary.ts`. Path alias `@/` → `web/src/`.
+
+Both integrations are optional and each is prompted for at the moment it is used, never up front: `useMissingKey(kind, using)` (`hooks/use-missing-key.ts`) pairs the credential status with the caller's "using it right now" signal and shows `MissingKeyDialog` once per browser session. The watch page passes `subtitleKeyMissing` (the 503 from the subtitle search); the word popup passes `isPhrase`. Dismissing leaves the feature off rather than broken — no SubDL key means no subtitles, no Gemini key means a phrase gets a plain translation instead of a breakdown.
 
 ### Routing
 
-Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`; `/login` and `/signup` stand alone. Detail pages use `/title/:id` where the `:id` is an IMDb id. Auth-only routes (`/my-list`, `/my-learning*`, `/profile`) are wrapped in `<RequireAuth>`.
+Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`. Detail pages use `/title/:id` where the `:id` is an IMDb id. Every route is reachable — there is nothing to sign in to, so no route guards.
 
 ## Conventions
 

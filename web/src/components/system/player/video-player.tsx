@@ -9,7 +9,6 @@ import { MediaBridge } from '@/components/system/player/media-context';
 import { InteractiveSubtitles } from '@/components/system/player/interactive-subtitles';
 import type { WordContext } from '@/components/system/learn/word-popup';
 import type { Cue } from '@/utils/vtt';
-import { useAuth } from '@/context/auth-context';
 
 const Player = createPlayer({ features: videoFeatures });
 
@@ -46,15 +45,10 @@ function useIsFullscreen(): boolean {
 }
 
 function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
-  // A <track> can't send headers, so the JWT rides as ?token= for the user's key.
-  const { token } = useAuth();
-  const src =
-    `/api/subtitle/download?id=${encodeURIComponent(subtitle.id)}` +
-    (token ? `&token=${encodeURIComponent(token)}` : '');
   return (
     <track
       kind="subtitles"
-      src={src}
+      src={`/api/subtitle/download?id=${encodeURIComponent(subtitle.id)}`}
       srcLang={subtitle.language}
       label={subtitle.label}
       default

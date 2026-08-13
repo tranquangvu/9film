@@ -3,8 +3,9 @@ import { Volume2, X, BookmarkPlus, BookmarkCheck, Languages, Loader2 } from 'luc
 import { useDefineQuery } from '@/hooks/queries/use-define-query';
 import { useExplainPhrase } from '@/hooks/queries/use-explain-phrase-query';
 import { useAddWord, useIsWordSaved } from '@/hooks/queries/use-words-query';
-import { useAuth } from '@/context/auth-context';
 import { translate } from '@/services/learn';
+import { useMissingKey } from '@/hooks/use-missing-key';
+import { MissingKeyDialog } from '@/components/system/common/missing-key-dialog';
 
 export interface WordContext {
   imdbId: string;
@@ -25,11 +26,14 @@ interface WordPopupProps {
 
 export function WordPopup({ word, sentence, timestamp, context, kind = 'word', onClose }: WordPopupProps) {
   const isPhrase = kind === 'phrase';
-  const { isAuthenticated } = useAuth();
   // Only one lookup runs: single words hit the dictionary, phrases hit the AI
   // explainer (the other is disabled by passing a null query key).
   const { data, isLoading, isError } = useDefineQuery(isPhrase ? null : word, context.learningLang);
   const explain = useExplainPhrase(isPhrase ? word : null, sentence, context.learningLang);
+  // Selecting a phrase is the only place Gemini is reached from here. Without a
+  // key the backend still answers with a plain translation, so this is an offer,
+  // not an error.
+  const geminiNotice = useMissingKey('gemini', isPhrase);
   const saved = useIsWordSaved(word);
   const addWord = useAddWord();
   const [sentenceVi, setSentenceVi] = useState<string | null>(null);
@@ -99,6 +103,11 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
         <div className="mt-3 space-y-2">
           {explain.isLoading && <p className="text-sm text-white/40">Explaining…</p>}
           {explain.isError && <p className="text-sm text-white/40">Couldn't explain this phrase.</p>}
+          {geminiNotice.missing && !explain.isLoading && (
+            <p className="text-sm text-white/40">
+              Translation only — add a Gemini key in Connections for the full breakdown.
+            </p>
+          )}
           {explain.data?.literal && <ExplainRow label="Literally" text={explain.data.literal} />}
           {explain.data?.figurative && <ExplainRow label="Figuratively" text={explain.data.figurative} />}
           {explain.data?.usage && <ExplainRow label="Usage" text={explain.data.usage} />}
@@ -145,20 +154,17 @@ export function WordPopup({ word, sentence, timestamp, context, kind = 'word', o
       )}
 
       <div className="mt-5">
-        {isAuthenticated ? (
-          <button
-            onClick={onSave}
-            disabled={saved}
-            className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/50 transition-colors"
-          >
-            {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
-            {saved ? 'Saved' : 'Save'}
-          </button>
-        ) : (
-          <span className="text-xs text-white/40">Sign in to save words</span>
-        )}
+        <button
+          onClick={onSave}
+          disabled={saved}
+          className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/50 transition-colors"
+        >
+          {saved ? <BookmarkCheck className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
+          {saved ? 'Saved' : 'Save'}
+        </button>
       </div>
 
+      <MissingKeyDialog kind="gemini" open={geminiNotice.open} onClose={geminiNotice.dismiss} />
     </div>
   );
 }

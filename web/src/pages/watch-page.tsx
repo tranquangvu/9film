@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CloudCog, Captions, Film, FileText, AlertCircle, ListVideo, CirclePlay } from 'lucide-react';
+import {
+  ArrowLeft,
+  HardDrive,
+  Captions,
+  Film,
+  ListTree,
+  AlertCircle,
+  ListVideo,
+  CirclePlay,
+} from 'lucide-react';
 import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
-import { SubtitleRateLimitDialog } from '@/components/system/player/subtitle-rate-limit-dialog';
+import { MissingKeyDialog } from '@/components/system/common/missing-key-dialog';
 import { MediaProvider } from '@/components/system/player/media-context';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { WatchTour } from '@/components/system/player/watch-tour';
 import { SelectField } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
+import { useMissingKey } from '@/hooks/use-missing-key';
 import { useWatchedEpisodes } from '@/hooks/queries/use-progress-query';
 import { episodes, seasons } from '@/utils/stream';
 import { cn } from '@/utils/cn';
@@ -54,14 +64,24 @@ export function WatchPage() {
     nextEpisode,
     autoplayNext,
     cues,
-    subtitleRateLimited,
+    subtitleKeyMissing,
     learningMode,
     learningLang,
   } = usePlayerSession(id, initialEpisode);
 
+  // Subtitles are optional: with no SubDL key the search 503s and this offers to
+  // add one, once per session.
+  const subdlNotice = useMissingKey('subdl', subtitleKeyMissing);
+
   const [showTranscript, setShowTranscript] = useState(false);
-  // The shared-account rate-limit prompt, dismissable for this watch session.
-  const [rateLimitDismissed, setRateLimitDismissed] = useState(false);
+
+  // The tour paints an orange wash over the control it points at (z-100); the
+  // highlighted one is lifted above it so it reads on top of the orange rather
+  // than under it, with its icons/labels forced white.
+  const [tourTarget, setTourTarget] = useState<string | null>(null);
+  const lit = (target: string) =>
+    tourTarget === target && 'relative z-[101] text-white [&_svg]:text-white';
+
   const watchedEpisodes = useWatchedEpisodes(id);
   const isSeries = eps !== null;
   const availableSeasons = eps ? seasons(eps) : [];
@@ -128,7 +148,10 @@ export function WatchPage() {
                 </span>
 
                 {isSeries && (availableSeasons.length > 0 || episodesBySeason.length > 0) && (
-                  <span data-tour="episodes" className="inline-flex items-center gap-2 md:gap-3">
+                  <span
+                    data-tour="episodes"
+                    className={cn('inline-flex items-center gap-2 md:gap-3', lit('episodes'))}
+                  >
                     {availableSeasons.length > 0 && (
                       <SelectField
                         icon={<Film size={14} />}
@@ -171,38 +194,13 @@ export function WatchPage() {
 
               <div className="flex items-center gap-2 pointer-events-auto shrink-0">
                 <Tooltip.Provider>
-                  {hasTranscript && (
-                    <Tooltip.Root side="bottom">
-                      <Tooltip.Trigger
-                        render={
-                          <button
-                            data-tour="transcript"
-                            onClick={() => setShowTranscript((v) => !v)}
-                            aria-label="Toggle transcript"
-                            className={cn(
-                              'hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-full border transition-all',
-                              showTranscript
-                                ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/25'
-                                : 'bg-white/8 border-white/12 text-zinc-200 hover:text-white hover:bg-white/12 hover:border-white/20',
-                            )}
-                          >
-                            <FileText size={16} />
-                          </button>
-                        }
-                      />
-                      <Tooltip.Popup className="z-50 rounded-md border border-white/10 bg-zinc-900/95 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur">
-                        <Tooltip.Arrow className="fill-zinc-900" />
-                        {showTranscript ? 'Hide transcript' : 'Show transcript'}
-                      </Tooltip.Popup>
-                    </Tooltip.Root>
-                  )}
                   {allUrls.length > 0 && (
                     <Tooltip.Root side="bottom">
                       <Tooltip.Trigger
                         render={
-                          <span data-tour="source" className="inline-flex">
+                          <span data-tour="source" className={cn('inline-flex', lit('source'))}>
                             <SelectField
-                              icon={<CloudCog size={16} />}
+                              icon={<HardDrive size={16} />}
                               value={streamUrl ?? ''}
                               onValueChange={(v) => setStreamUrl(v)}
                               options={allUrls.map((url, i) => ({
@@ -220,17 +218,47 @@ export function WatchPage() {
                       </Tooltip.Popup>
                     </Tooltip.Root>
                   )}
+                  {hasTranscript && (
+                    <Tooltip.Root side="bottom">
+                      <Tooltip.Trigger
+                        render={
+                          <button
+                            data-tour="transcript"
+                            onClick={() => setShowTranscript((v) => !v)}
+                            aria-label="Toggle transcript"
+                            className={cn(
+                              'hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-full border transition-all',
+                              showTranscript
+                                ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/25'
+                                : 'bg-white/8 border-white/12 text-zinc-200 hover:text-white hover:bg-white/12 hover:border-white/20',
+                              lit('transcript'),
+                            )}
+                          >
+                            <ListTree size={16} />
+                          </button>
+                        }
+                      />
+                      <Tooltip.Popup className="z-50 rounded-md border border-white/10 bg-zinc-900/95 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur">
+                        <Tooltip.Arrow className="fill-zinc-900" />
+                        {showTranscript ? 'Hide transcript' : 'Show transcript'}
+                      </Tooltip.Popup>
+                    </Tooltip.Root>
+                  )}
                   {subList.length > 0 && (
                     <Tooltip.Root side="bottom">
                       <Tooltip.Trigger
                         render={
-                          <span data-tour="subtitles" className="inline-flex">
+                          <span
+                            data-tour="subtitles"
+                            className={cn('inline-flex', lit('subtitles'))}
+                          >
                             <SelectField
-                              icon={<Captions size={16} />}
+                              icon={<Captions size={20} />}
                               value={selectedSubId ?? ''}
                               onValueChange={(v) => handleSubtitleTrackChange(v || null)}
                               options={subList.map((s) => ({ id: s.id, label: s.label }))}
                               iconOnly
+                              contentClassName="bg-white/8"
                             />
                           </span>
                         }
@@ -277,7 +305,10 @@ export function WatchPage() {
 
           {/* First-use spotlight tour — activates once the player is ready so the
               highlighted controls are on screen; self-hides after completion. */}
-          <WatchTour enabled={!loading && !blocked && !!streamUrl} />
+          <WatchTour
+            enabled={!loading && !blocked && !!streamUrl}
+            onActiveTarget={setTourTarget}
+          />
         </div>
 
         {/* Transcript sidebar — full-screen overlay on mobile, side column on desktop */}
@@ -292,10 +323,7 @@ export function WatchPage() {
         )}
       </div>
 
-      <SubtitleRateLimitDialog
-        open={subtitleRateLimited && !rateLimitDismissed}
-        onClose={() => setRateLimitDismissed(true)}
-      />
+      <MissingKeyDialog kind="subdl" open={subdlNotice.open} onClose={subdlNotice.dismiss} />
     </div>
     </MediaProvider>
   );

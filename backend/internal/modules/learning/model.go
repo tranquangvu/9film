@@ -3,10 +3,10 @@ package learning
 // Word is a saved vocabulary entry with its capture context (the sentence/scene
 // it was learned from).
 type Word struct {
-	Word        string  `json:"word"`
-	Sentence    string  `json:"sentence"`
-	Translation string  `json:"translation"`
-	ImdbID      string  `json:"imdbId"`
+	Word        string `json:"word"`
+	Sentence    string `json:"sentence"`
+	Translation string `json:"translation"`
+	ImdbID      string `json:"imdbId"`
 	// Title is the movie/show name the word was saved from, stored as metadata so
 	// the learning page can group words by source without re-fetching IMDb.
 	Title       string  `json:"title"`

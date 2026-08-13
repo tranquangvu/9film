@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/auth-context';
 import { useWordStatsQuery, useImportWordList } from '@/hooks/queries/use-words-query';
 import { PageGradient } from '@/components/system/common/gradient';
 import { LearningHero } from '@/components/system/learn/learning-hero';
@@ -40,7 +39,6 @@ function ImportCard() {
 }
 
 export default function MyLearningOxford3000() {
-  const { isAuthenticated } = useAuth();
   const stats = useWordStatsQuery();
   const [studying, setStudying] = useState(false);
 
@@ -50,15 +48,6 @@ export default function MyLearningOxford3000() {
   const completedCount = useMemo(() => all.filter((w) => w.completedAt).length, [all]);
   const streak = useMemo(() => computeStreak(all), [all]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-4 text-center text-zinc-400">
-        <p>
-          Please <Link to="/login" className="text-orange-400">sign in</Link> to use your vocabulary.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-background pt-24 pb-16 px-4 md:px-8 lg:px-12">

@@ -5,7 +5,7 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 ## Stack
 
 **Frontend** — React 19, TypeScript, Vite, Tailwind CSS, Framer Motion, Video.js, TanStack Query
-**Backend** — Go, Gin, Zap, SQLite, JWT, godotenv
+**Backend** — Go, Gin, Zap, SQLite, godotenv
 
 ## Project Structure
 
@@ -18,14 +18,15 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 │   │   ├── config/                env loading
 │   │   ├── database/              SQLite open + migrations
 │   │   ├── logger/                zap setup
-│   │   ├── middleware/            CORS, auth, logging, recovery
-│   │   ├── httpx/                 bounded GET + shared rate-limit error
-│   │   ├── providers/             third-party clients (no app types)
+│   │   ├── middleware/            CORS, local-user identity, logging, recovery
+│   │   ├── cache/                 generic TTL cache
+│   │   ├── clients/               third-party clients (no app types)
+│   │   │   ├── httpx/             bounded GET shared by the clients
 │   │   │   ├── subdl/             SubDL subtitle API
 │   │   │   ├── opensubtitles/     OpenSubtitles API (kept, not wired in)
 │   │   │   └── gemini/            Gemini generateContent
 │   │   └── modules/               vertical-slice features
-│   │       ├── user/              accounts, settings, per-user API keys
+│   │       ├── user/              the local account, settings, API keys
 │   │       ├── favorite/          watchlist
 │   │       ├── history/           watch progress, continue-watching
 │   │       ├── title/             IMDb metadata (GraphQL)
@@ -39,7 +40,7 @@ A streaming app built with React on the frontend and Go on the backend. It strea
 │   │   ├── components/
 │   │   │   ├── ui/                Radix-based primitives
 │   │   │   └── system/            feature components (layout, title, player, learn, common)
-│   │   ├── services/              fetch wrappers (auth, title, stream, subtitle, user, learn)
+│   │   ├── services/              fetch wrappers (title, stream, subtitle, user, learn)
 │   │   ├── hooks/                 TanStack Query hooks
 │   │   ├── pages/                 route-level components
 │   │   └── utils/                 stream/subtitle/HLS pure logic
@@ -53,14 +54,13 @@ Each backend module follows a layered layout (`repo.go` → `service.go` → `ha
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/signup`, `/api/auth/login` | Account creation and JWT login |
 | GET | `/api/title/:imdb`, `/api/title/:imdb/similar` | IMDb title metadata via GraphQL |
 | GET | `/api/title/search`, `/trending`, `/browse` | Discovery lists (cached 1h) |
 | GET | `/api/stream` | Resolve stream URLs from the CDN |
 | GET | `/hls` | HLS segment/manifest proxy with URL rewriting (mounted at root) |
 | GET | `/api/subtitle/search`, `/api/subtitle/download` | Subtitle search / WebVTT download (optional) |
-| GET | `/api/learn/define`, `/api/learn/translate` | Public dictionary + translation helpers |
-| * | `/api/me/*` | Auth-required: profile, settings, API keys, favorites, history, words, tests, SRS reviews |
+| GET | `/api/learn/define`, `/api/learn/translate` | Dictionary + translation helpers |
+| * | `/api/me/*` | The local account: profile, settings, API keys, favorites, history, words, tests, SRS reviews |
 
 ## Getting Started
 
@@ -75,32 +75,32 @@ The two apps are independent — there is no root `package.json`. Run them in se
 
 ```bash
 cd backend
-cp .env.example .env       # then set JWT_SECRET — the server refuses to start without it
+cp .env.example .env       # optional — the defaults work as-is
 make dev                   # http://localhost:8081
 ```
 
-The SQLite file (`./nicefilm.db` by default) is created and migrated automatically on first run.
+The SQLite file (`./nicefilm.db` by default) is created and migrated automatically on first run, along with the single local account the app runs as.
 
-`.env` values — only `JWT_SECRET` is required:
+`.env` has no required values and holds no secrets:
 
 ```env
 # Server
 PORT=8081
-HOST=0.0.0.0
+# Loopback by default. There is no sign-in, so only expose it on the network
+# if you mean to (HOST=0.0.0.0).
+HOST=127.0.0.1
 
-# Auth / DB
-JWT_SECRET=your_secret     # required
-TOKEN_TTL_HOURS=168        # JWT lifetime, default 7 days
 DB_PATH=./nicefilm.db
-
-# Optional — SubDL (https://subdl.com/panel/api), the only subtitle provider
-# wired in. Leave blank to disable; /api/subtitle/* then returns 503.
-SUBDL_API_KEY=
 ```
 
 Other backend commands: `make build` / `make run` (binary at `bin/server`), `make tidy`, `go test ./...`.
 
-**API keys for the optional integrations.** Two learning features run on Gemini — idiom/phrase breakdowns and AI-graded meaning answers in a self-test — and the key is **per-user only**: there is no server-side fallback. Sign in and paste your own at `/profile`. Nothing breaks without it: a phrase breakdown falls back to a plain translation, and meaning answers are graded by a local string heuristic against the saved translation instead of by the model. Dictionary lookups and translations never touch Gemini at all — they use separate public APIs. The SubDL key can also be set per-user there, and a user key takes precedence over the `.env` one.
+**No sign-in.** The app is single-user by design: it runs on your machine against a local SQLite file, so the backend resolves one account at startup and every request runs as it. There is no login page, no password and no token.
+
+**API keys for the optional integrations.** Both keys are entered at `/profile` → Connections and stored in the database — the server ships with none, so nothing is configured behind your back. Each feature prompts for its key the first time you use it, once per session, and works or degrades without it:
+
+- **SubDL** (subtitles) — no key means no subtitles. Everything else, including playback, is unaffected.
+- **Gemini** — powers idiom/phrase breakdowns and AI-graded meaning answers in a self-test. Without a key a phrase falls back to a plain translation and meaning answers are graded by a local string heuristic. Dictionary lookups and translations never touch Gemini at all — they use separate public APIs.
 
 ### 2. Frontend
 

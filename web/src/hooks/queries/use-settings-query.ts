@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSettings, putSettings, type UserSettings } from '@/services/user';
-import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/components/ui/toast';
 
 const SETTINGS_KEY = ['settings'] as const;
@@ -13,11 +12,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
 };
 
 export function useSettingsQuery() {
-  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: SETTINGS_KEY,
     queryFn: getSettings,
-    enabled: isAuthenticated,
     // Settings rarely change and only ever from the profile page, where the
     // mutation below invalidates this key. Treat the fetched value as
     // permanently fresh so it never refetches on remount/reconnect on its own.

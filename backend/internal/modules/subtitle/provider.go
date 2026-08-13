@@ -15,18 +15,15 @@ const (
 	ProviderOpenSubtitles = "opensubtitles"
 )
 
-// Creds are one provider's credentials for one request, resolved per-user (the
-// user's own keys, or the .env fallback) by the composition root. Username and
-// Password are OpenSubtitles-only — SubDL authenticates with the API key alone —
-// so nothing populates them while OpenSubtitles is unwired.
+// Creds are one provider's credentials for one request, resolved from the local
+// user's stored keys by the composition root — the server keeps none of its own,
+// so an unset key means the provider is simply off. Username and Password are
+// OpenSubtitles-only — SubDL authenticates with the API key alone — so nothing
+// populates them while OpenSubtitles is unwired.
 type Creds struct {
 	APIKey   string
 	Username string
 	Password string
-	// Shared is true when these came from the server's .env fallback rather than
-	// the user's own stored keys — used to nudge the user to add their own when
-	// the shared account gets rate-limited.
-	Shared bool
 }
 
 func (c Creds) Configured() bool { return c.APIKey != "" }
@@ -55,12 +52,9 @@ type Provider interface {
 var (
 	// ErrRateLimited is returned when a provider rejects a request because the
 	// account hit its rate limit or exhausted its download quota.
-	ErrRateLimited = errors.New("subtitle provider rate limit reached or download quota exceeded")
-	// ErrSharedRateLimited wraps ErrRateLimited when the throttled account is the
-	// shared .env one, so the handler can nudge the user to add their own key.
-	ErrSharedRateLimited = errors.New("shared subtitle account rate limited")
-	ErrUnknownProvider   = errors.New("unknown subtitle provider")
-	ErrNotConfigured     = errors.New("subtitle provider not configured")
+	ErrRateLimited     = errors.New("subtitle provider rate limit reached or download quota exceeded")
+	ErrUnknownProvider = errors.New("unknown subtitle provider")
+	ErrNotConfigured   = errors.New("subtitle provider not configured")
 )
 
 // rateLimited restates a client's own throttling error — passed as limit, e.g.

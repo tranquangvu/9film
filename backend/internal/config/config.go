@@ -3,25 +3,17 @@ package config
 import (
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/joho/godotenv"
 )
 
-type SubDLConfig struct {
-	APIKey string
-}
-
 type Config struct {
 	Port int
 	Host string
-	// SubDL is the shared .env fallback for the only wired-in subtitle provider;
-	// nil when no key is set, which leaves subtitles to users with their own key.
-	SubDL *SubDLConfig
-
-	JWTSecret string
-	TokenTTL  time.Duration
-	DBPath    string
+	// DBPath is the SQLite file. It holds the single local account along with
+	// everything keyed to it, including the API keys for the optional
+	// integrations — the server itself carries no credentials.
+	DBPath string
 }
 
 func Load() *Config {
@@ -32,15 +24,12 @@ func Load() *Config {
 		port = p
 	}
 
+	// Loopback by default: the app is unauthenticated (see middleware.LocalUser),
+	// so anything that can reach the port is the local user. Set HOST explicitly
+	// to expose it on the network.
 	host := os.Getenv("HOST")
 	if host == "" {
-		host = "0.0.0.0"
-	}
-
-	// Token lifetime — default 7 days (168h).
-	ttlHours := 168
-	if h, err := strconv.Atoi(os.Getenv("TOKEN_TTL_HOURS")); err == nil && h > 0 {
-		ttlHours = h
+		host = "127.0.0.1"
 	}
 
 	dbPath := trim(os.Getenv("DB_PATH"))
@@ -48,18 +37,10 @@ func Load() *Config {
 		dbPath = "./nicefilm.db"
 	}
 
-	var subDL *SubDLConfig
-	if apiKey := trim(os.Getenv("SUBDL_API_KEY")); apiKey != "" {
-		subDL = &SubDLConfig{APIKey: apiKey}
-	}
-
 	return &Config{
-		Port:      port,
-		Host:      host,
-		SubDL:     subDL,
-		JWTSecret: trim(os.Getenv("JWT_SECRET")),
-		TokenTTL:  time.Duration(ttlHours) * time.Hour,
-		DBPath:    dbPath,
+		Port:   port,
+		Host:   host,
+		DBPath: dbPath,
 	}
 }
 

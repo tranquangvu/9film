@@ -1,17 +1,13 @@
 package learning
 
-import (
-	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/middleware"
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler, cfg *config.Config) {
+func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	l := rg.Group("/learn")
 	l.GET("/define", h.Define)
 	l.GET("/translate", h.Translate)
 
-	me := rg.Group("/me", middleware.AuthRequired(cfg))
+	me := rg.Group("/me")
 	me.GET("/words", h.GetWords)
 	me.GET("/words/stats", h.GetWordStats)
 	me.POST("/words", h.AddWord)

@@ -265,7 +265,6 @@ func (s *service) CompleteWord(userID int64, word string) error {
 	return s.repo.CompleteWord(userID, word)
 }
 
-
 // SubmitTest grades a completed self-test and persists it. Spelling is scored
 // locally (each retyped attempt vs the word); meanings are graded by Gemini in a
 // single batch call when the user has a key, otherwise by a string heuristic

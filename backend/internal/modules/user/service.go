@@ -1,29 +1,16 @@
 package user
 
 import (
-	"errors"
 	"net/url"
 	"strings"
-
-	"github.com/bentran/nicefilm/backend/internal/config"
-	"github.com/bentran/nicefilm/backend/internal/middleware"
 )
 
-var (
-	ErrUsernameTaken = errors.New("that username is already taken")
-	// ErrUnknownUser is returned by Login when no account has the given username.
-	// This app is local and password-less: a correct username is the only thing
-	// needed to sign in.
-	ErrUnknownUser = errors.New("unknown username")
-)
-
-// Service owns the user business logic: password-less auth (issuing JWTs via the
-// middleware package) and settings-default filling.
+// Service owns the user business logic: the local account's profile, its
+// settings (with defaults filled in), and the API keys for the optional
+// integrations. There is no sign-in — see middleware.LocalUser.
 type Service interface {
-	Signup(username string) (*User, string, error)
-	Login(username string) (*User, string, error)
 	GetUser(id int64) (*User, error)
-	UpdateUser(id int64, username, avatar string) (*User, error)
+	UpdateAvatar(id int64, avatar string) (*User, error)
 	GetSettings(userID int64) (Settings, error)
 	SaveSettings(userID int64, st Settings) (Settings, error)
 	CredentialStatus(userID int64) (CredentialStatus, error)
@@ -32,66 +19,30 @@ type Service interface {
 
 type service struct {
 	repo Repository
-	cfg  *config.Config
 }
 
-func NewService(repo Repository, cfg *config.Config) Service {
-	return &service{repo: repo, cfg: cfg}
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
 func avatarFor(username string) string {
 	return "https://api.dicebear.com/7.x/avataaars/svg?seed=" + url.QueryEscape(username)
 }
 
-func (s *service) Signup(username string) (*User, string, error) {
-	if _, err := s.repo.GetUserByUsername(username); err == nil {
-		return nil, "", ErrUsernameTaken
-	} else if !errors.Is(err, ErrNotFound) {
-		return nil, "", err
-	}
-
-	u, err := s.repo.CreateUser(username, avatarFor(username))
-	if err != nil {
-		return nil, "", err
-	}
-	token, err := middleware.Issue(u.ID, s.cfg.JWTSecret, s.cfg.TokenTTL)
-	if err != nil {
-		return nil, "", err
-	}
-	return u, token, nil
-}
-
-// Login looks up the account by username and returns the user plus a signed JWT.
-// There is no password: a correct (existing) username is sufficient.
-func (s *service) Login(username string) (*User, string, error) {
-	u, err := s.repo.GetUserByUsername(username)
-	if err != nil {
-		return nil, "", ErrUnknownUser
-	}
-	token, err := middleware.Issue(u.ID, s.cfg.JWTSecret, s.cfg.TokenTTL)
-	if err != nil {
-		return nil, "", err
-	}
-	return u, token, nil
-}
-
 func (s *service) GetUser(id int64) (*User, error) {
 	return s.repo.GetUserByID(id)
 }
 
-// UpdateUser changes the account's username and avatar. The username must be
-// unique (excluding the account itself).
-func (s *service) UpdateUser(id int64, username, avatar string) (*User, error) {
+// UpdateAvatar changes the account's picture. The username is not editable: it
+// is how LocalUserID finds this account, and database.Migrate re-seeds the
+// original name on every boot — so renaming it would strand every favorite,
+// resume point and saved word on the old row and start the app in an empty one.
+func (s *service) UpdateAvatar(id int64, avatar string) (*User, error) {
 	avatar = strings.TrimSpace(avatar)
 	if avatar == "" {
-		avatar = avatarFor(username)
+		avatar = avatarFor(localUsername)
 	}
-	if existing, err := s.repo.GetUserByUsername(username); err == nil && existing.ID != id {
-		return nil, ErrUsernameTaken
-	} else if err != nil && !errors.Is(err, ErrNotFound) {
-		return nil, err
-	}
-	return s.repo.UpdateUser(id, username, avatar)
+	return s.repo.UpdateAvatar(id, avatar)
 }
 
 func (s *service) GetSettings(userID int64) (Settings, error) {
@@ -139,23 +90,12 @@ func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialSt
 	return s.statusOf(cur), nil
 }
 
-// statusOf reports usability. Gemini is per-user only (no .env fallback);
-// subtitles work from either the user's SubDL key or the server default.
+// statusOf reports which integrations are usable. Both keys are per-user and
+// stored in the database — the server holds no fallback of its own, so a key
+// that isn't set means that integration is simply off.
 func (s *service) statusOf(c Credentials) CredentialStatus {
 	return CredentialStatus{
-		GeminiKeySet:     c.GeminiAPIKey != "",
-		GeminiConfigured: c.GeminiAPIKey != "",
-		SubDLAPIKeySet:   c.SubDLAPIKey != "",
-		SubDLConfigured:  c.SubDLAPIKey != "" || s.cfg.SubDL != nil,
+		GeminiKeySet:   c.GeminiAPIKey != "",
+		SubDLAPIKeySet: c.SubDLAPIKey != "",
 	}
-}
-
-// normalizeUsername lower-cases and trims a username; an empty result is a
-// user-facing validation error.
-func normalizeUsername(raw string) (string, error) {
-	username := strings.ToLower(strings.TrimSpace(raw))
-	if username == "" {
-		return "", errors.New("a username is required")
-	}
-	return username, nil
 }

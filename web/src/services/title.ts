@@ -10,9 +10,9 @@ export class TitleNotFoundError extends Error {
   }
 }
 
-// These endpoints are public, but we still go through apiFetch so the bearer
-// token rides along when signed in — the backend uses it to stamp each title's
-// `isFavorite` flag.
+// These endpoints need no credentials, but still go through apiFetch for its
+// error shape — the backend stamps each title's `isFavorite` flag from the local
+// account on its own.
 export async function getTitle(imdbId: string, signal?: AbortSignal): Promise<TitleDetail> {
   const id = encodeURIComponent(normId(imdbId));
   try {
