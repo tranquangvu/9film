@@ -13,6 +13,7 @@ import {
 import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { MissingKeyDialog } from '@/components/system/common/missing-key-dialog';
+import { WatchNoticeDialog } from '@/components/system/common/watch-notice-dialog';
 import { MediaProvider } from '@/components/system/player/media-context';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { WatchTour } from '@/components/system/player/watch-tour';
@@ -20,6 +21,7 @@ import { SelectField } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
 import { useMissingKey } from '@/hooks/use-missing-key';
+import { useWatchNotice } from '@/hooks/use-watch-notice';
 import { useWatchedEpisodes } from '@/hooks/queries/use-progress-query';
 import { episodes, seasons } from '@/utils/stream';
 import { cn } from '@/utils/cn';
@@ -69,9 +71,13 @@ export function WatchPage() {
     learningLang,
   } = usePlayerSession(id, initialEpisode);
 
+  // The licence notice, once ever. Until it's acknowledged the media element is
+  // never mounted, so nothing plays behind the dialog.
+  const { pending: noticePending, acknowledge } = useWatchNotice();
+
   // Subtitles are optional: with no SubDL key the search 503s and this offers to
-  // add one, once per session.
-  const subdlNotice = useMissingKey('subdl', subtitleKeyMissing);
+  // add one, once per session — but never stacked under the licence notice.
+  const subdlNotice = useMissingKey('subdl', subtitleKeyMissing && !noticePending);
 
   const [showTranscript, setShowTranscript] = useState(false);
 
@@ -115,8 +121,8 @@ export function WatchPage() {
       >
         <div className="relative flex-1 min-w-0">
           <VideoPlayer
-            src={streamUrl}
-            loading={loading || blocked}
+            src={noticePending ? null : streamUrl}
+            loading={loading || blocked || noticePending}
             poster={poster}
             subtitle={selectedSub}
             startAt={startAtOverride ?? resumeAt}
@@ -274,7 +280,9 @@ export function WatchPage() {
             </div>
           </header>
 
-          {(loading || blocked) && (
+          {/* Also stands in while the notice is up, so the dialog has the poster
+              wash behind it instead of the player's empty state. */}
+          {(loading || blocked || noticePending) && (
             <div className="absolute inset-0 z-40 flex flex-col items-center justify-center overflow-hidden">
               {poster && (
                 <img
@@ -289,15 +297,19 @@ export function WatchPage() {
                 {blocked ? (
                   <AlertCircle className="w-12 h-12 text-orange-400/80" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full border-[3px] border-white/15 border-t-orange-500 animate-spin" />
+                  loading && (
+                    <div className="w-12 h-12 rounded-full border-[3px] border-white/15 border-t-orange-500 animate-spin" />
+                  )
                 )}
                 <div>
                   <p className="text-white font-semibold text-base md:text-lg leading-tight">
                     {title ?? 'Loading'}
                   </p>
-                  <p className="text-white/55 text-sm mt-1.5">
-                    {blocked ? (error ?? 'Unable to load stream') : 'Preparing your stream…'}
-                  </p>
+                  {(blocked || loading) && (
+                    <p className="text-white/55 text-sm mt-1.5">
+                      {blocked ? (error ?? 'Unable to load stream') : 'Preparing your stream…'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -306,7 +318,7 @@ export function WatchPage() {
           {/* First-use spotlight tour — activates once the player is ready so the
               highlighted controls are on screen; self-hides after completion. */}
           <WatchTour
-            enabled={!loading && !blocked && !!streamUrl}
+            enabled={!loading && !blocked && !noticePending && !!streamUrl}
             onActiveTarget={setTourTarget}
           />
         </div>
@@ -323,6 +335,7 @@ export function WatchPage() {
         )}
       </div>
 
+      <WatchNoticeDialog open={noticePending} onAcknowledge={acknowledge} />
       <MissingKeyDialog kind="subdl" open={subdlNotice.open} onClose={subdlNotice.dismiss} />
     </div>
     </MediaProvider>

@@ -23,11 +23,18 @@ function DialogOverlay({ className, ...props }: ComponentProps<typeof DialogPrim
   );
 }
 
+interface DialogContentProps extends ComponentProps<typeof DialogPrimitive.Content> {
+  /** Set false for a dialog that must be answered: drops the X and ignores
+   *  Escape / clicks outside, so the only way out is one of its own buttons. */
+  dismissible?: boolean;
+}
+
 function DialogContent({
   className,
   children,
+  dismissible = true,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Content>) {
+}: DialogContentProps) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -39,13 +46,17 @@ function DialogContent({
           'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
           className,
         )}
+        onEscapeKeyDown={dismissible ? undefined : (e) => e.preventDefault()}
+        onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1 text-zinc-500 outline-none transition-colors hover:text-white">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {dismissible && (
+          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1 text-zinc-500 outline-none transition-colors hover:text-white">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   );
