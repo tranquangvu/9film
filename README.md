@@ -97,7 +97,7 @@ Other backend commands: `make build` / `make run` (binary at `bin/server`), `mak
 
 **No sign-in.** The app is single-user by design: it runs on your machine against a local SQLite file, so the backend resolves one account at startup and every request runs as it. There is no login page, no password and no token.
 
-**API keys for the optional integrations.** Both keys are entered at `/profile` → Connections and stored in the database — the server ships with none, so nothing is configured behind your back. Each feature prompts for its key the first time you use it, once per session, and works or degrades without it:
+**API keys for the optional integrations.** Both keys are asked for once on first run, in the welcome flow at `/welcome` (which also carries the licence notice), and can be changed any time at `/profile` → Connections. They are stored in the database — the server ships with none and has no `.env` fallback, so nothing is configured behind your back. Both are skippable; a skipped key is mentioned again only where it would have mattered (the watch page says why there are no subtitles), and each feature works or degrades without it:
 
 - **SubDL** (subtitles) — no key means no subtitles. Everything else, including playback, is unaffected.
 - **Gemini** — powers idiom/phrase breakdowns and AI-graded meaning answers in a self-test. Without a key a phrase falls back to a plain translation and meaning answers are graded by a local string heuristic. Dictionary lookups and translations never touch Gemini at all — they use separate public APIs.

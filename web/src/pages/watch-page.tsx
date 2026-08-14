@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
-import { MissingKeyDialog } from '@/components/system/common/missing-key-dialog';
-import { WatchNoticeDialog } from '@/components/system/common/watch-notice-dialog';
+import { SubtitleKeyNotice } from '@/components/system/player/subtitle-key-notice';
 import { MediaProvider } from '@/components/system/player/media-context';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { WatchTour } from '@/components/system/player/watch-tour';
@@ -21,7 +20,6 @@ import { SelectField } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
 import { usePlayerSession } from '@/hooks/use-player-session';
 import { useMissingKey } from '@/hooks/use-missing-key';
-import { useWatchNotice } from '@/hooks/use-watch-notice';
 import { useWatchedEpisodes } from '@/hooks/queries/use-progress-query';
 import { episodes, seasons } from '@/utils/stream';
 import { cn } from '@/utils/cn';
@@ -71,13 +69,11 @@ export function WatchPage() {
     learningLang,
   } = usePlayerSession(id, initialEpisode);
 
-  // The licence notice, once ever. Until it's acknowledged the media element is
-  // never mounted, so nothing plays behind the dialog.
-  const { pending: noticePending, acknowledge } = useWatchNotice();
-
-  // Subtitles are optional: with no SubDL key the search 503s and this offers to
-  // add one, once per session — but never stacked under the licence notice.
-  const subdlNotice = useMissingKey('subdl', subtitleKeyMissing && !noticePending);
+  // Subtitles are optional: with no SubDL key the search 503s, and this surfaces
+  // the reason the subtitle picker is empty — once per session, over a player
+  // that keeps playing. (The licence notice moved into the onboarding flow, which
+  // runs before any route here is reachable.)
+  const subdlNotice = useMissingKey('subdl', subtitleKeyMissing);
 
   const [showTranscript, setShowTranscript] = useState(false);
 
@@ -121,8 +117,8 @@ export function WatchPage() {
       >
         <div className="relative flex-1 min-w-0">
           <VideoPlayer
-            src={noticePending ? null : streamUrl}
-            loading={loading || blocked || noticePending}
+            src={streamUrl}
+            loading={loading || blocked}
             poster={poster}
             subtitle={selectedSub}
             startAt={startAtOverride ?? resumeAt}
@@ -280,9 +276,7 @@ export function WatchPage() {
             </div>
           </header>
 
-          {/* Also stands in while the notice is up, so the dialog has the poster
-              wash behind it instead of the player's empty state. */}
-          {(loading || blocked || noticePending) && (
+          {(loading || blocked) && (
             <div className="absolute inset-0 z-40 flex flex-col items-center justify-center overflow-hidden">
               {poster && (
                 <img
@@ -315,12 +309,13 @@ export function WatchPage() {
             </div>
           )}
 
+          {/* Sits below the header rather than in front of the video: with no
+              SubDL key the film still plays, only without captions. */}
+          <SubtitleKeyNotice open={subdlNotice.open} onDismiss={subdlNotice.dismiss} />
+
           {/* First-use spotlight tour — activates once the player is ready so the
               highlighted controls are on screen; self-hides after completion. */}
-          <WatchTour
-            enabled={!loading && !blocked && !noticePending && !!streamUrl}
-            onActiveTarget={setTourTarget}
-          />
+          <WatchTour enabled={!loading && !blocked && !!streamUrl} onActiveTarget={setTourTarget} />
         </div>
 
         {/* Transcript sidebar — full-screen overlay on mobile, side column on desktop */}
@@ -335,8 +330,6 @@ export function WatchPage() {
         )}
       </div>
 
-      <WatchNoticeDialog open={noticePending} onAcknowledge={acknowledge} />
-      <MissingKeyDialog kind="subdl" open={subdlNotice.open} onClose={subdlNotice.dismiss} />
     </div>
     </MediaProvider>
   );

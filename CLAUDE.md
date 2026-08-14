@@ -58,7 +58,7 @@ Each adapter declares a small private interface for the slice of the client it u
 
 Cross-module seams are kept thin:
 - `title.Module` receives a `title.Enricher` so per-user state (favorites, watch progress, chosen subtitle) folds into title responses. `app.go` injects `history.NewEnricher(db)`, which satisfies the interface directly and forwards `FavoritedIds` to the `favorite` module — no adapter needed.
-- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `subtitleCreds`). `geminiKeys` resolves the user's stored key only (no `.env` fallback); `subtitleCreds` is keyed by *provider* and tries the user's stored key first, then the `.env` fallback.
+- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `subtitleCreds`). Both resolve the user's stored key only — there is no `.env` fallback for either, and the server holds no key of its own. `subtitleCreds` stays keyed by *provider* so an id from an unwired provider resolves to empty creds.
 
 ### Modules
 
@@ -83,7 +83,7 @@ Cross-module seams are kept thin:
 - **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `subdl.go` adapts `clients/subdl` and is the one implementation wired in; `vtt.go`/`archive.go` hold the shared SRT→VTT and zip/gzip helpers. `service.go` resolves creds and dispatches. `Module` takes its providers already built, so `app.go` chooses them.
   - `opensubtitles.go` (and `clients/opensubtitles`) is **kept but not wired in**: `app.go` passes SubDL alone, no credentials reach it, and an `opensubtitles:` id returns 400 "unknown provider". Both files compile so they can't rot; the adapter's header comment lists the three steps to wire it back in.
   - Subtitles are identified by an **opaque `"<provider>:<ref>"` id** (`subdl:/subtitle/x.zip|S01E02`) that flows all the way to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` into it so a season-pack ZIP can be unpacked to the right episode. `ParseID` still reads a bare numeric id as a legacy OpenSubtitles one so it fails cleanly rather than being taken for a SubDL ref, and `Migrate` backfills old `history.sub_file_id` rows into `sub_ref`.
-  - The SubDL key comes only from `user.CredentialStore` — there is no `.env` fallback and the server holds no key of its own. With none stored the handler returns 503 `code:"provider_key_missing"`, which the frontend turns into an optional "add a key" dialog; a throttled account returns 429 `code:"provider_rate_limited"`.
+  - The SubDL key comes only from `user.CredentialStore` — there is no `.env` fallback and the server holds no key of its own. With none stored the handler returns 503 `code:"provider_key_missing"`, which the frontend turns into the watch page's "no subtitles" notice; a throttled account returns 429 `code:"provider_rate_limited"`.
   - The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, language filtering, release-name matching or top-N cut. Only a repeated id is dropped, since a SubDL season pack yields one row per release but a single archive.
 - **Gemini** (default model `gemini-2.5-flash`) — powers exactly two things, both in the learning module: phrase/idiom explanations (`GET /me/words/explain`, which degrades to a plain machine translation when there's no key or the call fails) and AI-graded meaning answers inside a submitted self-test (`POST /me/tests`, which falls back to a local string heuristic against the saved translation). Dictionary definitions and translations are *not* Gemini — they hit separate public APIs and work without any key. The client is `clients/gemini` (`Generate` / `GenerateJSONArray` / `GenerateJSONObject`, which find the JSON inside a fenced or prose-wrapped reply); the prompts live in `modules/learning/generator.go`. **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
 
@@ -110,11 +110,17 @@ Key utilities in `utils/stream.ts`:
 
 Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend: `title.ts`, `stream.ts`, `subtitle.ts`, `user.ts`, `learn.ts`, `dictionary.ts`. Path alias `@/` → `web/src/`.
 
-Both integrations are optional and each is prompted for at the moment it is used, never up front: `useMissingKey(kind, using)` (`hooks/use-missing-key.ts`) pairs the credential status with the caller's "using it right now" signal and shows `MissingKeyDialog` once per browser session. The watch page passes `subtitleKeyMissing` (the 503 from the subtitle search); the word popup passes `isPhrase`. Dismissing leaves the feature off rather than broken — no SubDL key means no subtitles, no Gemini key means a phrase gets a plain translation instead of a breakdown.
+### Onboarding and the API keys
+
+Both keys are asked for once, up front, in the first-run flow at `/welcome` (`pages/onboarding-page.tsx`): step one is the licence notice (no licence, nothing hosted, personal non-commercial — it used to sit in front of the first playback), step two explains and collects the SubDL and Gemini keys. Both fields are skippable; finishing sets `9film:onboarded` in localStorage through `hooks/use-onboarding.ts` — a `useSyncExternalStore` module store, because the gate and the flow are sibling subtrees and completing one must unblock the other without a reload.
+
+`OnboardingGate` (`components/system/common/onboarding-gate.tsx`) wraps every app route and redirects to `/welcome` with the attempted path in `location.state.from`. `/welcome` and the static `/about` + `/disclaimer` pages sit **outside** the gate — step one links to Disclaimer in a new tab, which the gate would otherwise bounce back into the flow.
+
+After onboarding, a skipped key is raised again only where it would have mattered: `useMissingKey(kind, using)` (`hooks/use-missing-key.ts`) pairs the credential status with the caller's "using it right now" signal, once per browser session. The watch page passes `subtitleKeyMissing` (the 503 from the subtitle search) and renders `SubtitleKeyNotice` — a dismissible banner under the player header, not a dialog, since the film plays fine without captions; the word popup passes `isPhrase` and renders `MissingKeyDialog`. Every one of these surfaces (plus the Profile → Connections form) reads its wording from `KEY_COPY` in `components/system/common/key-copy.ts`, so an integration is never explained two different ways.
 
 ### Routing
 
-Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`. Detail pages use `/title/:id` where the `:id` is an IMDb id. Every route is reachable — there is nothing to sign in to, so no route guards.
+Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`. Detail pages use `/title/:id` where the `:id` is an IMDb id. There is nothing to sign in to, so the only guard is `OnboardingGate` (see above) — and it gates on a localStorage flag, not on an account.
 
 ## Conventions
 

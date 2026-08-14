@@ -4,6 +4,7 @@ import { ToastProvider, Toaster } from "@/components/ui/toast";
 
 import MainLayout from "@/components/system/layout/main-layout";
 import WatchLayout from "@/components/system/layout/watch-layout";
+import { OnboardingGate } from "@/components/system/common/onboarding-gate";
 
 import HomePage from "@/pages/home-page";
 import BrowsePage from "@/pages/browse-page";
@@ -21,6 +22,7 @@ import TvSeriesPage from "@/pages/tv-series-page";
 import NotFoundPage from "@/pages/not-found-page";
 import AboutPage from "@/pages/about-page";
 import DisclaimerPage from "@/pages/disclaimer-page";
+import OnboardingPage from "@/pages/onboarding-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,29 +51,43 @@ const queryClient = new QueryClient({
 });
 
 const router = createBrowserRouter([
+  // Outside the onboarding gate: the welcome flow itself, plus the two static
+  // pages it links to (Disclaimer opens in a new tab from step one, which the
+  // gate would otherwise bounce straight back into the flow).
+  { path: "/welcome", element: <OnboardingPage /> },
   {
     element: <MainLayout />,
     children: [
-      { path: "/", element: <HomePage /> },
-      { path: "/browse", element: <BrowsePage /> },
-      { path: "/movies", element: <TitlesPage /> },
-      { path: "/tvs", element: <TvSeriesPage /> },
-      { path: "/title/:id", element: <TitleDetailPage /> },
-      { path: "/search", element: <SearchPage /> },
-      { path: "/my-list", element: <MyListPage /> },
-      { path: "/my-learning", element: <MyLearningPage /> },
-      { path: "/my-learning/insights", element: <MyLearningInsightsPage /> },
-      { path: "/my-learning/test-results", element: <MyLearningTestResultsPage /> },
-      { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
-      { path: "/profile", element: <ProfilePage /> },
       { path: "/about", element: <AboutPage /> },
       { path: "/disclaimer", element: <DisclaimerPage /> },
-      { path: "*", element: <NotFoundPage /> },
     ],
   },
   {
-    element: <WatchLayout />,
-    children: [{ path: "/watch/:id", element: <WatchPage /> }],
+    element: <OnboardingGate />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          { path: "/", element: <HomePage /> },
+          { path: "/browse", element: <BrowsePage /> },
+          { path: "/movies", element: <TitlesPage /> },
+          { path: "/tvs", element: <TvSeriesPage /> },
+          { path: "/title/:id", element: <TitleDetailPage /> },
+          { path: "/search", element: <SearchPage /> },
+          { path: "/my-list", element: <MyListPage /> },
+          { path: "/my-learning", element: <MyLearningPage /> },
+          { path: "/my-learning/insights", element: <MyLearningInsightsPage /> },
+          { path: "/my-learning/test-results", element: <MyLearningTestResultsPage /> },
+          { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
+          { path: "/profile", element: <ProfilePage /> },
+          { path: "*", element: <NotFoundPage /> },
+        ],
+      },
+      {
+        element: <WatchLayout />,
+        children: [{ path: "/watch/:id", element: <WatchPage /> }],
+      },
+    ],
   },
 ]);
 

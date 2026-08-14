@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserRoundCog, Check, Sparkles, Captions, ExternalLink } from 'lucide-react';
+import { UserRoundCog, Check, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { ApiError } from '@/lib/api-fetch';
 import { useMe, useUpdateMe } from '@/hooks/queries/use-me-query';
 import { useSettings, useUpdateSettings } from '@/hooks/queries/use-settings-query';
 import { useCredentialsQuery, useSaveCredentials } from '@/hooks/queries/use-credentials-query';
+import { KEY_COPY, type KeyKind } from '@/components/system/common/key-copy';
 
 const inputClass = 'px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 focus:border-orange-500/50';
 
@@ -296,11 +297,7 @@ function ConnectionsCard() {
 
       <div className="space-y-2.5">
         <ConnectionHeader
-          icon={Sparkles}
-          title="Smarter learning"
-          provider="Gemini"
-          desc="Idiom & phrase breakdowns, plus AI-graded meaning tests."
-          href="https://aistudio.google.com/app/apikey"
+          kind="gemini"
           badge={status && <ConfiguredBadge on={status.geminiKeySet} />}
         />
         <Input
@@ -317,11 +314,7 @@ function ConnectionsCard() {
 
       <div className="space-y-2.5">
         <ConnectionHeader
-          icon={Captions}
-          title="Subtitles"
-          provider="SubDL"
-          desc="Captions for any title + clickable Learn-English mode."
-          href="https://subdl.com/panel/api"
+          kind="subdl"
           badge={status && <ConfiguredBadge on={status.subdlApiKeySet} />}
         />
         <Input
@@ -343,33 +336,24 @@ function ConnectionsCard() {
   );
 }
 
-function ConnectionHeader({
-  icon: Icon,
-  title,
-  provider,
-  desc,
-  href,
-  badge,
-}: {
-  icon: typeof Sparkles;
-  title: string;
-  provider: string;
-  desc: string;
-  href: string;
-  badge?: React.ReactNode;
-}) {
+// Reads its wording from the shared KEY_COPY, so the settings form, the welcome
+// flow and the in-app prompts describe an integration the same way.
+function ConnectionHeader({ kind, badge }: { kind: KeyKind; badge?: React.ReactNode }) {
+  const copy = KEY_COPY[kind];
+  const Icon = copy.icon;
+
   return (
     <div>
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-orange-400 shrink-0" />
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <span className="text-xs text-zinc-500">· {provider}</span>
+        <h3 className="text-sm font-semibold text-white">{copy.feature}</h3>
+        <span className="text-xs text-zinc-500">· {copy.provider}</span>
         {badge && <span className="ml-auto">{badge}</span>}
       </div>
       <p className="text-xs text-zinc-500 mt-1.5">
-        {desc}{' '}
+        {copy.short}{' '}
         <a
-          href={href}
+          href={copy.href}
           target="_blank"
           rel="noreferrer"
           className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5 whitespace-nowrap"

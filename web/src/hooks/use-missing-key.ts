@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useCredentialsQuery } from '@/hooks/queries/use-credentials-query';
-
-export type KeyKind = 'subdl' | 'gemini';
+import type { KeyKind } from '@/components/system/common/key-copy';
 
 const dismissKey = (kind: KeyKind) => `9film:key-notice-${kind}`;
 
 // Tracks whether to prompt for a missing API key. `using` is the caller's signal
 // that the feature is actually being used right now — the prompt is tied to the
-// moment of use, so a key you never need is never asked for.
+// moment of use, so a key skipped during onboarding is only raised again where it
+// would have mattered.
 //
 // Dismissal is remembered for the browser session: seeing it once per app run is
 // a reminder, seeing it on every phrase would be nagging, and remembering it
