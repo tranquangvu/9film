@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/9film/backend/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +27,7 @@ const dictAPIBase = "https://api.dictionaryapi.dev/api/v2/entries/en"
 // can be swapped without touching handlers.
 const translateAPIBase = "https://api.mymemory.translated.net/get"
 
-const learningUserAgent = "NiceFilm/1.0"
+const learningUserAgent = "9Film/1.0"
 
 // dictAPIResponse mirrors the upstream dictionaryapi.dev shape (only the fields
 // we need). The endpoint returns an array of entries for a word.

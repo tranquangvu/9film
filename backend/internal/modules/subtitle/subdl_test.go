@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/subdl"
+	"github.com/bentran/9film/backend/internal/clients/subdl"
 )
 
 // stubSubDL stands in for the SubDL client so these tests cover the adapter —

@@ -3,7 +3,7 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-// shadcn-style Select built on @radix-ui/react-select, themed for NiceFilm's
+// shadcn-style Select built on @radix-ui/react-select, themed for 9Film's
 // dark palette. See https://ui.shadcn.com/docs/components/radix/select
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {

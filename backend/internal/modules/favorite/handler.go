@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/middleware"
+	"github.com/bentran/9film/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

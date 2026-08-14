@@ -19,7 +19,7 @@ const inputClass = 'px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/
 const AVATAR_STYLES = ['thumbs', 'adventurer', 'pixel-art', 'toon-head', 'lorelei-neutral', 'initial-face', 'big-smile', 'notionists'];
 
 function avatarOptions(seed: string): string[] {
-  const s = encodeURIComponent(seed.trim() || 'nicefilm');
+  const s = encodeURIComponent(seed.trim() || '9film');
   return AVATAR_STYLES.map((style) => `https://api.dicebear.com/10.x/${style}/svg?seed=${s}`);
 }
 

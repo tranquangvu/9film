@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/opensubtitles"
+	"github.com/bentran/9film/backend/internal/clients/opensubtitles"
 )
 
 // OpenSubtitles was the original subtitle source. It is NOT wired into the app:

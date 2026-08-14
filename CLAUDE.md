@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Overview
 
-NiceFilm streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`.
+9Film streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`.
 
 **Single user, no sign-in.** The backend resolves one local account at startup and stamps every request with it (`middleware.LocalUser`). No login, no token, no session. `user_id` columns stay (they key every row) but always hold that one id.
 
@@ -72,9 +72,9 @@ Both keys are **per-user only** — no `.env` fallback, the server holds no key 
 
 ### Config and the local account
 
-`config.Config` is three values: `Port` (8081), `Host` (`127.0.0.1`, loopback because nothing authenticates the port), `DBPath` (`./nicefilm.db`). No secrets — every credential lives in the DB, entered at Profile → Connections.
+`config.Config` is three values: `Port` (8081), `Host` (`127.0.0.1`, loopback because nothing authenticates the port), `DBPath` (`./9film.db`). No secrets — every credential lives in the DB, entered at Profile → Connections.
 
-`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed strands every favorite, resume point and saved word on the old row — delete `nicefilm.db` and start over instead.
+`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed strands every favorite, resume point and saved word on the old row — delete `9film.db` and start over instead.
 
 `Migrate` is schema-only: `CREATE TABLE IF NOT EXISTS` plus the seed, no versioning and no in-place column migration. Changing a table means editing the CREATE and deleting the database file.
 

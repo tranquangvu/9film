@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/subdl"
+	"github.com/bentran/9film/backend/internal/clients/subdl"
 )
 
 // subdlAPI is the slice of the SubDL client this adapter uses, named here so the

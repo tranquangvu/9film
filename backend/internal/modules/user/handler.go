@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
-	"github.com/bentran/nicefilm/backend/internal/middleware"
+	"github.com/bentran/9film/backend/internal/logger"
+	"github.com/bentran/9film/backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

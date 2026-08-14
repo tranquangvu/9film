@@ -3,8 +3,8 @@ package history
 import (
 	"database/sql"
 
-	"github.com/bentran/nicefilm/backend/internal/modules/favorite"
-	"github.com/bentran/nicefilm/backend/internal/modules/title"
+	"github.com/bentran/9film/backend/internal/modules/favorite"
+	"github.com/bentran/9film/backend/internal/modules/title"
 	"github.com/gin-gonic/gin"
 )
 

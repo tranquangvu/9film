@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/cache"
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/9film/backend/internal/cache"
+	"github.com/bentran/9film/backend/internal/logger"
 	"go.uber.org/zap"
 )
 

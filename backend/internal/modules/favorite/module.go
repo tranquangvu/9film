@@ -3,7 +3,7 @@ package favorite
 import (
 	"database/sql"
 
-	"github.com/bentran/nicefilm/backend/internal/modules/title"
+	"github.com/bentran/9film/backend/internal/modules/title"
 	"github.com/gin-gonic/gin"
 )
 

@@ -34,7 +34,7 @@ func Load() *Config {
 
 	dbPath := trim(os.Getenv("DB_PATH"))
 	if dbPath == "" {
-		dbPath = "./nicefilm.db"
+		dbPath = "./9film.db"
 	}
 
 	return &Config{

@@ -1,4 +1,4 @@
-# 9Film — NiceFilm
+# 9Film
 
 A personal streaming app that plays any IMDb title (HLS proxying, SubDL subtitles, TV episode selection) and layers an English-learning toolkit on top: vocabulary, AI definitions and translations, spelling/meaning self-tests, and SM-2 spaced repetition.
 
@@ -53,7 +53,7 @@ pnpm dev            # http://localhost:5173
 
 Vite proxies `/api` and `/hls` to the backend; point it elsewhere with `API_URL=http://host:port pnpm dev`. Other commands: `make build` / `make run` / `make tidy` / `go test ./...`; `pnpm build` / `pnpm typecheck` / `pnpm lint`.
 
-The SQLite file (`./nicefilm.db`) is created, migrated and seeded with the single local account on first run. `.env` is optional and holds no secrets — only `PORT`, `HOST` (loopback by default; set `HOST=0.0.0.0` only if you mean to expose it) and `DB_PATH`.
+The SQLite file (`./9film.db`) is created, migrated and seeded with the single local account on first run. `.env` is optional and holds no secrets — only `PORT`, `HOST` (loopback by default; set `HOST=0.0.0.0` only if you mean to expose it) and `DB_PATH`.
 
 ## No sign-in, and the two optional keys
 

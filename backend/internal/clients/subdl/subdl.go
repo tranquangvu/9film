@@ -1,7 +1,7 @@
 // Package subdl is a client for the SubDL subtitle API (https://subdl.com).
 //
 // It speaks only SubDL: Search returns SubDL's own rows and Download returns the
-// archive exactly as the CDN served it. Nothing here knows how NiceFilm labels,
+// archive exactly as the CDN served it. Nothing here knows how 9Film labels,
 // identifies or stores a subtitle — that mapping lives in the adapter in
 // modules/subtitle, which is what keeps this package swappable.
 package subdl
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/httpx"
+	"github.com/bentran/9film/backend/internal/clients/httpx"
 )
 
 // ErrRateLimited reports that SubDL refused the request because the account hit
@@ -40,7 +40,7 @@ const (
 	perPage = 30
 	// maxArchiveBytes bounds a download; subtitle archives are tens of kilobytes.
 	maxArchiveBytes = 16 << 20
-	userAgent       = "NiceFilm/1.0"
+	userAgent       = "9Film/1.0"
 )
 
 type Client struct {

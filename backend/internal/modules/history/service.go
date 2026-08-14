@@ -1,7 +1,7 @@
 package history
 
 import (
-	"github.com/bentran/nicefilm/backend/internal/modules/title"
+	"github.com/bentran/9film/backend/internal/modules/title"
 )
 
 // Favorites supplies the user's favorited-id set so continue-watching items can

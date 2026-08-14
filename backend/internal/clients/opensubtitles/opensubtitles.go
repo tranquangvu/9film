@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/httpx"
+	"github.com/bentran/9film/backend/internal/clients/httpx"
 )
 
 // ErrRateLimited reports that OpenSubtitles refused the request because the
@@ -43,7 +43,7 @@ func rateLimited(err error) error {
 
 const (
 	maxDownloadBytes = 16 << 20
-	userAgent        = "NiceFilm/1.0"
+	userAgent        = "9Film/1.0"
 )
 
 // Credentials are one account's login. Search needs the API key alone; Download

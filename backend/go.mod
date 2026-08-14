@@ -1,4 +1,4 @@
-module github.com/bentran/nicefilm/backend
+module github.com/bentran/9film/backend
 
 go 1.25.0
 

@@ -3,7 +3,7 @@ package favorite
 import (
 	"database/sql"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/9film/backend/internal/logger"
 	"go.uber.org/zap"
 )
 

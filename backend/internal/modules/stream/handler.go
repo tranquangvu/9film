@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/bentran/nicefilm/backend/internal/logger"
+	"github.com/bentran/9film/backend/internal/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

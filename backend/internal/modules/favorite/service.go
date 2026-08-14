@@ -1,7 +1,7 @@
 package favorite
 
 import (
-	"github.com/bentran/nicefilm/backend/internal/modules/title"
+	"github.com/bentran/9film/backend/internal/modules/title"
 )
 
 type Service interface {

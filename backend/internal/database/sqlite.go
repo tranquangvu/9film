@@ -48,7 +48,7 @@ func Open(path string) (*sql.DB, error) {
 //
 // There is no versioning and no in-place column migration: this app runs against
 // one local file with one local account, so changing the schema means editing the
-// CREATE below and deleting nicefilm.db.
+// CREATE below and deleting 9film.db.
 func Migrate(db *sql.DB) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (

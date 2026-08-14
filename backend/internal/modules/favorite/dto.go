@@ -1,6 +1,6 @@
 package favorite
 
-import "github.com/bentran/nicefilm/backend/internal/modules/title"
+import "github.com/bentran/9film/backend/internal/modules/title"
 
 type addFavoriteRequest struct {
 	ImdbID    string `json:"imdbId"`

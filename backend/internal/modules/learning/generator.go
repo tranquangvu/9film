@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bentran/nicefilm/backend/internal/clients/gemini"
+	"github.com/bentran/9film/backend/internal/clients/gemini"
 )
 
 // Generator is the AI-backed helper: it grades self-test meaning answers and

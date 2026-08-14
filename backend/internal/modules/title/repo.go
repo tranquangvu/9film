@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bentran/nicefilm/backend/internal/cache"
+	"github.com/bentran/9film/backend/internal/cache"
 )
 
 // Repository serves the IMDb GraphQL integration. Methods return the raw,
@@ -56,7 +56,7 @@ func (r *repository) imdbRequest(query string, variables map[string]any, dataTar
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "NiceFilm/1.0")
+	req.Header.Set("User-Agent", "9Film/1.0")
 	req.Header.Set("Referer", imdbReferer)
 	req.Header.Set("Origin", strings.TrimSuffix(imdbReferer, "/"))
 
