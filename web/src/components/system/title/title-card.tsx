@@ -124,17 +124,6 @@ export function TitleCard({ title, className, showProgress = false, size = 'md',
           </div>
         </div>
 
-        <div
-          className="absolute bottom-0 left-0 right-0 px-2.5 pb-2.5 pt-6.5 opacity-100 group-hover/card:opacity-0 transition-opacity duration-200"
-          style={{
-            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
-          }}
-        >
-          <p className="text-white text-sm font-bold line-clamp-2 leading-snug">
-            {title.title}
-          </p>
-        </div>
-
         {showProgress && title.progress !== undefined && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
             <div
