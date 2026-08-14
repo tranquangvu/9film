@@ -6,8 +6,6 @@ import SearchOverlay from '@/components/system/common/search';
 
 const footerLinks = [
   { label: 'About', to: '/about' },
-  { label: 'Privacy', to: '/privacy' },
-  { label: 'Terms', to: '/terms' },
   { label: 'Disclaimer', to: '/disclaimer' },
 ];
 
@@ -59,6 +57,7 @@ export default function MainLayout() {
             9film
           </NavLink>
 
+          {/* Two static pages: what the app is, and the rights/data notice. */}
           <nav className="flex items-center gap-5">
             {footerLinks.map((link) => (
               <NavLink

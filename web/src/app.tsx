@@ -20,8 +20,6 @@ import TitlesPage from "@/pages/titles-page";
 import TvSeriesPage from "@/pages/tv-series-page";
 import NotFoundPage from "@/pages/not-found-page";
 import AboutPage from "@/pages/about-page";
-import PrivacyPage from "@/pages/privacy-page";
-import TermsPage from "@/pages/terms-page";
 import DisclaimerPage from "@/pages/disclaimer-page";
 
 const queryClient = new QueryClient({
@@ -67,8 +65,6 @@ const router = createBrowserRouter([
       { path: "/my-learning/the-oxford-3000", element: <MyLearningOxford3000 /> },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/about", element: <AboutPage /> },
-      { path: "/privacy", element: <PrivacyPage /> },
-      { path: "/terms", element: <TermsPage /> },
       { path: "/disclaimer", element: <DisclaimerPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
