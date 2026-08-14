@@ -43,10 +43,12 @@ func Open(path string) (*sql.DB, error) {
 }
 
 // Migrate creates the schema if it doesn't exist. Every table is declared with
-// its full set of columns here, so a fresh database is complete after one pass;
-// columns added to an existing table are backfilled by the ensureColumn calls
-// after the CREATE block. Statements are idempotent so it can run on every
-// startup.
+// its full set of columns here, so a fresh database is complete after one pass.
+// Statements are idempotent so it can run on every startup.
+//
+// There is no versioning and no in-place column migration: this app runs against
+// one local file with one local account, so changing the schema means editing the
+// CREATE below and deleting nicefilm.db.
 func Migrate(db *sql.DB) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -55,22 +57,6 @@ func Migrate(db *sql.DB) error {
 			avatar     TEXT,
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
-		// Rename the account seeded under the old name, before the seed below can
-		// insert a fresh one. Without this, renaming the local account would leave
-		// every favorite, resume point and saved word behind on the old row while
-		// the app booted into an empty one. The guard keeps it a no-op once the
-		// rename has happened, and skips it entirely if both names somehow exist
-		// (username is UNIQUE, so the UPDATE would otherwise fail).
-		`UPDATE users SET username = '9film',
-			avatar = CASE avatar
-				-- Only the untouched generated default follows the rename; an avatar
-				-- the user picked themselves is left alone.
-				WHEN 'https://api.dicebear.com/10.x/thumbs/svg?seed=iami'
-					THEN 'https://api.dicebear.com/10.x/thumbs/svg?seed=9film'
-				ELSE avatar
-			END
-			WHERE username = 'iami'
-			  AND NOT EXISTS (SELECT 1 FROM users WHERE username = '9film')`,
 		// Seed the local account this app runs as — see user.LocalUserID, which
 		// looks it up by exactly this name. There is no sign-in; the row exists to
 		// own the user_id every other table is keyed by.
@@ -86,8 +72,7 @@ func Migrate(db *sql.DB) error {
 		// A row per (user, title, episode) holding both the resume point and the
 		// chosen subtitle. position/duration are 0 for a subtitle-only row (a track
 		// picked before any progress). sub_ref is the opaque "<provider>:<ref>"
-		// subtitle id, empty when none is set; sub_file_id is the legacy
-		// OpenSubtitles-only id, kept for the backfill below and no longer written.
+		// subtitle id, empty when none is set.
 		`CREATE TABLE IF NOT EXISTS history (
 			user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			imdb_id      TEXT NOT NULL,
@@ -95,7 +80,6 @@ func Migrate(db *sql.DB) error {
 			episode      INTEGER NOT NULL DEFAULT 0,
 			position     REAL NOT NULL DEFAULT 0,
 			duration     REAL NOT NULL DEFAULT 0,
-			sub_file_id  INTEGER,
 			sub_ref      TEXT NOT NULL DEFAULT '',
 			sub_language TEXT NOT NULL DEFAULT '',
 			updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
@@ -109,11 +93,8 @@ func Migrate(db *sql.DB) error {
 			learning_lang         TEXT NOT NULL DEFAULT 'vi',
 			updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
 		)`,
-		// Per-user API credentials for the optional integrations. Each account
-		// supplies its own keys; the backend .env keys are a fallback.
-		// Databases created before OpenSubtitles was unwired still carry its three
-		// columns. They all default to '', so leaving them behind costs nothing and
-		// keeps the removal non-destructive.
+		// Per-user API credentials for the optional integrations. These are the only
+		// place a key lives — the server holds none of its own.
 		`CREATE TABLE IF NOT EXISTS credentials (
 			user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			gemini_api_key TEXT NOT NULL DEFAULT '',
@@ -178,111 +159,5 @@ func Migrate(db *sql.DB) error {
 			return err
 		}
 	}
-
-	// Additive column migrations for databases created before a column existed.
-	// CREATE TABLE IF NOT EXISTS won't add columns to an existing table, so these
-	// backfill them in place (idempotent — skipped when the column is present).
-	if err := ensureColumn(db, "words", "title", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := ensureColumn(db, "history", "sub_ref", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := ensureColumn(db, "credentials", "subdl_api_key", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-
-	// Subtitle ids became opaque "<provider>:<ref>" strings when SubDL was added;
-	// rows written before that hold a bare OpenSubtitles file id. Idempotent —
-	// only rows the backfill hasn't touched yet match.
-	if _, err := db.Exec(
-		`UPDATE history SET sub_ref = 'opensubtitles:' || sub_file_id
-		   WHERE sub_ref = '' AND sub_file_id IS NOT NULL AND sub_file_id > 0`,
-	); err != nil {
-		return err
-	}
-
-	// SubDL search results arrive with the account's API key spliced into the
-	// archive path, and it used to ride along into the stored subtitle id. Cut it
-	// back out, keeping any "|SxxEyy" episode hint that follows it — without that
-	// the season-pack unpacker would lose track of which episode a ref means.
-	// Idempotent: after this no row still matches. The keys that already reached a
-	// browser are not recoverable, so rotate SUBDL_API_KEY as well.
-	if _, err := db.Exec(
-		`UPDATE history
-		    SET sub_ref = substr(sub_ref, 1, instr(sub_ref, '?api_key=') - 1) ||
-		                  CASE WHEN instr(sub_ref, '|') > 0
-		                       THEN substr(sub_ref, instr(sub_ref, '|'))
-		                       ELSE '' END
-		  WHERE instr(sub_ref, '?api_key=') > 0`,
-	); err != nil {
-		return err
-	}
-
-	// Word illustrations were removed; drop what older databases still carry.
-	if _, err := db.Exec(`DROP TABLE IF EXISTS word_images`); err != nil {
-		return err
-	}
-	for _, col := range []string{"image_status", "image_updated_at"} {
-		if err := dropColumn(db, "words", col); err != nil {
-			return err
-		}
-	}
 	return nil
-}
-
-// ensureColumn adds `col` to `table` when it's missing, leaving existing rows at
-// the column default. Idempotent: a no-op once the column exists.
-func ensureColumn(db *sql.DB, table, col, ddl string) error {
-	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return err
-		}
-		if name == col {
-			return rows.Err()
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col, ddl))
-	return err
-}
-
-// dropColumn removes `col` from `table` when it's still present, discarding its
-// data. Idempotent: a no-op once the column is gone.
-func dropColumn(db *sql.DB, table, col string) error {
-	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	found := false
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return err
-		}
-		if name == col {
-			found = true
-			break
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if !found {
-		return nil
-	}
-	// Close the cursor before the ALTER: SQLite won't schema-change a table with
-	// an open read on it.
-	rows.Close()
-	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", table, col))
-	return err
 }

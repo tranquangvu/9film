@@ -58,7 +58,7 @@ Translation into app terms is a thin adapter in the consuming module: `modules/s
 
 **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface, `Creds`, `CredsResolver` and the opaque-id helpers; `vtt.go`/`archive.go` hold SRT→VTT and zip/gzip helpers; `Module` takes its providers already built, so `app.go` chooses them.
 - `opensubtitles.go` is **kept but not wired in** — it compiles so it can't rot; its header comment lists the steps to re-wire it. An `opensubtitles:` id returns 400.
-- Ids are opaque `"<provider>:<ref>"` (`subdl:/subtitle/x.zip|S01E02`) and flow to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` in so a season-pack ZIP unpacks to the right episode. `ParseID` reads a bare numeric id as legacy OpenSubtitles so it fails cleanly; `Migrate` backfills old `sub_file_id` rows.
+- Ids are opaque `"<provider>:<ref>"` (`subdl:/subtitle/x.zip|S01E02`) and flow to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` in so a season-pack ZIP unpacks to the right episode. `ParseID` reads a bare numeric id as legacy OpenSubtitles so it fails cleanly.
 - Key comes only from `user.CredentialStore`. Missing → 503 `code:"provider_key_missing"` (frontend shows the "no subtitles" notice); throttled → 429 `code:"provider_rate_limited"`.
 - The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, filtering or top-N; only repeated ids are dropped.
 
@@ -74,7 +74,9 @@ Both keys are **per-user only** — no `.env` fallback, the server holds no key 
 
 `config.Config` is three values: `Port` (8081), `Host` (`127.0.0.1`, loopback because nothing authenticates the port), `DBPath` (`./nicefilm.db`). No secrets — every credential lives in the DB, entered at Profile → Connections.
 
-`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed requires an `UPDATE users SET username = …` in `Migrate` *before* the seed, or the next boot creates a fresh empty account and strands every favorite, resume point and saved word. The `iami` → `9film` rename in `sqlite.go` is the worked example.
+`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed strands every favorite, resume point and saved word on the old row — delete `nicefilm.db` and start over instead.
+
+`Migrate` is schema-only: `CREATE TABLE IF NOT EXISTS` plus the seed, no versioning and no in-place column migration. Changing a table means editing the CREATE and deleting the database file.
 
 ## Frontend architecture
 
