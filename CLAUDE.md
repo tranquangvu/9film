@@ -1,129 +1,103 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Overview
 
-NiceFilm streams real HLS video for any IMDb title ID and layers an English-learning toolkit on top (vocabulary, spelling/meaning self-tests, spaced-repetition review). A Go/Gin backend acts as a proxy that hides upstream sources and credentials from the browser; a React 19 frontend (Vite) consumes it. Two independent apps in `backend/` and `web/` — there is no root `package.json`.
+NiceFilm streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`.
 
-**It runs on one person's machine and has no sign-in.** The backend resolves a single local account at startup and stamps every request with it (`middleware.LocalUser`), so there is no login, no token and no session anywhere in either app. The `user_id` columns stay — they are the key of every row — but they always hold that one id.
+**Single user, no sign-in.** The backend resolves one local account at startup and stamps every request with it (`middleware.LocalUser`). No login, no token, no session. `user_id` columns stay (they key every row) but always hold that one id.
 
 ## Commands
 
 Backend (`cd backend`):
-- `make dev` — run API on `:8081` (`go run ./cmd/server/main.go`)
-- `make build` / `make run` — build to `bin/server` and run
-- `make tidy` — `go mod tidy`
-- Test: `go test ./...` (e.g. `internal/modules/learning/srs_test.go`); single: `go test ./internal/modules/learning -run TestName`
+- `make dev` — API on `:8081` (`go run ./cmd/api/main.go`)
+- `make build` / `make run` — binary at `bin/server`
+- `make tidy`, `go test ./...`; single test: `go test ./internal/modules/learning -run TestName`
 
-Frontend (`cd web`, uses **pnpm**):
-- `pnpm dev` — Vite dev server on `:5173`
-- `pnpm build` — production build
-- `pnpm typecheck` — `tsc -b` (no-emit type check)
-- `pnpm lint` — ESLint
+Frontend (`cd web`, **pnpm**):
+- `pnpm dev` (`:5173`), `pnpm build`, `pnpm typecheck` (`tsc -b`), `pnpm lint`
 
-Run both apps simultaneously for development; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`), so the browser never calls the backend directly.
+Run both together; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
 
 ## Backend architecture
 
-### A proxy, not a content store
+### Module layout
 
-The backend hides upstream sources, adds auth headers, rewrites responses, and dodges browser CORS/Referer restrictions. Each feature is a vertical-slice module under `internal/modules/` following a layered layout:
-- `repo.go` — data access (interface + unexported impl)
-- `service.go` — business logic (interface + unexported impl)
-- `handler.go` — HTTP only
-- `route.go` — the route table (`RegisterRoutes`, takes a `*Handler`)
-- `module.go` — the `Module(...)` entry point that wires repo → service → handler
-- `model.go` / `dto.go` — DB rows and frontend-facing shapes
+Each feature is a vertical slice under `internal/modules/`: `repo.go` (data access) → `service.go` (logic) → `handler.go` (HTTP only) → `route.go` (`RegisterRoutes`) , wired by `module.go`; `model.go`/`dto.go` hold DB rows and frontend shapes. `Repository`/`Service` are interfaces so the layer above can mock them. Stateless proxy modules (`stream/`, `subtitle/`) have no repo or model.
 
-`Repository`/`Service` are interfaces so the layer above can be tested against a mock. Stateless proxy modules (`stream/`, `subtitle/`) have no `repo.go`/`model.go`.
-
-Shared infrastructure lives directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (a generic `cache.TTL[T]` in-memory cache with per-entry expiry, used for public user-independent upstream responses).
+Shared infrastructure sits directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (generic `cache.TTL[T]`, used only for user-independent upstream responses).
 
 ### Third-party clients
 
-Every vendor SDK-ish client lives under `internal/clients/`: `subdl/`, `opensubtitles/`, `gemini/`. **They depend on nothing of ours** (only their sibling `clients/httpx`) — no gin, no app types, no domain vocabulary. Each speaks its vendor's own shapes: `subdl.Search` returns `[]subdl.Subtitle`, `gemini.Generate` returns text.
+`internal/clients/` (`subdl/`, `opensubtitles/`, `gemini/`) **depend on nothing of ours** except their sibling `clients/httpx` — no gin, no app types, no domain vocabulary; each speaks its vendor's own shapes. `httpx` is the shared leaf (bounded GET, header helper, `httpx.ErrRateLimited`); nothing outside `clients/` imports it, and each client restates rate limiting as its own sentinel so modules match on vendor vocabulary, not transport.
 
-`clients/httpx/` is the shared leaf of that tree: a bounded GET, a header helper, and `httpx.ErrRateLimited`. Nothing outside `clients/` imports it — each client restates the throttling condition as its own sentinel (`subdl.ErrRateLimited`, `opensubtitles.ErrRateLimited`, wrapped with `%v` so the httpx chain stops there), so the modules above match on vendor vocabulary instead of on a transport detail.
-
-The translation into app terms is a thin adapter in the module that consumes it:
-- `modules/subtitle/subdl.go` and `modules/subtitle/opensubtitles.go` implement `Provider` over the clients — minting the opaque ids, building labels, turning an archive into WebVTT, restating each client's `ErrRateLimited` as `subtitle.ErrRateLimited` via the shared `rateLimited(err, limit)` helper in `provider.go`.
-- `modules/learning/generator.go` owns the prompts and implements `Generator` over `gemini.Client`.
-
-Each adapter declares a small private interface for the slice of the client it uses (`subdlAPI`, `osAPI`, `llm`), so adapter tests run against a stub instead of the network.
+Translation into app terms is a thin adapter in the consuming module: `modules/subtitle/subdl.go` implements `Provider`; `modules/learning/generator.go` owns the prompts and implements `Generator`. Each adapter declares a small private interface for the slice of the client it uses (`subdlAPI`, `osAPI`, `llm`) so its tests run against a stub.
 
 ### Composition root
 
-`internal/app/app.go` loads config, opens the SQLite DB, builds the Gin engine with global middleware (`Logger`, `Recovery`, `CORS`), and calls each module's `Module(...)`. It also builds a `user.NewCredentialStore(db)` and passes per-user-key resolvers into the optional integrations (see below).
+`internal/app/app.go` loads config, opens SQLite, builds the Gin engine (`Logger`, `Recovery`, `CORS`), and calls each `Module(...)`. It builds `user.NewCredentialStore(db)` and injects per-user key resolvers (`geminiKeys`, `subtitleCreds`) into the optional integrations. `subtitleCreds` is keyed by *provider*, so an id from an unwired provider resolves to empty creds.
 
-Cross-module seams are kept thin:
-- `title.Module` receives a `title.Enricher` so per-user state (favorites, watch progress, chosen subtitle) folds into title responses. `app.go` injects `history.NewEnricher(db)`, which satisfies the interface directly and forwards `FavoritedIds` to the `favorite` module — no adapter needed.
-- `learning.Module` and `subtitle.Module` receive small key-resolver structs defined in `app.go` (`geminiKeys`, `subtitleCreds`). Both resolve the user's stored key only — there is no `.env` fallback for either, and the server holds no key of its own. `subtitleCreds` stays keyed by *provider* so an id from an unwired provider resolves to empty creds.
+`title.Module` takes a `title.Enricher` so per-user state folds into title responses; `app.go` injects `history.NewEnricher(db)`, which forwards favorites to the `favorite` module.
 
 ### Modules
 
-- `user/` — accounts, settings, and per-user API keys (`credentials.go` / `CredentialStore`) for the optional integrations
-- `favorite/` — watchlist; `GET /me/favorites` is paginated and embeds each title's detail server-side (imports `title`, hydrates a whole page in one batched IMDb request — same shape as continue-watching) so the My List grid needs no per-title lookups
-- `history/` — watch progress, continue-watching, subtitle preference; imports `title` to hydrate (one batched request per page) and `favorite` to flag favorites; provides the `title.Enricher`
-- `title/` — IMDb metadata (`service.go`/`repo.go` query `api.graphql.imdb.com` with hand-written GraphQL; `titleCardFields`/`titleDetailFields` are composable field-set constants reused across popular/trending/search/browse/similar/detail). Go structs mirror the GraphQL shape, then flatten into a `Title` DTO. The repo caches raw IMDb responses (single title, search/trending lists, browse pages) with a 1h TTL — *before* the service folds in per-user favorites/progress, so the cache stays user-independent. `FetchTitle`/`GetTitle` resolve one id; `FetchTitles`/`GetTitles` resolve many via IMDb's `titles(ids:[...])`, checking the cache first and batch-fetching only the misses (chunked by `titleBatchSize`) — used by the favorite/history page hydration.
-- `stream/` — stream resolution + HLS proxy (see below)
-- `subtitle/` — subtitle search/download behind a provider adapter (optional; see below)
-- `learning/` — vocabulary, AI definitions/translations, self-tests, spaced repetition (see below)
+- `user/` — account, settings, per-user API keys (`credentials.go`)
+- `favorite/` — watchlist; `GET /me/favorites` is paginated and hydrates a whole page in one batched IMDb request
+- `history/` — watch progress, continue-watching, subtitle preference; hydrates via `title`, flags favorites, provides the `title.Enricher`
+- `title/` — IMDb metadata via hand-written GraphQL against `api.graphql.imdb.com`; `titleCardFields`/`titleDetailFields` are composable field-set constants. Raw responses cache for 1h **before** per-user state folds in, so the cache stays user-independent. `FetchTitles`/`GetTitles` resolve many ids via `titles(ids:[...])`, batch-fetching only cache misses (chunked by `titleBatchSize`).
+- `stream/`, `subtitle/`, `learning/` — see below
 
-### The three upstream integrations
+### Upstream integrations
 
-1. **IMDb metadata** (`modules/title/`) — GraphQL against `api.graphql.imdb.com`.
-
-2. **Stream resolution** (`modules/stream/service.go`, the `Stream` type) — proxies `/api/stream?...` to `streamdata.vaplayer.ru`, injecting the upstream `Referer`. Returns JSON with `stream_urls` and, for TV, an `eps` season→episode map. The Referer is discovered by `refererResolver`: it scrapes the embed page (`vaplayer.ru/embed/movie/...`) for its first `<iframe>` host once at startup (synchronously), then refreshes every 6h via a background ticker, falling back to `embedRefererDefault` when discovery fails. One resolver is shared by `Stream` and `HLS`. Successful stream resolutions are cached by query (sorted) with a 1h TTL.
-
-3. **HLS proxy** (`modules/stream/service.go`, the `HLS` type) — the most important piece. `/hls?url=<absolute>` fetches an `.m3u8` or `.ts` with the required `Referer`. For manifests it **rewrites every URI** (segment lines and `URI="..."` attributes) back through `/hls`, resolving relative URLs to absolute first. This recursively keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer, never the browser's. `/hls` is mounted at the engine root (outside `/api`), so `stream.Module` takes the engine as well as the `/api` group.
+1. **IMDb** — GraphQL (`modules/title/`).
+2. **Stream resolution** (`stream.Stream`) — proxies `/api/stream` to `streamdata.vaplayer.ru` with the upstream `Referer`, returning `stream_urls` and, for TV, an `eps` season→episode map. `refererResolver` scrapes the embed page for its first `<iframe>` host at startup, refreshes every 6h, falls back to `embedRefererDefault`. Shared by `Stream` and `HLS`. Resolutions cache 1h by sorted query.
+3. **HLS proxy** (`stream.HLS`) — the critical piece. `/hls?url=<absolute>` fetches an `.m3u8`/`.ts` with the required `Referer`, and for manifests **rewrites every URI** (segment lines and `URI="..."`) back through `/hls`, resolving relatives to absolute first. This keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer. Mounted at the engine root, outside `/api` — `stream.Module` takes the engine as well as the `/api` group.
 
 ### Optional integrations (degrade gracefully)
 
-- **Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface (`Name`/`Search`/`DownloadVTT`), `Creds`, the per-provider `CredsResolver`, and the opaque-id helpers; `subdl.go` adapts `clients/subdl` and is the one implementation wired in; `vtt.go`/`archive.go` hold the shared SRT→VTT and zip/gzip helpers. `service.go` resolves creds and dispatches. `Module` takes its providers already built, so `app.go` chooses them.
-  - `opensubtitles.go` (and `clients/opensubtitles`) is **kept but not wired in**: `app.go` passes SubDL alone, no credentials reach it, and an `opensubtitles:` id returns 400 "unknown provider". Both files compile so they can't rot; the adapter's header comment lists the three steps to wire it back in.
-  - Subtitles are identified by an **opaque `"<provider>:<ref>"` id** (`subdl:/subtitle/x.zip|S01E02`) that flows all the way to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` into it so a season-pack ZIP can be unpacked to the right episode. `ParseID` still reads a bare numeric id as a legacy OpenSubtitles one so it fails cleanly rather than being taken for a SubDL ref, and `Migrate` backfills old `history.sub_file_id` rows into `sub_ref`.
-  - The SubDL key comes only from `user.CredentialStore` — there is no `.env` fallback and the server holds no key of its own. With none stored the handler returns 503 `code:"provider_key_missing"`, which the frontend turns into the watch page's "no subtitles" notice; a throttled account returns 429 `code:"provider_rate_limited"`.
-  - The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, language filtering, release-name matching or top-N cut. Only a repeated id is dropped, since a SubDL season pack yields one row per release but a single archive.
-- **Gemini** (default model `gemini-2.5-flash`) — powers exactly two things, both in the learning module: phrase/idiom explanations (`GET /me/words/explain`, which degrades to a plain machine translation when there's no key or the call fails) and AI-graded meaning answers inside a submitted self-test (`POST /me/tests`, which falls back to a local string heuristic against the saved translation). Dictionary definitions and translations are *not* Gemini — they hit separate public APIs and work without any key. The client is `clients/gemini` (`Generate` / `GenerateJSONArray` / `GenerateJSONObject`, which find the JSON inside a fenced or prose-wrapped reply); the prompts live in `modules/learning/generator.go`. **Per-user only**: the key comes solely from `user.CredentialStore` — there is no `.env`/server-side fallback, so the server reads no `GEMINI_API_KEY`.
+**Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface, `Creds`, `CredsResolver` and the opaque-id helpers; `vtt.go`/`archive.go` hold SRT→VTT and zip/gzip helpers; `Module` takes its providers already built, so `app.go` chooses them.
+- `opensubtitles.go` is **kept but not wired in** — it compiles so it can't rot; its header comment lists the steps to re-wire it. An `opensubtitles:` id returns 400.
+- Ids are opaque `"<provider>:<ref>"` (`subdl:/subtitle/x.zip|S01E02`) and flow to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` in so a season-pack ZIP unpacks to the right episode. `ParseID` reads a bare numeric id as legacy OpenSubtitles so it fails cleanly; `Migrate` backfills old `sub_file_id` rows.
+- Key comes only from `user.CredentialStore`. Missing → 503 `code:"provider_key_missing"` (frontend shows the "no subtitles" notice); throttled → 429 `code:"provider_rate_limited"`.
+- The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, filtering or top-N; only repeated ids are dropped.
+
+**Gemini** (`gemini-2.5-flash`) powers exactly two things, both in `learning/`: phrase/idiom explanations (`GET /me/words/explain`, degrading to a plain translation) and AI-graded meaning answers in `POST /me/tests` (falling back to a local string heuristic). Dictionary definitions and translations are **not** Gemini — separate public APIs, no key needed. Client: `clients/gemini` (`Generate`/`GenerateJSONArray`/`GenerateJSONObject`, which dig the JSON out of fenced or prose-wrapped replies).
+
+Both keys are **per-user only** — no `.env` fallback, the server holds no key of its own.
 
 ### Learning module
 
-Routes under `/api/learn` (dictionary/translate helpers) and `/api/me/*` (the local account's data): word list CRUD + import, per-word stats, phrase/idiom explanation, test submission/history, and SRS reviews. Spaced repetition uses the SM-2 algorithm in `srs.go` (covered by `srs_test.go`).
+`/api/learn` (dictionary/translate helpers) and `/api/me/*` (word CRUD + import, per-word stats, explanations, tests, SRS reviews). Spaced repetition is SM-2 in `srs.go`, covered by `srs_test.go`.
 
-Config (`internal/config/config.go`) is down to three values: `Port` (8081), `Host` (`127.0.0.1` — loopback because nothing authenticates the port), and `DBPath` (`./nicefilm.db`). No API keys and no secrets: every credential lives in the database, entered through Profile → Connections.
+### Config and the local account
 
-`user.LocalUserID(db)` resolves the account by username (`9film`, the one `database.Open` seeds) and creates it if missing. The username is therefore **not editable** — `PUT /api/me` takes an avatar and nothing else (`Service.UpdateAvatar`), because a rename would strand every row on the old account while the seed re-created the original name on the next boot. It matches on the name rather than the lowest id because a database from before auth was removed can hold several accounts, and picking by id would silently switch to a stale one's history and keys.
+`config.Config` is three values: `Port` (8081), `Host` (`127.0.0.1`, loopback because nothing authenticates the port), `DBPath` (`./nicefilm.db`). No secrets — every credential lives in the DB, entered at Profile → Connections.
 
-That makes the seeded username load-bearing: renaming it means adding an `UPDATE users SET username = …` to `Migrate` *before* the seed, or the next boot inserts a fresh empty account and leaves every favorite, resume point and saved word behind on the old row. The `iami` → `9film` rename in `sqlite.go` is the worked example.
+`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed requires an `UPDATE users SET username = …` in `Migrate` *before* the seed, or the next boot creates a fresh empty account and strands every favorite, resume point and saved word. The `iami` → `9film` rename in `sqlite.go` is the worked example.
 
 ## Frontend architecture
 
-Data flow: `utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`.
+Data flow: `utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`. Components split into `components/ui/` (Radix primitives) and `components/system/` (by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend. Path alias `@/` → `web/src/`.
 
-Key utilities in `utils/stream.ts`:
-- `streamQuery` builds the `/api/stream` query, auto-detecting IMDb (`tt…`) vs TMDB ids.
-- `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`).
-- `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from the `eps` map.
+`utils/stream.ts`: `streamQuery` builds the `/api/stream` query (auto-detects `tt…` IMDb vs TMDB ids); `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`); `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from `eps`.
 
-`components/system/player/video-player.tsx` decides playback: HLS sources (`.m3u8`) route through `/hls` **only in dev** (`import.meta.env.DEV`); otherwise the raw src is used. This mirrors the backend HLS rewriting and is the seam to check when streams play locally but not in production.
-
-Components split into `components/ui/` (Radix-based primitives) and `components/system/` (feature components grouped by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend: `title.ts`, `stream.ts`, `subtitle.ts`, `user.ts`, `learn.ts`, `dictionary.ts`. Path alias `@/` → `web/src/`.
+`components/system/player/video-player.tsx` routes `.m3u8` through `/hls` **only in dev** (`import.meta.env.DEV`), raw src otherwise — the seam to check when streams play locally but not in production.
 
 ### Onboarding and the API keys
 
-Both keys are asked for once, up front, in the first-run flow at `/welcome` (`pages/onboarding-page.tsx`): step one is the licence notice (no licence, nothing hosted, personal non-commercial — it used to sit in front of the first playback), step two explains and collects the SubDL and Gemini keys. Both fields are skippable; finishing sets `9film:onboarded` in localStorage through `hooks/use-onboarding.ts` — a `useSyncExternalStore` module store, because the gate and the flow are sibling subtrees and completing one must unblock the other without a reload.
+First-run flow at `/welcome` (`pages/onboarding-page.tsx`): step one the licence notice, step two the SubDL and Gemini keys. Both fields are skippable; finishing sets `9film:onboarded` in localStorage via `hooks/use-onboarding.ts` — a `useSyncExternalStore` module store, because the gate and the flow are sibling subtrees and completing one must unblock the other without a reload.
 
-`OnboardingGate` (`components/system/common/onboarding-gate.tsx`) wraps every app route and redirects to `/welcome` with the attempted path in `location.state.from`. `/welcome` and the static `/about` + `/disclaimer` pages sit **outside** the gate — step one links to Disclaimer in a new tab, which the gate would otherwise bounce back into the flow.
+`OnboardingGate` wraps every app route and redirects to `/welcome` with the attempted path in `location.state.from`. `/welcome`, `/about` and `/disclaimer` sit **outside** the gate — step one links to Disclaimer in a new tab, which the gate would otherwise bounce back.
 
-After onboarding, a skipped key is raised again only where it would have mattered: `useMissingKey(kind, using)` (`hooks/use-missing-key.ts`) pairs the credential status with the caller's "using it right now" signal, once per browser session. The watch page passes `subtitleKeyMissing` (the 503 from the subtitle search) and renders `SubtitleKeyNotice` — a dismissible banner under the player header, not a dialog, since the film plays fine without captions; the word popup passes `isPhrase` and renders `MissingKeyDialog`. Every one of these surfaces (plus the Profile → Connections form) reads its wording from `KEY_COPY` in `components/system/common/key-copy.ts`, so an integration is never explained two different ways.
+A skipped key is raised again only where it mattered: `useMissingKey(kind, using)` pairs credential status with the caller's "using it now" signal, once per browser session. The watch page renders a dismissible `SubtitleKeyNotice` banner (the film plays fine without captions); the word popup renders `MissingKeyDialog`. All of these plus the Profile → Connections form read their wording from `KEY_COPY` (`components/system/common/key-copy.ts`), so an integration is never explained two different ways.
 
 ### Routing
 
-Routes are defined in `app.tsx` via `createBrowserRouter`. `MainLayout` wraps the browsing/learning pages; `WatchLayout` wraps `/watch/:id`. Detail pages use `/title/:id` where the `:id` is an IMDb id. There is nothing to sign in to, so the only guard is `OnboardingGate` (see above) — and it gates on a localStorage flag, not on an account.
+`app.tsx` / `createBrowserRouter`. `MainLayout` wraps browsing/learning pages, `WatchLayout` wraps `/watch/:id`, detail pages are `/title/:id` (IMDb id). The only guard is `OnboardingGate`, and it gates on a localStorage flag, not an account.
 
 ## Conventions
 
-- Files are kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components are PascalCase.
-- Backend logging is structured Zap (`logger.Get()`); the router middleware logs every request with status-based level (≥500 error, ≥400 warn).
+- Files kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components PascalCase.
+- Backend logging is structured Zap (`logger.Get()`); request middleware picks level by status (≥500 error, ≥400 warn).
 - CORS allow-list in `internal/middleware/cors.go` is hard-coded to `localhost:5173`/`:3000` — update it when changing the frontend origin.

@@ -1,115 +1,65 @@
-# 9Film - NiceFilm
+# 9Film — NiceFilm
 
-A streaming app built with React on the frontend and Go on the backend. It streams real video from any IMDb title ID (HLS proxying, SubDL subtitles, TV episode selection) and layers an English-learning toolkit on top — vocabulary, AI definitions/translations, spelling and meaning self-tests, and SM-2 spaced-repetition review.
+A personal streaming app that plays any IMDb title (HLS proxying, SubDL subtitles, TV episode selection) and layers an English-learning toolkit on top: vocabulary, AI definitions and translations, spelling/meaning self-tests, and SM-2 spaced repetition.
 
-## Stack
+**Frontend** — React 19, TypeScript, Vite, Tailwind, Framer Motion, Video.js, TanStack Query
+**Backend** — Go, Gin, Zap, SQLite (pure-Go driver, no CGO)
 
-**Frontend** — React 19, TypeScript, Vite, Tailwind CSS, Framer Motion, Video.js, TanStack Query
-**Backend** — Go, Gin, Zap, SQLite, godotenv
-
-## Project Structure
+## Structure
 
 ```
-9film/
-├── backend/                       Go Gin API
-│   ├── cmd/api/main.go
-│   ├── internal/
-│   │   ├── app/                   composition root (wires modules)
-│   │   ├── config/                env loading
-│   │   ├── database/              SQLite open + migrations
-│   │   ├── logger/                zap setup
-│   │   ├── middleware/            CORS, local-user identity, logging, recovery
-│   │   ├── cache/                 generic TTL cache
-│   │   ├── clients/               third-party clients (no app types)
-│   │   │   ├── httpx/             bounded GET shared by the clients
-│   │   │   ├── subdl/             SubDL subtitle API
-│   │   │   ├── opensubtitles/     OpenSubtitles API (kept, not wired in)
-│   │   │   └── gemini/            Gemini generateContent
-│   │   └── modules/               vertical-slice features
-│   │       ├── user/              the local account, settings, API keys
-│   │       ├── favorite/          watchlist
-│   │       ├── history/           watch progress, continue-watching
-│   │       ├── title/             IMDb metadata (GraphQL)
-│   │       ├── stream/            stream resolution + HLS proxy
-│   │       ├── subtitle/          Provider contract + adapters (optional)
-│   │       └── learning/          vocabulary, AI prompts, tests, SRS
-│   ├── .env.example
-│   └── Makefile
-├── web/                           React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/                Radix-based primitives
-│   │   │   └── system/            feature components (layout, title, player, learn, common)
-│   │   ├── services/              fetch wrappers (title, stream, subtitle, user, learn)
-│   │   ├── hooks/                 TanStack Query hooks
-│   │   ├── pages/                 route-level components
-│   │   └── utils/                 stream/subtitle/HLS pure logic
-│   └── vite.config.ts             proxies /api and /hls → backend:8081
-└── README.md
+backend/                 Go Gin API
+├── cmd/api/main.go
+└── internal/
+    ├── app/             composition root
+    ├── config/ database/ logger/ middleware/ cache/
+    ├── clients/         third-party clients (httpx, subdl, opensubtitles, gemini)
+    └── modules/         user, favorite, history, title, stream, subtitle, learning
+web/                     React frontend
+└── src/
+    ├── components/      ui/ (Radix primitives) + system/ (feature components)
+    ├── services/ hooks/ pages/ utils/
+    └── ../vite.config.ts   proxies /api and /hls → backend:8081
 ```
 
-Each backend module follows a layered layout (`repo.go` → `service.go` → `handler.go` → `route.go`, wired by `module.go`). See `CLAUDE.md` for the architecture in depth.
+Each backend module is a vertical slice (`repo.go` → `service.go` → `handler.go` → `route.go`, wired by `module.go`). See `CLAUDE.md` for the architecture in depth.
 
-## API Endpoints
+## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/title/:imdb`, `/api/title/:imdb/similar` | IMDb title metadata via GraphQL |
+| GET | `/api/title/:imdb`, `/api/title/:imdb/similar` | IMDb metadata via GraphQL |
 | GET | `/api/title/search`, `/trending`, `/browse` | Discovery lists (cached 1h) |
 | GET | `/api/stream` | Resolve stream URLs from the CDN |
-| GET | `/hls` | HLS segment/manifest proxy with URL rewriting (mounted at root) |
-| GET | `/api/subtitle/search`, `/api/subtitle/download` | Subtitle search / WebVTT download (optional) |
+| GET | `/hls` | HLS manifest/segment proxy with URL rewriting (mounted at root) |
+| GET | `/api/subtitle/search`, `/api/subtitle/download` | Subtitle search / WebVTT download |
 | GET | `/api/learn/define`, `/api/learn/translate` | Dictionary + translation helpers |
-| * | `/api/me/*` | The local account: profile, settings, API keys, favorites, history, words, tests, SRS reviews |
+| * | `/api/me/*` | Local account: profile, settings, keys, favorites, history, words, tests, reviews |
 
-## Getting Started
+## Getting started
 
-### Prerequisites
-
-- **Go 1.25+** — the SQLite driver is pure Go (`modernc.org/sqlite`), so no C toolchain or CGO is needed
-- **Node 20+** and **pnpm** (`corepack enable pnpm` or `npm i -g pnpm`)
-
-The two apps are independent — there is no root `package.json`. Run them in separate terminals.
-
-### 1. Backend
+Prerequisites: **Go 1.25+** and **Node 20+ with pnpm**. The two apps are independent — run them in separate terminals.
 
 ```bash
 cd backend
-cp .env.example .env       # optional — the defaults work as-is
-make dev                   # http://localhost:8081
+make dev            # http://localhost:8081
 ```
-
-The SQLite file (`./nicefilm.db` by default) is created and migrated automatically on first run, along with the single local account the app runs as.
-
-`.env` has no required values and holds no secrets:
-
-```env
-# Server
-PORT=8081
-# Loopback by default. There is no sign-in, so only expose it on the network
-# if you mean to (HOST=0.0.0.0).
-HOST=127.0.0.1
-
-DB_PATH=./nicefilm.db
-```
-
-Other backend commands: `make build` / `make run` (binary at `bin/server`), `make tidy`, `go test ./...`.
-
-**No sign-in.** The app is single-user by design: it runs on your machine against a local SQLite file, so the backend resolves one account at startup and every request runs as it. There is no login page, no password and no token.
-
-**API keys for the optional integrations.** Both keys are asked for once on first run, in the welcome flow at `/welcome` (which also carries the licence notice), and can be changed any time at `/profile` → Connections. They are stored in the database — the server ships with none and has no `.env` fallback, so nothing is configured behind your back. Both are skippable; a skipped key is mentioned again only where it would have mattered (the watch page says why there are no subtitles), and each feature works or degrades without it:
-
-- **SubDL** (subtitles) — no key means no subtitles. Everything else, including playback, is unaffected.
-- **Gemini** — powers idiom/phrase breakdowns and AI-graded meaning answers in a self-test. Without a key a phrase falls back to a plain translation and meaning answers are graded by a local string heuristic. Dictionary lookups and translations never touch Gemini at all — they use separate public APIs.
-
-### 2. Frontend
 
 ```bash
 cd web
 pnpm install
-pnpm dev                   # http://localhost:5173
+pnpm dev            # http://localhost:5173
 ```
 
-Vite proxies `/api` and `/hls` to `http://localhost:8081`, so the browser never calls the backend directly. Point it elsewhere with `API_URL=http://host:port pnpm dev`.
+Vite proxies `/api` and `/hls` to the backend; point it elsewhere with `API_URL=http://host:port pnpm dev`. Other commands: `make build` / `make run` / `make tidy` / `go test ./...`; `pnpm build` / `pnpm typecheck` / `pnpm lint`.
 
-Other frontend commands: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm preview`.
+The SQLite file (`./nicefilm.db`) is created, migrated and seeded with the single local account on first run. `.env` is optional and holds no secrets — only `PORT`, `HOST` (loopback by default; set `HOST=0.0.0.0` only if you mean to expose it) and `DB_PATH`.
+
+## No sign-in, and the two optional keys
+
+The app is single-user by design: it runs on your machine against a local SQLite file, so the backend resolves one account at startup and every request runs as it. No login, no password, no token.
+
+Both API keys are asked for once in the welcome flow at `/welcome` (which also carries the licence notice) and can be changed at `/profile` → Connections. They live in the database — the server ships with none and has no `.env` fallback. Both are skippable, and each feature degrades on its own:
+
+- **SubDL** — no key means no subtitles; playback and everything else are unaffected.
+- **Gemini** — powers idiom/phrase breakdowns and AI-graded meaning answers in self-tests. Without it, phrases fall back to a plain translation and meaning answers to a local string heuristic. Dictionary lookups and translations never touch Gemini — they use separate public APIs.
