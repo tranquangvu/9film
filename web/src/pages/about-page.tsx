@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { PageGradient } from '@/components/system/common/gradient';
 
 // What the app is and how to get the most out of it. The legal side (whose
@@ -67,12 +68,17 @@ export default function AboutPage() {
             <h2 className="text-xl md:text-2xl font-bold text-white">Before you watch</h2>
             <p>
               9film hosts no video and owns no rights to any of it, and everything you save stays on
-              your own machine. The details are on the{' '}
-              <Link to="/disclaimer" className="text-orange-400 hover:text-orange-300 transition-colors">
-                disclaimer
-              </Link>{' '}
-              page.
+              your own machine.
             </p>
+            {/* A read-more link on its own line, rather than a link buried mid
+                sentence that can wrap to the start of the next one. */}
+            <Link
+              to="/disclaimer"
+              className="inline-flex items-center gap-1.5 text-orange-400 hover:text-orange-300 transition-colors font-medium"
+            >
+              Read the full disclaimer
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </Link>
           </section>
         </div>
       </div>
