@@ -1,5 +1,9 @@
 .PHONY: dev build dmg clean
 
+# The app icon: wails reads build/appicon.png alone and generates the whole
+# 16–1024 icns ladder from it. build/appicon.svg is the drawing it was
+# rasterised from — re-export at 1024x1024 to change the icon.
+
 # -skipbindings everywhere: wails generates JS bindings by *running* the built
 # binary, which would open the database and bind the port mid-build. Nothing is
 # passed to options.Bind, so there is nothing to generate.
