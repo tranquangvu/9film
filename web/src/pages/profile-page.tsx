@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Check, Sparkles, Captions, ExternalLink } from 'lucide-react';
+import { UserRoundCog, Check, Sparkles, Captions, ExternalLink } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,7 +129,7 @@ function ProfileCard() {
     return (
       <Card>
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-orange-500/40 shrink-0">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-800 shrink-0">
             <img
               src={user?.avatar}
               alt={user?.username ?? 'Avatar'}
@@ -141,10 +141,14 @@ function ProfileCard() {
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="text-xl font-bold text-white truncate">@{user?.username}</h3>
-            {joinedLabel && <p className="text-xs text-zinc-500 mt-0.5">Member since {joinedLabel}</p>}
+            {/* Not "member since": there's no sign-up and nothing to be a
+                member of — just this account, on this machine, since then. */}
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Local account{joinedLabel && ` · since ${joinedLabel}`}
+            </p>
           </div>
-          <Button variant="outline" className="rounded-lg text-sm shrink-0" onClick={startEdit}>
-            <Pencil className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" className="shrink-0" onClick={startEdit}>
+            <UserRoundCog className="w-3.5 h-3.5" />
             Edit
           </Button>
         </div>
@@ -156,7 +160,7 @@ function ProfileCard() {
     <Card>
       <div className="space-y-5">
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-800 ring-2 ring-orange-500/40 shrink-0">
+          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-800 shrink-0">
             <img src={avatar} alt="Selected avatar" className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
@@ -194,10 +198,10 @@ function ProfileCard() {
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         <div className="flex justify-end gap-3">
-          <Button variant="ghost" className="rounded-lg text-sm" onClick={() => setEditing(false)} disabled={saving}>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button variant="primary" className="rounded-lg text-sm" onClick={save} disabled={saving}>
+          <Button variant="primary" size="sm" onClick={save} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
@@ -331,7 +335,7 @@ function ConnectionsCard() {
       </div>
 
       <div className="flex mt-5">
-        <Button variant="primary" className="rounded-full" onClick={onSave} disabled={save.isPending}>
+        <Button variant="primary" size="sm" onClick={onSave} disabled={save.isPending}>
           {save.isPending ? 'Saving…' : 'Save'}
         </Button>
       </div>
