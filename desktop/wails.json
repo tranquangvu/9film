@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "9film",
+  "outputfilename": "9film",
+  "frontend:dir": "../web",
+  "wailsjsdir": "./wailsjs",
+  "frontend:install": "pnpm install",
+  "//": "wails execs these directly rather than through a shell, so anything needing env vars or && lives in web/package.json. build:desktop also copies dist/ here, which go:embed can't reach across ..",
+  "frontend:build": "pnpm build:desktop",
+  "frontend:dev:watcher": "pnpm dev:desktop",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "tranquangvu",
+    "email": "vutran.513@gmail.com"
+  },
+  "info": {
+    "companyName": "9film",
+    "productName": "9film",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026",
+    "comments": "Stream anything, learn English while you watch."
+  }
+}

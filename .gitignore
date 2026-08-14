@@ -8,9 +8,15 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# Scoped rather than bare `dist`: desktop/dist is a tracked directory (see
+# desktop/.gitignore) and a bare pattern would exclude it wholesale, which no
+# nested negation can undo.
+web/dist
 dist-ssr
 *.local
+
+# Dropped in web/ by wails to detect when frontend:install needs rerunning.
+web/package.json.md5
 
 # Editor directories and files
 .vscode/*

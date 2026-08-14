@@ -182,3 +182,40 @@ video::cue {
   font-size: 2.2vmin;
   line-height: 1.35;
 }
+
+/* ---------------------------------------------------------------------------
+   Desktop window chrome (Wails). `.is-desktop` is set on <html> in main.tsx and
+   is absent in the browser build, so every rule below is inert there.
+
+   The window has no title bar of its own — the app's own headers are it. Wails
+   reads --wails-draggable to decide what drags the window. */
+
+.is-desktop .app-titlebar {
+  --wails-draggable: drag;
+}
+
+/* Custom properties inherit, so a header marked draggable makes its buttons
+   draggable too. Any value other than `drag` opts an element back out. */
+.is-desktop .app-titlebar :where(a, button, nav, input, select, [role='button']) {
+  --wails-draggable: no-drag;
+}
+
+/* Clears the traffic lights, which sit over the top-left of the content. */
+.is-desktop .titlebar-lead {
+  padding-left: 76px;
+}
+
+/* The watch header is pointer-events-none so the video stays click-through;
+   that also means it can't be dragged. This claims the gap between its two
+   button clusters as the one place the window can be moved from. */
+.titlebar-drag-fill {
+  display: none;
+}
+
+.is-desktop .titlebar-drag-fill {
+  display: block;
+  flex: 1;
+  align-self: stretch;
+  pointer-events: auto;
+  --wails-draggable: drag;
+}

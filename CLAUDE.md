@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Overview
 
-9Film streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`.
+9Film streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`. `desktop/` is a third, optional module that packages both as a macOS app.
 
 **Single user, no sign-in.** The backend resolves one local account at startup and stamps every request with it (`middleware.LocalUser`). No login, no token, no session. `user_id` columns stay (they key every row) but always hold that one id.
 
@@ -18,7 +18,10 @@ Backend (`cd backend`):
 Frontend (`cd web`, **pnpm**):
 - `pnpm dev` (`:5173`), `pnpm build`, `pnpm typecheck` (`tsc -b`), `pnpm lint`
 
-Run both together; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
+Desktop (`cd desktop`, macOS only, needs the Wails v2 CLI):
+- `make dev` — one window, live-reloading; `make build` — universal `.app`; `make dmg`
+
+Run backend and frontend together; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
 
 ## Backend architecture
 
@@ -84,7 +87,7 @@ Data flow: `utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (
 
 `utils/stream.ts`: `streamQuery` builds the `/api/stream` query (auto-detects `tt…` IMDb vs TMDB ids); `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`); `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from `eps`.
 
-`components/system/player/video-player.tsx` routes `.m3u8` through `/hls` **only in dev** (`import.meta.env.DEV`), raw src otherwise — the seam to check when streams play locally but not in production.
+`components/system/player/video-player.tsx` routes every `.m3u8` through `/hls`, prefixed with `apiOrigin` (`utils/desktop.ts`) — empty everywhere but the desktop build. Never send a raw `.m3u8` to the player: the CDN rejects it without the upstream `Referer`.
 
 ### Onboarding and the API keys
 
@@ -98,8 +101,26 @@ A skipped key is raised again only where it mattered: `useMissingKey(kind, using
 
 `app.tsx` / `createBrowserRouter`. `MainLayout` wraps browsing/learning pages, `WatchLayout` wraps `/watch/:id`, detail pages are `/title/:id` (IMDb id). The only guard is `OnboardingGate`, and it gates on a localStorage flag, not an account.
 
+## Desktop app (`desktop/`)
+
+A Wails v2 module — its own `go.mod` with `replace … /backend => ../backend`. It imports `backend/server`, a thin public wrapper (`New`/`Handler`/`Close`) that exists because `internal/` is unreachable from another module. `app.New()` returns an error; `app.NewApp()` is the `log.Fatal` wrapper `cmd/api` still uses.
+
+The same `*gin.Engine` is served **two ways**, and both are load-bearing:
+
+1. **Asset-server middleware** (`server.go`) — `/api/*` and `/hls`, same origin as the frontend, so every relative path in `web/` works untouched. It also serves `index.html` for any extensionless path (SPA reload) and injects `window.__9FILM_API__`.
+2. **A real loopback listener** — 127.0.0.1, port 8081 if free (matching the Vite proxy for `wails dev`) else ephemeral. Only the `<video>` HLS src uses it: WKWebView hands media to AVFoundation, which can't resolve the asset server's `wails://` scheme. The port isn't fixed, hence the injection rather than a constant.
+
+Constraints worth knowing before editing:
+
+- `//go:embed` can't cross `..`, so `web/dist` is **copied** into `desktop/dist` by `pnpm build:desktop`. `desktop/dist/.gitkeep` is tracked because the embed needs the directory at compile time.
+- Wails **execs** `frontend:*` commands without a shell — no env prefixes, no `&&`. Anything needing either lives in `web/package.json` (`dev:desktop`, `build:desktop`).
+- Builds pass `-skipbindings`: Wails generates JS bindings by *running* the binary, which would open the database mid-build. Nothing is passed to `options.Bind`.
+- `gin.SetMode` is called in `backend/server`, not left to `GIN_MODE` — gin latches the env at package init, long before the desktop process can set it.
+- The DB lives at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.
+- Window chrome is `mac.TitleBarHiddenInset()` — no title bar, native traffic lights over the app's own header. The frontend side is pure CSS keyed on `.is-desktop` (`web/src/index.css`): `app-titlebar` marks a header draggable, `titlebar-lead` insets past the traffic lights, `titlebar-drag-fill` gives the watch page a drag handle. `--wails-draggable` **inherits**, so interactive children are opted back out by the `:where(...)` rule.
+
 ## Conventions
 
 - Files kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components PascalCase.
 - Backend logging is structured Zap (`logger.Get()`); request middleware picks level by status (≥500 error, ≥400 warn).
-- CORS allow-list in `internal/middleware/cors.go` is hard-coded to `localhost:5173`/`:3000` — update it when changing the frontend origin.
+- CORS in `internal/middleware/cors.go` matches an origin allow-list *by function*, not `cors.Config.AllowOrigins` — that field panics on any scheme outside http/https, and the desktop webview's origin is `wails://wails.localhost`.

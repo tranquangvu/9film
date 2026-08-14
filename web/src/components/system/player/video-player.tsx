@@ -9,6 +9,7 @@ import { MediaBridge } from '@/components/system/player/media-context';
 import { InteractiveSubtitles } from '@/components/system/player/interactive-subtitles';
 import type { WordContext } from '@/components/system/learn/word-popup';
 import type { Cue } from '@/utils/vtt';
+import { apiOrigin } from '@/utils/desktop';
 
 const Player = createPlayer({ features: videoFeatures });
 
@@ -69,10 +70,12 @@ export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnde
     );
   }
 
+  // HLS always goes through the backend proxy: the CDN rejects requests without
+  // the upstream Referer, and the proxy is what rewrites the manifest so every
+  // segment comes back through us too. apiOrigin is '' everywhere except the
+  // desktop build, where the media loader needs an absolute http:// URL.
   const isHls = src.includes('.m3u8');
-  const playbackUrl = isHls && import.meta.env.DEV
-    ? `/hls?url=${encodeURIComponent(src)}`
-    : src;
+  const playbackUrl = isHls ? `${apiOrigin}/hls?url=${encodeURIComponent(src)}` : src;
 
   // Interactive subtitles replace the native track — except in fullscreen, where
   // the overlay isn't visible, so we render native captions inside the player.

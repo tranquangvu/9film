@@ -30,21 +30,25 @@ type App struct {
 	DB     *sql.DB
 }
 
-func NewApp() *App {
+// New builds the app and reports why it couldn't. The desktop build uses this
+// so a broken database surfaces as a dialog rather than a process that exits
+// with nothing on screen; NewApp is the equivalent for a terminal.
+func New() (*App, error) {
 	cfg := config.Load()
 	logger.Init(os.Getenv("GIN_MODE") != "release")
 	log := logger.Get()
 
 	db, err := database.Open(cfg.DBPath)
 	if err != nil {
-		log.Fatal("failed to open database", zap.Error(err))
+		return nil, fmt.Errorf("open database %q: %w", cfg.DBPath, err)
 	}
 
 	// Every request runs as the one local account, resolved once here so the
 	// modules keep taking a user id (see middleware.LocalUser).
 	localUserID, err := user.LocalUserID(db)
 	if err != nil {
-		log.Fatal("failed to resolve the local account", zap.Error(err))
+		db.Close()
+		return nil, fmt.Errorf("resolve the local account: %w", err)
 	}
 
 	engine := gin.New()
@@ -57,7 +61,17 @@ func NewApp() *App {
 		zap.String("db_path", cfg.DBPath),
 	)
 
-	return &App{Config: cfg, Router: engine, DB: db}
+	return &App{Config: cfg, Router: engine, DB: db}, nil
+}
+
+// NewApp is New for a command-line process: a failure it can't recover from is
+// fatal, so main stays a three-liner.
+func NewApp() *App {
+	a, err := New()
+	if err != nil {
+		logger.Get().Fatal("failed to start", zap.Error(err))
+	}
+	return a
 }
 
 func registerRoutes(r *gin.Engine, db *sql.DB, localUserID int64) {

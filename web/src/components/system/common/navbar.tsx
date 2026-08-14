@@ -48,14 +48,16 @@ export function TopNavbar({ onSearchOpen, onLeftNavbarOpen }: TopNavbarProps) {
   }, []);
 
   return (
+    // app-titlebar/titlebar-lead only do anything in the desktop build, where
+    // this bar doubles as the window's title bar (see index.css).
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-40 transition-all duration-500',
+        'app-titlebar fixed top-0 left-0 right-0 z-40 transition-all duration-500',
         scrolled ? 'glass shadow-2xl' : 'bg-gradient-to-b from-black/80 to-transparent'
       )}
     >
       <div className="relative flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
-        <div className="flex items-center gap-4">
+        <div className="titlebar-lead flex items-center gap-4">
           <Button
             variant="ghost"
             onClick={onLeftNavbarOpen}

@@ -10,6 +10,7 @@ A personal streaming app that plays any IMDb title (HLS proxying, SubDL subtitle
 ```
 backend/                 Go Gin API
 ├── cmd/api/main.go
+├── server/              public seam for embedders (the desktop build)
 └── internal/
     ├── app/             composition root
     ├── config/ database/ logger/ middleware/ cache/
@@ -20,6 +21,7 @@ web/                     React frontend
     ├── components/      ui/ (Radix primitives) + system/ (feature components)
     ├── services/ hooks/ pages/ utils/
     └── ../vite.config.ts   proxies /api and /hls → backend:8081
+desktop/                 macOS app (Wails v2) — both of the above in one window
 ```
 
 Each backend module is a vertical slice (`repo.go` → `service.go` → `handler.go` → `route.go`, wired by `module.go`). See `CLAUDE.md` for the architecture in depth.
@@ -54,6 +56,21 @@ pnpm dev            # http://localhost:5173
 Vite proxies `/api` and `/hls` to the backend; point it elsewhere with `API_URL=http://host:port pnpm dev`. Other commands: `make build` / `make run` / `make tidy` / `go test ./...`; `pnpm build` / `pnpm typecheck` / `pnpm lint`.
 
 The SQLite file (`./9film.db`) is created, migrated and seeded with the single local account on first run. `.env` is optional and holds no secrets — only `PORT`, `HOST` (loopback by default; set `HOST=0.0.0.0` only if you mean to expose it) and `DB_PATH`.
+
+## Desktop app (macOS)
+
+`desktop/` packages the same two apps as one `9film.app`: the Gin engine runs in-process and the built frontend is embedded, so there is nothing to start and no browser tab. The window has no title bar of its own — the app's navbar is it, with the native traffic lights inset over it.
+
+Prerequisites: the [Wails v2 CLI](https://wails.io) and Xcode command line tools.
+
+```bash
+cd desktop
+make dev            # live-reloading window (Vite + Go)
+make build          # build/bin/9film.app, universal, ad-hoc signed
+make dmg            # build/bin/9film.dmg
+```
+
+The desktop app keeps its own library at `~/Library/Application Support/9film/9film.db` — separate from the `./9film.db` that `make dev` uses, so the two don't share favorites or progress. It is not notarized, so the first open needs the usual Gatekeeper override.
 
 ## No sign-in, and the two optional keys
 
