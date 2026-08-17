@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider, Toaster } from "@/components/ui/toast";
+import { bindDesktopMenu } from "@/utils/desktop-menu";
 
 import MainLayout from "@/components/system/layout/main-layout";
 import WatchLayout from "@/components/system/layout/watch-layout";
@@ -92,6 +94,10 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
+  // The desktop menu bar drives the same router; in the browser this binds
+  // nothing, since there is no Wails runtime to listen to.
+  useEffect(() => bindDesktopMenu(router), []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>

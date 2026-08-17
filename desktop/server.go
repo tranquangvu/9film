@@ -116,6 +116,21 @@ func (s *server) middleware(next http.Handler) http.Handler {
 	})
 }
 
+// Wails adds these to any HTML it serves itself, and they are what puts
+// window.runtime on the page — which is how the menu bar's events reach the
+// router. It only does so for a path ending in "/" or "/index.html", i.e. the
+// window's first load; a reloaded client-side route (/watch/tt123) comes through
+// serveIndex instead and would arrive without a runtime, leaving the menus dead
+// for the rest of the session.
+const wailsRuntimeTags = `<script src="/wails/runtime.js"></script><script src="/wails/ipc.js"></script>`
+
+// wailsInjectsRuntime mirrors the asset server's own rule, so the tags are added
+// exactly when Wails won't add them itself — injecting twice would load the
+// runtime twice.
+func wailsInjectsRuntime(p string) bool {
+	return strings.HasSuffix(p, "/") || strings.HasSuffix(p, "/index.html")
+}
+
 // serveIndex asks whatever sits behind the asset server for the index page and
 // rewrites it, rather than reading the embedded copy. Under `wails dev` that is
 // the Vite dev server, whose index.html points at /src/main.tsx; the embedded
@@ -136,6 +151,9 @@ func (s *server) serveIndex(w http.ResponseWriter, r *http.Request, next http.Ha
 	// Injected rather than bound: the frontend needs the address on its first
 	// render, and a Wails binding only resolves after the runtime is ready.
 	tag := fmt.Sprintf("<script>window.__9FILM_API__=%q;</script>", s.base)
+	if !wailsInjectsRuntime(r.URL.Path) {
+		tag += wailsRuntimeTags
+	}
 	html := bytes.Replace(rec.body.Bytes(), []byte("<head>"), []byte("<head>"+tag), 1)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -35,6 +35,10 @@ func main() {
 		log.Fatalf("9film: %v", err)
 	}
 
+	// The menu bar is built now but can only talk to the window once there is
+	// one, so it takes the context through OnStartup.
+	nav := &bridge{}
+
 	err = wails.Run(&options.App{
 		Title:     "9film",
 		Width:     1280,
@@ -57,7 +61,9 @@ func main() {
 				Icon:    icon,
 			},
 		},
+		Menu:               appMenu(nav),
 		SingleInstanceLock: &options.SingleInstanceLock{UniqueId: "com.bentran.9film"},
+		OnStartup:          nav.startup,
 		// The one place the database gets closed: App.Close never runs in the
 		// CLI build, since Run blocks until the process dies.
 		OnShutdown: srv.shutdown,

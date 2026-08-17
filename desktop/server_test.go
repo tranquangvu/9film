@@ -42,6 +42,38 @@ func TestServeIndexInjectsAPIBase(t *testing.T) {
 	}
 }
 
+// window.runtime is what carries the menu bar's events to the router, and Wails
+// only injects it for the paths it serves itself. Miss the rest and the menus go
+// quiet after a reload; add them twice and the runtime loads twice.
+func TestServeIndexInjectsRuntimeOnlyWhereWailsWont(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<html><head></head><body></body></html>"))
+	})
+
+	for _, c := range []struct {
+		path string
+		want bool
+	}{
+		{"/watch/tt0111161", true},
+		{"/my-learning", true},
+		{"/", false},
+		{"/index.html", false},
+	} {
+		t.Run(c.path, func(t *testing.T) {
+			s := &server{base: "http://127.0.0.1:54321"}
+			w := httptest.NewRecorder()
+
+			s.serveIndex(w, httptest.NewRequest(http.MethodGet, c.path, nil), next)
+
+			got := strings.Contains(w.Body.String(), "/wails/runtime.js")
+			if got != c.want {
+				t.Errorf("runtime tags present = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
 // Vite's dev modules are extensionless too, so the SPA fallback has to tell a
 // navigation apart from a script fetch. Getting this wrong is invisible in the
 // packaged build and blanks the window under `wails dev`.
