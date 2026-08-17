@@ -77,7 +77,7 @@ The SQLite file (`./9film.db`) is created, migrated and seeded with the single l
 
 ## Desktop app (macOS)
 
-`desktop/` packages the same two apps as one `9film.app`: the Gin engine runs in-process and the built frontend is embedded, so there is nothing to start and no browser tab. The window has no title bar of its own — the app's navbar is it, with the native traffic lights inset over it.
+`desktop/` packages the same two apps as one `9film.app`: the Gin engine runs in-process and the built frontend is embedded, so there is nothing to start and no browser tab. The window has no title bar of its own — the app's navbar is it, with the native traffic lights inset over it. The menu bar mirrors that navbar: **Go** holds the six destinations on ⌘1–⌘6, with Back and Forward on ⌘[ and ⌘].
 
 To build it yourself — [the release](#download) is this, built on a Mac and dragged into a `.dmg`. Prerequisites: the [Wails v2 CLI](https://wails.io) and Xcode command line tools.
 
