@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -290,13 +291,29 @@ func rewriteURIAttributes(line, sourceURL string) string {
 // HLS proxies HLS manifests and segments, rewriting manifest URIs back through
 // the local /hls route so the CDN only ever sees the server's Referer.
 type HLS interface {
-	ProxyHLS(targetURL string) (*HLSResult, error)
+	ProxyHLS(ctx context.Context, targetURL string) (*HLSResult, error)
 }
 
 type hls struct {
 	client  *http.Client
 	referer *refererResolver
+	backoff time.Duration
 }
+
+// A CDN connection that dies silently is the failure behind "http2: timeout
+// awaiting response headers": the request goes out on a pooled, multiplexed
+// connection that will never answer, and nothing but hlsHeaderTimeout ends the
+// wait. hlsPingIdle/hlsPingTimeout make the transport health-check such a
+// connection and drop it instead of stalling on it, and hlsAttempts covers the
+// stall that still slips through — every proxied request is a GET, so a retry
+// is always safe.
+const (
+	hlsHeaderTimeout = 15 * time.Second
+	hlsPingIdle      = 10 * time.Second
+	hlsPingTimeout   = 5 * time.Second
+	hlsAttempts      = 3
+	hlsBackoff       = 250 * time.Millisecond
+)
 
 func NewHLS(referer *refererResolver) HLS {
 	// No whole-request timeout — segment bodies stream and may be large/slow.
@@ -309,13 +326,73 @@ func NewHLS(referer *refererResolver) HLS {
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   16,
 			IdleConnTimeout:       90 * time.Second,
-			ResponseHeaderTimeout: 15 * time.Second,
+			ResponseHeaderTimeout: hlsHeaderTimeout,
+			ForceAttemptHTTP2:     true,
+			HTTP2: &http.HTTP2Config{
+				SendPingTimeout: hlsPingIdle,
+				PingTimeout:     hlsPingTimeout,
+			},
 		},
-	}, referer: referer}
+	}, referer: referer, backoff: hlsBackoff}
 }
 
-func (s *hls) ProxyHLS(targetURL string) (*HLSResult, error) {
-	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
+// ProxyHLS fetches targetURL, retrying a transport failure or a 5xx while the
+// caller is still waiting. ctx is the browser's request context, so a viewer
+// seeking away or closing the tab ends the fetch instead of retrying into the
+// void.
+func (s *hls) ProxyHLS(ctx context.Context, targetURL string) (*HLSResult, error) {
+	var lastErr error
+	for attempt := 1; attempt <= hlsAttempts; attempt++ {
+		if attempt > 1 {
+			logger.Get().Warn("HLS upstream retry",
+				zap.String("url", targetURL), zap.Int("attempt", attempt), zap.Error(lastErr))
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(s.backoff):
+			}
+		}
+
+		result, err := s.fetch(ctx, targetURL)
+		if err != nil {
+			lastErr = err
+			// The caller giving up is the one failure a retry can't help.
+			if ctx.Err() != nil {
+				return nil, err
+			}
+			continue
+		}
+		// A last-attempt 5xx is passed through rather than swallowed: the player
+		// handles an upstream status better than a proxy error.
+		if attempt == hlsAttempts || !retryableStatus(result.Status) {
+			return result, nil
+		}
+		discardResult(result)
+		lastErr = fmt.Errorf("HLS upstream returned %d", result.Status)
+	}
+	return nil, lastErr
+}
+
+// retryableStatus reports whether an upstream status is worth another attempt —
+// the transient CDN faults, not a 404 for a segment that doesn't exist.
+func retryableStatus(status int) bool {
+	switch status {
+	case http.StatusInternalServerError, http.StatusBadGateway,
+		http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return false
+}
+
+// discardResult releases a response that won't be returned to the caller.
+func discardResult(result *HLSResult) {
+	if result != nil && result.Stream != nil {
+		result.Stream.Close()
+	}
+}
+
+func (s *hls) fetch(ctx context.Context, targetURL string) (*HLSResult, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, err
 	}
