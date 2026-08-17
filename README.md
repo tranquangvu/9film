@@ -5,6 +5,24 @@ A personal streaming app that plays any IMDb title (HLS proxying, SubDL subtitle
 **Frontend** — React 19, TypeScript, Vite, Tailwind, Framer Motion, Video.js, TanStack Query
 **Backend** — Go, Gin, Zap, SQLite (pure-Go driver, no CGO)
 
+## Download
+
+**[⬇︎ 9film.dmg — macOS, universal](https://github.com/tranquangvu/9film/releases/latest/download/9film.dmg)** · [all releases](https://github.com/tranquangvu/9film/releases)
+
+One app, nothing to run alongside it: the server lives inside the window. macOS 10.15+, Apple Silicon and Intel both.
+
+1. Open the `.dmg` and drag **9film** into Applications.
+2. First launch, macOS will refuse it — the app is ad-hoc signed, not notarized, because notarizing needs a paid Apple Developer account. Open **System Settings → Privacy & Security**, scroll to the message about 9film and click **Open Anyway**. (Older macOS: right-click the app → **Open** → **Open**.) One time only.
+3. The welcome screen asks for two optional API keys — [both are skippable](#no-sign-in-and-the-two-optional-keys), and the app works without them.
+
+Prefer the terminal to the Gatekeeper dance:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/9film.app
+```
+
+No Windows or Linux build yet — the window chrome and the app's data directory are macOS-specific. Running from source works anywhere Go and Node do (see [Getting started](#getting-started)).
+
 ## Structure
 
 ```
@@ -61,7 +79,7 @@ The SQLite file (`./9film.db`) is created, migrated and seeded with the single l
 
 `desktop/` packages the same two apps as one `9film.app`: the Gin engine runs in-process and the built frontend is embedded, so there is nothing to start and no browser tab. The window has no title bar of its own — the app's navbar is it, with the native traffic lights inset over it.
 
-Prerequisites: the [Wails v2 CLI](https://wails.io) and Xcode command line tools.
+To build it yourself — [the release](#download) is this, built on a Mac and dragged into a `.dmg`. Prerequisites: the [Wails v2 CLI](https://wails.io) and Xcode command line tools.
 
 ```bash
 cd desktop
