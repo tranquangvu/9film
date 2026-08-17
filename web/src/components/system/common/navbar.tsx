@@ -56,7 +56,7 @@ export function TopNavbar({ onSearchOpen, onLeftNavbarOpen }: TopNavbarProps) {
         scrolled ? 'glass shadow-2xl' : 'bg-gradient-to-b from-black/80 to-transparent'
       )}
     >
-      <div className="relative flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
+      <div className="titlebar-row relative flex items-center justify-between px-4 md:px-8 lg:px-12 h-16">
         <div className="titlebar-lead flex items-center gap-4">
           <Button
             variant="ghost"

@@ -134,7 +134,7 @@ export function WatchPage() {
               Root is pointer-events-none (inherited) so the empty middle stays
               click-through for tap-to-pause; each cluster re-enables events. */}
           <header className="app-titlebar absolute top-0 inset-x-0 z-50 px-4 md:px-6 py-4 bg-linear-to-b from-black/75 via-black/30 to-transparent pointer-events-none">
-            <div className="flex items-center justify-between gap-4">
+            <div className="titlebar-row flex items-center justify-between gap-4">
               <div className="titlebar-lead flex items-center gap-2 md:gap-3 pointer-events-auto min-w-0">
                 <button
                   data-tour="back"

@@ -205,6 +205,20 @@ video::cue {
   padding-left: 76px;
 }
 
+/* macOS centres the traffic lights 24pt below the window top and Wails v2 gives
+   no way to move them, so the bar they sit on is sized around them instead:
+   48px is 2 x 24, which lands the lights, the row's own content and the bar's
+   background on one centre line. Browser heights (h-16 here, py-4 on the watch
+   header) are what these override. */
+.is-desktop .app-titlebar {
+  padding-top: 0;
+}
+
+.is-desktop .titlebar-row {
+  height: 48px;
+  padding-block: 0;
+}
+
 /* The watch header is pointer-events-none so the video stays click-through;
    that also means it can't be dragged. This claims the gap between its two
    button clusters as the one place the window can be moved from. */
