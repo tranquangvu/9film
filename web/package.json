@@ -6,8 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "dev:desktop": "VITE_DESKTOP=1 vite",
-    "build:desktop": "VITE_DESKTOP=1 vite build && rm -rf ../desktop/dist && cp -R dist ../desktop/dist && touch ../desktop/dist/.gitkeep",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"

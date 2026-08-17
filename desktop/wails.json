@@ -5,9 +5,9 @@
   "frontend:dir": "../web",
   "wailsjsdir": "./wailsjs",
   "frontend:install": "pnpm install",
-  "//": "wails execs these directly rather than through a shell, so anything needing env vars or && lives in web/package.json. build:desktop also copies dist/ here, which go:embed can't reach across ..",
-  "frontend:build": "pnpm build:desktop",
-  "frontend:dev:watcher": "pnpm dev:desktop",
+  "//": "wails execs these directly rather than through a shell, from frontend:dir — so anything needing env vars or && is a target in ../desktop/Makefile, where recipes run under sh.",
+  "frontend:build": "make -C ../desktop frontend-build",
+  "frontend:dev:watcher": "make -C ../desktop frontend-dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "tranquangvu",

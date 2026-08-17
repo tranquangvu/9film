@@ -10,9 +10,9 @@ declare global {
 }
 
 /**
- * True in the Wails window. Set by wails.json for both `wails dev` and
- * `wails build`, so it's a compile-time constant rather than a runtime sniff of
- * the webview.
+ * True in the Wails window. Set by desktop/Makefile's frontend-dev and
+ * frontend-build targets, which back wails.json's hooks — so it's a
+ * compile-time constant rather than a runtime sniff of the webview.
  */
 export const isDesktop = import.meta.env.VITE_DESKTOP === '1';
 

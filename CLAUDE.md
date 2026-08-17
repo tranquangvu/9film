@@ -112,8 +112,8 @@ The same `*gin.Engine` is served **two ways**, and both are load-bearing:
 
 Constraints worth knowing before editing:
 
-- `//go:embed` can't cross `..`, so `web/dist` is **copied** into `desktop/dist` by `pnpm build:desktop`. `desktop/dist/.gitkeep` is tracked because the embed needs the directory at compile time.
-- Wails **execs** `frontend:*` commands without a shell — no env prefixes, no `&&`. Anything needing either lives in `web/package.json` (`dev:desktop`, `build:desktop`).
+- `//go:embed` can't cross `..`, so `web/dist` is **copied** into `desktop/dist` by the `frontend-build` target. `desktop/dist/.gitkeep` is tracked because the embed needs the directory at compile time.
+- Wails **execs** `frontend:*` commands without a shell — no env prefixes, no `&&` — from `frontend:dir` (`web/`). So both hooks are `make -C ../desktop` targets (`frontend-build`, `frontend-dev`): make recipes run under `sh`, which is where `VITE_DESKTOP=1` and the `dist` copy live. `web/package.json` stays desktop-free. Wails kills the watcher's whole process group, so the extra `make` layer shuts down cleanly.
 - Builds pass `-skipbindings`: Wails generates JS bindings by *running* the binary, which would open the database mid-build. Nothing is passed to `options.Bind`.
 - `gin.SetMode` is called in `backend/server`, not left to `GIN_MODE` — gin latches the env at package init, long before the desktop process can set it.
 - The DB lives at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.

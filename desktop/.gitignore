@@ -1,4 +1,4 @@
-# Copied from web/dist by wails.json's frontend:build. The directory itself is
+# Copied from web/dist by the Makefile's frontend-build target. The directory is
 # tracked (via .gitkeep) because //go:embed needs it to exist at compile time.
 dist/*
 !dist/.gitkeep
