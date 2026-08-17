@@ -6,7 +6,6 @@ import {
   Captions,
   Film,
   ListTree,
-  AlertCircle,
   ListVideo,
   CirclePlay,
 } from 'lucide-react';
@@ -14,6 +13,7 @@ import { Tooltip } from '@videojs/react';
 import { VideoPlayer } from '@/components/system/player/video-player';
 import { SubtitleKeyNotice } from '@/components/system/player/subtitle-key-notice';
 import { MediaProvider } from '@/components/system/player/media-context';
+import { PlayerLoading } from '@/components/system/player/player-loading';
 import { TranscriptPanel } from '@/components/system/learn/transcript-panel';
 import { WatchTour } from '@/components/system/player/watch-tour';
 import { SelectField } from '@/components/ui/select';
@@ -279,38 +279,16 @@ export function WatchPage() {
             </div>
           </header>
 
-          {(loading || blocked) && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center overflow-hidden">
-              {poster && (
-                <img
-                  src={poster}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 w-full h-full object-cover opacity-30 blur-2xl scale-110"
-                />
-              )}
-              <div className="absolute inset-0 bg-linear-to-t from-black via-black/70 to-black/50" />
-              <div className="relative flex flex-col items-center gap-5 px-6 text-center">
-                {blocked ? (
-                  <AlertCircle className="w-12 h-12 text-orange-400/80" />
-                ) : (
-                  loading && (
-                    <div className="w-12 h-12 rounded-full border-[3px] border-white/15 border-t-orange-500 animate-spin" />
-                  )
-                )}
-                <div>
-                  <p className="text-white font-semibold text-base md:text-lg leading-tight">
-                    {title ?? 'Loading'}
-                  </p>
-                  {(blocked || loading) && (
-                    <p className="text-white/55 text-sm mt-1.5">
-                      {blocked ? (error ?? 'Unable to load stream') : 'Preparing your stream…'}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Stays up past the stream lookup, until the media itself has
+              loaded — see PlayerLoading for why the player can't cover that. */}
+          <PlayerLoading
+            title={title}
+            poster={poster}
+            resolving={loading}
+            blocked={blocked}
+            error={error}
+            hasStream={!!streamUrl}
+          />
 
           {/* Sits below the header rather than in front of the video: with no
               SubDL key the film still plays, only without captions. */}
