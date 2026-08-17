@@ -61,9 +61,14 @@ func main() {
 				Icon:    icon,
 			},
 		},
-		Menu:               appMenu(nav),
-		SingleInstanceLock: &options.SingleInstanceLock{UniqueId: "com.bentran.9film"},
-		OnStartup:          nav.startup,
+		Menu: appMenu(nav),
+		// Stated rather than left to the zero value: this is what keeps WebKit's
+		// own right-click menu — Inspect Element included — out of the window.
+		// Wails forces it on in dev and debug builds, where we want it; the
+		// frontend's own guard (utils/desktop.ts) draws the same line.
+		EnableDefaultContextMenu: false,
+		SingleInstanceLock:       &options.SingleInstanceLock{UniqueId: "com.bentran.9film"},
+		OnStartup:                nav.startup,
 		// The one place the database gets closed: App.Close never runs in the
 		// CLI build, since Run blocks until the process dies.
 		OnShutdown: srv.shutdown,

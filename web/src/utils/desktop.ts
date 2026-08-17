@@ -32,3 +32,22 @@ export const apiOrigin = (typeof window !== 'undefined' && window.__9FILM_API__)
  * both keeps the browser looking like the browser.
  */
 export const isDesktop = import.meta.env.VITE_DESKTOP === '1' && apiOrigin !== '';
+
+/**
+ * Takes the right-click menu away in the shipped desktop app, which is what
+ * takes Inspect Element with it.
+ *
+ * A production `wails build` already leaves WebKit's developer extras off, but
+ * that's a switch anyone can flip back on machine-wide
+ * (`defaults write -g WebKitDeveloperExtras -bool true` turns the inspector on
+ * in every WKWebView on the Mac). Suppressing the menu itself doesn't depend on
+ * how WebKit is configured. Nothing is lost: the app's menu bar carries the Edit
+ * items, so Cmd-C/V still work in the API-key fields.
+ *
+ * Deliberately not applied under `wails dev` — that window is for us, and
+ * debugging it needs the inspector.
+ */
+export function blockContextMenu(): void {
+  if (!isDesktop || import.meta.env.DEV) return;
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+}
