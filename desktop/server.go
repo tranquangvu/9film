@@ -102,27 +102,65 @@ func (s *server) middleware(next http.Handler) http.Handler {
 		}
 		// A client-side route (/watch/tt123) has no extension and no file
 		// behind it. Without this, reloading the window 404s.
-		if path.Ext(p) == "" {
-			s.serveIndex(w)
+		//
+		// Extensionless is not enough on its own: under `wails dev` Vite serves
+		// its own virtual modules from /@vite/client and /@react-refresh, which
+		// have no extension either. Answering those with HTML makes the module
+		// preamble fail to parse and nothing ever mounts. Only a navigation
+		// asks for text/html — a script or a fetch asks for */*.
+		if path.Ext(p) == "" && strings.Contains(r.Header.Get("Accept"), "text/html") {
+			s.serveIndex(w, r, next)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *server) serveIndex(w http.ResponseWriter) {
-	html, err := assets.ReadFile("dist/index.html")
-	if err != nil {
+// serveIndex asks whatever sits behind the asset server for the index page and
+// rewrites it, rather than reading the embedded copy. Under `wails dev` that is
+// the Vite dev server, whose index.html points at /src/main.tsx; the embedded
+// dist/index.html points at hashed bundles the dev server has never heard of,
+// so serving it there loads no script at all and the window stays black.
+func (s *server) serveIndex(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	req := r.Clone(r.Context())
+	req.URL.Path = "/"
+	req.URL.RawQuery = ""
+
+	rec := &capture{header: http.Header{}}
+	next.ServeHTTP(rec, req)
+	if rec.status >= http.StatusBadRequest {
 		http.Error(w, "index.html missing from the bundle", http.StatusInternalServerError)
 		return
 	}
+
 	// Injected rather than bound: the frontend needs the address on its first
 	// render, and a Wails binding only resolves after the runtime is ready.
 	tag := fmt.Sprintf("<script>window.__9FILM_API__=%q;</script>", s.base)
-	html = bytes.Replace(html, []byte("<head>"), []byte("<head>"+tag), 1)
+	html := bytes.Replace(rec.body.Bytes(), []byte("<head>"), []byte("<head>"+tag), 1)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 	w.Write(html)
+}
+
+// capture buffers a handler's response so the HTML can be rewritten before any
+// of it reaches the webview.
+type capture struct {
+	header http.Header
+	body   bytes.Buffer
+	status int
+}
+
+func (c *capture) Header() http.Header { return c.header }
+
+func (c *capture) WriteHeader(status int) {
+	if c.status == 0 {
+		c.status = status
+	}
+}
+
+func (c *capture) Write(p []byte) (int, error) {
+	c.WriteHeader(http.StatusOK)
+	return c.body.Write(p)
 }
