@@ -23,8 +23,33 @@ build:
 	codesign --force --deep --sign - build/bin/9film.app
 
 # hdiutil ships with macOS, so packaging needs nothing installed.
+#
+# The image is staged rather than built straight from the .app, because the
+# whole point of a disk image is the drag: the staging folder holds the bundle
+# next to a symlink to /Applications, so opening the volume shows both and the
+# install is one gesture. A symlink is what a .app can be dropped *onto* —
+# Finder resolves it to the real folder — and hdiutil copies it in as a link.
+#
+# That drag only reads as an instruction if the two icons sit side by side, and
+# icon positions live in the volume's .DS_Store, which only Finder writes. So
+# the image is built read-write first, mounted, arranged by AppleScript, then
+# converted to the compressed read-only image people download. Automating
+# Finder needs the terminal to hold Automation permission; if it is refused the
+# arrange step is skipped and the .dmg still ships, just with default layout.
 dmg: build
-	hdiutil create -volname 9film -srcfolder build/bin/9film.app -ov -format UDZO build/bin/9film.dmg
+	rm -rf build/dmg && mkdir -p build/dmg
+	cp -R build/bin/9film.app build/dmg/9film.app
+	ln -s /Applications build/dmg/Applications
+	rm -f build/bin/9film.dmg build/9film-rw.dmg
+	hdiutil create -volname 9film -srcfolder build/dmg -ov -fs HFS+ -format UDRW build/9film-rw.dmg
+	hdiutil resize -size 400m build/9film-rw.dmg
+	set -e; \
+	device=$$(hdiutil attach -readwrite -noverify -noautoopen build/9film-rw.dmg | grep '^/dev/' | head -1 | awk '{print $$1}'); \
+	osascript dmg-layout.applescript 9film || echo "dmg: skipping Finder layout (Automation permission not granted)"; \
+	sync; \
+	hdiutil detach "$$device" -quiet
+	hdiutil convert build/9film-rw.dmg -format UDZO -imagekey zlib-level=9 -ov -o build/bin/9film.dmg
+	rm -rf build/9film-rw.dmg build/dmg
 
 # The two targets below back wails.json's frontend:* hooks. Wails execs those
 # directly — no shell, so no env prefixes and no && — and both need a shell, so
@@ -48,5 +73,5 @@ frontend-dev:
 	cd $(WEB) && VITE_DESKTOP=1 pnpm dev
 
 clean:
-	rm -rf build/bin dist
+	rm -rf build/bin build/dmg build/9film-rw.dmg dist
 	mkdir -p dist && touch dist/.gitkeep
