@@ -25,10 +25,14 @@ type Credentials struct {
 }
 
 // CredentialStatus is the secret-free view sent to the client: whether each key
-// is set, and nothing else. A key that isn't set means that integration is off,
-// so this doubles as the signal the UI uses to offer adding one. No credential
-// value is ever echoed back.
+// is set, and its last few characters so the form can show *which* key is
+// stored. A key that isn't set means that integration is off, so this doubles as
+// the signal the UI uses to offer adding one. The stored key itself is never
+// echoed back — the hints are the only part that ever leaves the server, and
+// keyHint decides how little that is.
 type CredentialStatus struct {
-	GeminiKeySet   bool `json:"geminiKeySet"`
-	SubDLAPIKeySet bool `json:"subdlApiKeySet"`
+	GeminiKeySet    bool   `json:"geminiKeySet"`
+	GeminiKeyHint   string `json:"geminiKeyHint,omitempty"`
+	SubDLAPIKeySet  bool   `json:"subdlApiKeySet"`
+	SubDLAPIKeyHint string `json:"subdlApiKeyHint,omitempty"`
 }

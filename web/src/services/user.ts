@@ -88,12 +88,16 @@ export function getSettings(): Promise<UserSettings> {
   return apiFetch<UserSettings>('/api/me/settings');
 }
 
-// Secret-free status of the integration keys: whether each one is stored. There
-// is no server-side key behind them, so an unset key means that integration is
-// off — which is what drives the "add a key" prompts.
+// Secret-free status of the integration keys: whether each one is stored, and
+// the last few characters of it so the form can show which key that is. There is
+// no server-side key behind them, so an unset key means that integration is off
+// — which is what drives the "add a key" prompts. The hint is absent for a key
+// too short for the server to reveal any of.
 export interface CredentialStatus {
   geminiKeySet: boolean;
+  geminiKeyHint?: string;
   subdlApiKeySet: boolean;
+  subdlApiKeyHint?: string;
 }
 
 export interface CredentialPatch {

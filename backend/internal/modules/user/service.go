@@ -95,7 +95,28 @@ func (s *service) SaveCredentials(userID int64, patch Credentials) (CredentialSt
 // that isn't set means that integration is simply off.
 func (s *service) statusOf(c Credentials) CredentialStatus {
 	return CredentialStatus{
-		GeminiKeySet:   c.GeminiAPIKey != "",
-		SubDLAPIKeySet: c.SubDLAPIKey != "",
+		GeminiKeySet:    c.GeminiAPIKey != "",
+		GeminiKeyHint:   keyHint(c.GeminiAPIKey),
+		SubDLAPIKeySet:  c.SubDLAPIKey != "",
+		SubDLAPIKeyHint: keyHint(c.SubDLAPIKey),
 	}
+}
+
+// A key's last few characters are enough to recognise which one is stored —
+// that's all the form needs, and all that should ever cross the wire. Keys
+// shorter than keyHintMin give up nothing: on a short key four characters is a
+// meaningful slice of the secret rather than a fingerprint of it.
+const (
+	keyHintChars = 4
+	keyHintMin   = 12
+)
+
+func keyHint(key string) string {
+	// Runes rather than bytes: a real key is ASCII, but a typo pasted from
+	// somewhere else shouldn't come back as half a character.
+	r := []rune(key)
+	if len(r) < keyHintMin {
+		return ""
+	}
+	return string(r[len(r)-keyHintChars:])
 }

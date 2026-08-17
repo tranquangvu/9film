@@ -264,8 +264,18 @@ function ConfiguredBadge({ on }: { on: boolean }) {
   );
 }
 
+// What a stored key looks like in its field: dots, then the last characters the
+// server was willing to name, so you can tell which key is saved without the
+// page ever holding it. No hint (a key too short to spare one) still reads as
+// set — the dots and the badge say so.
+function storedKeyPlaceholder(hint: string | undefined) {
+  return `${'•'.repeat(10)}${hint ? `${hint}` : ''} (set — type to replace)`;
+}
+
 // Per-user API keys for the optional integrations, with an explanation of why
-// each is needed. Keys are write-only — the form shows status, never the secret.
+// each is needed. Keys are write-only: the field starts empty and only ever
+// holds what you're typing now, so nothing needs masking here — the secret the
+// masking would protect is the stored one, and that never reaches the page.
 function ConnectionsCard() {
   const { data: status } = useCredentialsQuery();
   const save = useSaveCredentials();
@@ -301,10 +311,12 @@ function ConnectionsCard() {
           badge={status && <ConfiguredBadge on={status.geminiKeySet} />}
         />
         <Input
-          type="password"
+          type="text"
           value={gemini}
           onChange={(e) => setGemini(e.target.value)}
-          placeholder={status?.geminiKeySet ? '•••••••••• (set — type to replace)' : 'Gemini API key'}
+          placeholder={
+            status?.geminiKeySet ? storedKeyPlaceholder(status.geminiKeyHint) : 'Gemini API key'
+          }
           autoComplete="off"
           className={inputClass}
         />
@@ -318,10 +330,12 @@ function ConnectionsCard() {
           badge={status && <ConfiguredBadge on={status.subdlApiKeySet} />}
         />
         <Input
-          type="password"
+          type="text"
           value={subdlKey}
           onChange={(e) => setSubdlKey(e.target.value)}
-          placeholder={status?.subdlApiKeySet ? '•••••••••• (set — type to replace)' : 'SubDL API key'}
+          placeholder={
+            status?.subdlApiKeySet ? storedKeyPlaceholder(status.subdlApiKeyHint) : 'SubDL API key'
+          }
           autoComplete="off"
           className={inputClass}
         />
