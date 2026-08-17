@@ -10,13 +10,6 @@ declare global {
 }
 
 /**
- * True in the Wails window. Set by desktop/Makefile's frontend-dev and
- * frontend-build targets, which back wails.json's hooks — so it's a
- * compile-time constant rather than a runtime sniff of the webview.
- */
-export const isDesktop = import.meta.env.VITE_DESKTOP === '1';
-
-/**
  * Absolute origin of the backend, or '' when relative paths already reach it.
  *
  * Only media needs this. The desktop app serves /api through the Wails asset
@@ -26,3 +19,16 @@ export const isDesktop = import.meta.env.VITE_DESKTOP === '1';
  * Go side injects the address it actually bound.
  */
 export const apiOrigin = (typeof window !== 'undefined' && window.__9FILM_API__) || '';
+
+/**
+ * True when the page really is the desktop app — the Wails window, or the app's
+ * own server opened in a browser. It gates the window chrome in index.css.
+ *
+ * VITE_DESKTOP (set by desktop/Makefile's frontend-* targets) says the bundle
+ * was built for the desktop, which is not the same thing: `wails dev` runs one
+ * Vite server for both sides, so http://localhost:5173 in a browser gets that
+ * bundle and would otherwise wear a title bar's insets with no title bar around
+ * it. apiOrigin is the half only the desktop server can produce, so requiring
+ * both keeps the browser looking like the browser.
+ */
+export const isDesktop = import.meta.env.VITE_DESKTOP === '1' && apiOrigin !== '';

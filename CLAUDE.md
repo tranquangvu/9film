@@ -118,6 +118,7 @@ Constraints worth knowing before editing:
 - `gin.SetMode` is called in `backend/server`, not left to `GIN_MODE` — gin latches the env at package init, long before the desktop process can set it.
 - The DB lives at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.
 - Window chrome is `mac.TitleBarHiddenInset()` — no title bar, native traffic lights over the app's own header. The frontend side is pure CSS keyed on `.is-desktop` (`web/src/index.css`): `app-titlebar` marks a header draggable, `titlebar-lead` insets past the traffic lights, `titlebar-row` makes the bar 48px so it centres on them (macOS fixes their centre 24pt below the window top and Wails v2 can't move them), `titlebar-drag-fill` gives the watch page a drag handle. `--wails-draggable` **inherits**, so interactive children are opted back out by the `:where(...)` rule.
+- `.is-desktop` needs **both** `VITE_DESKTOP` and the injected `window.__9FILM_API__` (`utils/desktop.ts`). The flag alone says the bundle was built for the desktop, but `wails dev` runs one Vite server for both sides, so a browser at `:5173` gets that bundle and would wear the window chrome with no window around it.
 
 ## Conventions
 
