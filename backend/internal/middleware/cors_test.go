@@ -11,12 +11,14 @@ func TestAllowOrigin(t *testing.T) {
 		want   bool
 	}{
 		{"http://localhost:5173", true},
-		{"wails://wails.localhost", true},       // packaged build
+		{"wails://wails", true},                 // packaged build on macOS — see desktopHostMac
+		{"wails://wails.localhost", true},       // the URL the page is loaded from
 		{"wails://wails.localhost:34115", true}, // wails dev
 		{"http://wails.localhost:1234", true},   // the Windows webview
 		{"http://localhost:8080", false},        // not a frontend of ours
 		{"https://wails.localhost.evil", false}, // suffix, not the host
 		{"https://wails.localhost", false},      // the webview never uses https
+		{"http://wails", false},                 // bare host, but only the custom scheme sends it
 		{"", false},
 	}
 

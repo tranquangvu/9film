@@ -142,4 +142,4 @@ The api port is not published: the app authenticates nobody, so nginx is the onl
 
 - Files kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components PascalCase.
 - Backend logging is structured Zap (`logger.Get()`); request middleware picks level by status (≥500 error, ≥400 warn).
-- CORS in `internal/middleware/cors.go` matches an origin allow-list *by function*, not `cors.Config.AllowOrigins` — that field panics on any scheme outside http/https, and the desktop webview's origin is `wails://wails.localhost`.
+- CORS in `internal/middleware/cors.go` matches an origin allow-list *by function*, not `cors.Config.AllowOrigins` — that field panics on any scheme outside http/https, and the desktop webview's scheme is `wails://`. The packaged macOS app is loaded from `wails://wails.localhost` but sends `Origin: wails://wails`: a custom scheme is not a "special" URL scheme, so WebKit's origin serialization drops the `.localhost`. Both hosts are allowed — miss the bare one and the loopback HLS request 403s, which reaches the player as "a network error status (0) occured while loading manifest" and nothing else in the app looks wrong.

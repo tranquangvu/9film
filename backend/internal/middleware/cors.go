@@ -15,17 +15,24 @@ var allowedOrigins = map[string]bool{
 	"http://localhost:3000": true,
 }
 
-// The host the desktop webview serves the app from. It reaches /api through
+// The hosts the desktop webview serves the app from. It reaches /api through
 // the asset-server middleware (same origin, so CORS never applies there) but
 // loads HLS over a real loopback URL, which is cross-origin from the webview's
-// own scheme — so that one host has to be allowed.
-const desktopHost = "wails.localhost"
+// own scheme — so those hosts have to be allowed.
+//
+// Two of them, because the page is served from wails://wails.localhost but
+// WebKit serializes that origin as wails://wails — the custom scheme is not a
+// "special" URL scheme, so the .localhost suffix does not survive into the
+// Origin header. That is the origin the packaged macOS app actually sends.
+const (
+	desktopHost    = "wails.localhost"
+	desktopHostMac = "wails"
+)
 
-// allowOrigin matches the desktop webview by host, port and all: a packaged
-// build calls itself wails://wails.localhost, but `wails dev` serves the app
-// from the dev server's port (wails://wails.localhost:34115, which -devserver
-// moves), and a fixed origin string rejects it with a 403 that surfaces as a
-// film that never starts.
+// allowOrigin matches the desktop webview by host, port and all: `wails dev`
+// serves the app from the dev server's port (wails://wails.localhost:34115,
+// which -devserver moves), and a fixed origin string rejects it with a 403 that
+// surfaces as a film that never starts.
 func allowOrigin(origin string) bool {
 	if allowedOrigins[origin] {
 		return true
@@ -35,7 +42,13 @@ func allowOrigin(origin string) bool {
 		return false
 	}
 	// http as well as wails: the Windows webview reports the former.
-	return (u.Scheme == "wails" || u.Scheme == "http") && u.Hostname() == desktopHost
+	if u.Scheme != "wails" && u.Scheme != "http" {
+		return false
+	}
+	host := u.Hostname()
+	// The bare host only ever comes out of the custom scheme; http://wails is
+	// not something a webview of ours sends.
+	return host == desktopHost || (u.Scheme == "wails" && host == desktopHostMac)
 }
 
 // CORS returns the cross-origin middleware for those origins.
