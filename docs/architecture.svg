@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img"
+     aria-label="Architecture: the browser or the desktop window talk to the Go backend, which is the only thing that reaches IMDb, the stream CDN, SubDL and Gemini, and the only thing that touches the SQLite file.">
+  <title>How the pieces fit</title>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+
+    <rect x="0" y="0" width="960" height="470" rx="0" fill="#0d0d0f"/>
+
+    <!-- clients -->
+    <text x="30" y="40" font-size="12" font-weight="700" fill="#71717a" letter-spacing="1">FRONTEND</text>
+    <rect x="30" y="56" width="220" height="86" rx="12" fill="#18181b" stroke="#3f3f46"/>
+    <text x="50" y="88" font-size="15" font-weight="600" fill="#fafafa">Browser</text>
+    <text x="50" y="112" font-size="12.5" fill="#a1a1aa">Vite :5173 in dev,</text>
+    <text x="50" y="130" font-size="12.5" fill="#a1a1aa">nginx :8080 in Docker</text>
+
+    <rect x="30" y="164" width="220" height="86" rx="12" fill="#18181b" stroke="#3f3f46"/>
+    <text x="50" y="196" font-size="15" font-weight="600" fill="#fafafa">9film.app window</text>
+    <text x="50" y="220" font-size="12.5" fill="#a1a1aa">WKWebView — assets and</text>
+    <text x="50" y="238" font-size="12.5" fill="#a1a1aa">API on one origin</text>
+
+    <!-- backend -->
+    <rect x="330" y="56" width="270" height="290" rx="14" fill="#161618" stroke="#f97316" stroke-width="1.5"/>
+    <text x="352" y="40" font-size="12" font-weight="700" fill="#f97316" letter-spacing="1">BACKEND — GO / GIN</text>
+    <text x="352" y="90" font-size="15" font-weight="700" fill="#fafafa">/api/*</text>
+    <text x="352" y="114" font-size="12.5" fill="#a1a1aa">title · stream · subtitle · learning</text>
+    <text x="352" y="132" font-size="12.5" fill="#a1a1aa">user · favorite · history</text>
+
+    <line x1="352" y1="152" x2="578" y2="152" stroke="#3f3f46"/>
+    <text x="352" y="180" font-size="15" font-weight="700" fill="#fafafa">/hls</text>
+    <text x="352" y="204" font-size="12.5" fill="#a1a1aa">fetches every manifest and</text>
+    <text x="352" y="222" font-size="12.5" fill="#a1a1aa">segment with the upstream</text>
+    <text x="352" y="240" font-size="12.5" fill="#a1a1aa">Referer, and rewrites every</text>
+    <text x="352" y="258" font-size="12.5" fill="#a1a1aa">URI back through itself</text>
+
+    <line x1="352" y1="278" x2="578" y2="278" stroke="#3f3f46"/>
+    <text x="352" y="306" font-size="13" fill="#a1a1aa">SQLite — one local account,</text>
+    <text x="352" y="324" font-size="13" fill="#a1a1aa">its library and its two keys</text>
+
+    <!-- upstreams -->
+    <text x="680" y="40" font-size="12" font-weight="700" fill="#71717a" letter-spacing="1">UPSTREAMS</text>
+    <rect x="680" y="56" width="250" height="56" rx="10" fill="#18181b" stroke="#3f3f46"/>
+    <text x="700" y="80" font-size="14" font-weight="600" fill="#fafafa">IMDb GraphQL</text>
+    <text x="700" y="99" font-size="12" fill="#a1a1aa">metadata, cached 1h</text>
+
+    <rect x="680" y="124" width="250" height="56" rx="10" fill="#18181b" stroke="#3f3f46"/>
+    <text x="700" y="148" font-size="14" font-weight="600" fill="#fafafa">Stream host + CDN</text>
+    <text x="700" y="167" font-size="12" fill="#a1a1aa">resolution, then HLS</text>
+
+    <rect x="680" y="192" width="250" height="56" rx="10" fill="#18181b" stroke="#3f3f46"/>
+    <text x="700" y="216" font-size="14" font-weight="600" fill="#fafafa">SubDL</text>
+    <text x="700" y="235" font-size="12" fill="#a1a1aa">subtitles — optional key</text>
+
+    <rect x="680" y="260" width="250" height="56" rx="10" fill="#18181b" stroke="#3f3f46"/>
+    <text x="700" y="284" font-size="14" font-weight="600" fill="#fafafa">Gemini</text>
+    <text x="700" y="303" font-size="12" fill="#a1a1aa">explanations — optional key</text>
+
+    <!-- arrows -->
+    <path d="M250 99 C 292 99, 292 130, 328 148" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M336 152 l-14 -6 2 12 Z" fill="#52525b"/>
+    <path d="M250 207 C 292 207, 292 176, 328 158" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M336 154 l-14 6 2 -12 Z" fill="#52525b"/>
+
+    <path d="M600 130 L672 92" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M678 88 l-13 1 6 9 Z" fill="#52525b"/>
+    <path d="M600 150 L672 156" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M679 157 l-12 -5 1 11 Z" fill="#52525b"/>
+    <path d="M600 190 L672 222" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M679 225 l-12 -6 0 11 Z" fill="#52525b"/>
+    <path d="M600 230 L672 288" fill="none" stroke="#52525b" stroke-width="2"/>
+    <path d="M679 293 l-11 -8 -1 11 Z" fill="#52525b"/>
+
+    <!-- the point of it all -->
+    <rect x="30" y="384" width="900" height="58" rx="12" fill="#1a1206" stroke="#7c2d12"/>
+    <text x="52" y="410" font-size="13.5" fill="#fdba74">Every upstream call is the server&#8217;s, never the browser&#8217;s: source URLs and API keys stay behind /api,</text>
+    <text x="52" y="430" font-size="13.5" fill="#fdba74">and the CDN only ever sees a request carrying the Referer it insists on.</text>
+  </g>
+</svg>

@@ -4,142 +4,84 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Overview
 
-9Film streams HLS video for any IMDb title id and layers an English-learning toolkit on top (vocabulary, self-tests, spaced repetition). A Go/Gin backend proxies every upstream so the browser never sees sources or credentials; a React 19 + Vite frontend consumes it. Two independent apps in `backend/` and `web/` — no root `package.json`. `desktop/` is a third, optional module that packages both as a macOS app.
+HLS streaming for any IMDb title id, plus an English-learning toolkit (vocabulary, self-tests, spaced repetition). The Go/Gin backend proxies every upstream so the browser never sees a source or a credential; a React 19 + Vite frontend consumes it. `backend/` and `web/` are independent apps — no root `package.json`. `desktop/` packages both as a macOS app.
 
-**Single user, no sign-in.** The backend resolves one local account at startup and stamps every request with it (`middleware.LocalUser`). No login, no token, no session. `user_id` columns stay (they key every row) but always hold that one id.
+**Single user, no sign-in.** `middleware.LocalUser` stamps every request with the one local account. `user_id` columns stay (they key every row) but always hold that id.
 
 ## Commands
 
-Backend (`cd backend`):
-- `make dev` — API on `:8081` (`go run ./cmd/api/main.go`)
-- `make build` / `make run` — binary at `bin/server`
-- `make tidy`, `go test ./...`; single test: `go test ./internal/modules/learning -run TestName`
+- Backend (`cd backend`): `make dev` (:8081), `make build` / `run` / `tidy`, `go test ./...`; one test: `go test ./internal/modules/learning -run TestName`
+- Frontend (`cd web`, **pnpm**): `pnpm dev` (:5173), `build`, `typecheck` (`tsc -b`), `lint`
+- Desktop (`cd desktop`, macOS + Wails v2 CLI): `make dev`, `make build`, `make dmg`
+- Docker (repo root): `docker compose up -d --build` → :8080
 
-Frontend (`cd web`, **pnpm**):
-- `pnpm dev` (`:5173`), `pnpm build`, `pnpm typecheck` (`tsc -b`), `pnpm lint`
+Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
 
-Desktop (`cd desktop`, macOS only, needs the Wails v2 CLI):
-- `make dev` — one window, live-reloading; `make build` — universal `.app`; `make dmg`
+## Backend
 
-Docker (repo root): `docker compose up -d --build` — the whole app on `:8080` (nginx + the Go binary; see **Docker** below).
+**Module layout** — vertical slices under `internal/modules/`: `repo.go` → `service.go` → `handler.go` → `route.go`, wired by `module.go`; `model.go`/`dto.go` hold DB rows and frontend shapes. `Repository`/`Service` are interfaces so the layer above can mock them. `stream/` and `subtitle/` are stateless — no repo, no model. Shared infra sits directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (`cache.TTL[T]`, for user-independent upstream responses only).
 
-Run backend and frontend together; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
+**Clients** — `internal/clients/{subdl,opensubtitles,gemini}` depend on nothing of ours but their sibling `clients/httpx` (bounded GET, header helper, `ErrRateLimited`); each speaks its vendor's shapes and restates rate limiting as its own sentinel, so modules match on vendor vocabulary rather than transport. Nothing outside `clients/` imports `httpx`. Translation into app terms is a thin adapter in the consuming module (`modules/subtitle/subdl.go`, `modules/learning/generator.go`), each declaring a small private interface (`subdlAPI`, `osAPI`, `llm`) so its tests run against a stub.
 
-## Backend architecture
+**Composition root** — `internal/app/app.go`: config, SQLite, the Gin engine (`Logger`, `Recovery`, `CORS`), then each `Module(...)`. It injects per-user key resolvers (`geminiKeys`, `subtitleCreds`) built on `user.NewCredentialStore`; `subtitleCreds` is keyed by *provider*, so an id from an unwired provider resolves to empty creds. `title.Module` takes a `title.Enricher` — `history.NewEnricher(db)` — so per-user state folds into title responses.
 
-### Module layout
+**Modules** — `user/` (account, settings, per-user keys), `favorite/` (paginated; a page hydrates in one batched IMDb request), `history/` (progress, continue-watching, subtitle preference; provides the `Enricher`), `title/`, `stream/`, `subtitle/`, `learning/`.
 
-Each feature is a vertical slice under `internal/modules/`: `repo.go` (data access) → `service.go` (logic) → `handler.go` (HTTP only) → `route.go` (`RegisterRoutes`) , wired by `module.go`; `model.go`/`dto.go` hold DB rows and frontend shapes. `Repository`/`Service` are interfaces so the layer above can mock them. Stateless proxy modules (`stream/`, `subtitle/`) have no repo or model.
+**Upstreams**
 
-Shared infrastructure sits directly under `internal/`: `config/`, `database/`, `logger/`, `middleware/`, `app/`, `cache/` (generic `cache.TTL[T]`, used only for user-independent upstream responses).
+- IMDb — hand-written GraphQL in `modules/title/`; `titleCardFields`/`titleDetailFields` are composable field sets. Raw responses cache 1h **before** per-user state folds in, so the cache stays user-independent. `FetchTitles`/`GetTitles` resolve many ids via `titles(ids:[...])`, fetching only cache misses (chunked by `titleBatchSize`).
+- `stream.Stream` — `/api/stream` → `streamdata.vaplayer.ru` with the upstream `Referer`; returns `stream_urls` and, for TV, an `eps` season→episode map. `refererResolver` scrapes the embed page's first `<iframe>` host at startup, refreshes every 6h, falls back to `embedRefererDefault`. Cached 1h by sorted query.
+- `stream.HLS` — `/hls?url=<absolute>` fetches an `.m3u8`/`.ts` with that `Referer` and, for manifests, **rewrites every URI** (segment lines and `URI="..."`, relatives resolved to absolute first) back through `/hls`, so the CDN only ever sees the server. Mounted at the engine root, outside `/api` — `stream.Module` takes the engine as well as the `/api` group.
 
-### Third-party clients
+**Optional integrations** — both keys are per-user only (no `.env` fallback, the server holds none), and each feature degrades on its own.
 
-`internal/clients/` (`subdl/`, `opensubtitles/`, `gemini/`) **depend on nothing of ours** except their sibling `clients/httpx` — no gin, no app types, no domain vocabulary; each speaks its vendor's own shapes. `httpx` is the shared leaf (bounded GET, header helper, `httpx.ErrRateLimited`); nothing outside `clients/` imports it, and each client restates rate limiting as its own sentinel so modules match on vendor vocabulary, not transport.
+- Subtitles — `subtitle/` is a provider adapter, not one vendor: `provider.go` (the `Provider` interface, `Creds`, opaque-id helpers), `vtt.go`/`archive.go` (SRT→VTT, zip/gzip); `Module` takes its providers already built, so `app.go` chooses them. Ids are opaque `"<provider>:<ref>"` (`subdl:/subtitle/x.zip|S01E02`) and flow to the browser and into `history.sub_ref`; only the owning provider parses the ref — SubDL packs the requested `SxxEyy` so a season-pack ZIP unpacks to the right episode. `ParseID` reads a bare numeric id as legacy OpenSubtitles so it fails cleanly. `opensubtitles.go` compiles but is **not wired in** (its header lists the re-wiring steps); that id returns 400. Missing key → 503 `provider_key_missing`, throttled → 429 `provider_rate_limited`. The frontend lists what the provider returned, in provider order (`utils/subtitle.ts`), dropping only repeated ids.
+- Gemini (`gemini-2.5-flash`) — exactly two things, both in `learning/`: phrase explanations (`GET /me/words/explain`, degrading to a plain translation) and AI-graded meaning answers (`POST /me/tests`, falling back to a local string heuristic). Dictionary definitions and translations are **not** Gemini — separate public APIs, no key. `clients/gemini` digs the JSON out of fenced or prose-wrapped replies.
 
-Translation into app terms is a thin adapter in the consuming module: `modules/subtitle/subdl.go` implements `Provider`; `modules/learning/generator.go` owns the prompts and implements `Generator`. Each adapter declares a small private interface for the slice of the client it uses (`subdlAPI`, `osAPI`, `llm`) so its tests run against a stub.
+**Learning** — `/api/learn` (dictionary/translate helpers) and `/api/me/*` (word CRUD + import, stats, explanations, tests, reviews). SM-2 lives in `srs.go`, covered by `srs_test.go`.
 
-### Composition root
+**Config and the local account** — `config.Config` is `Port` (8081), `Host` (127.0.0.1, because nothing authenticates the port) and `DBPath` (`./9film.db`). No secrets; every credential lives in the DB. `user.LocalUserID(db)` resolves the seeded `9film` account **by username**, not lowest id — a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is not editable (`PUT /api/me` takes an avatar only): renaming the seed strands every favorite, resume point and saved word on the old row. `Migrate` is schema-only (`CREATE TABLE IF NOT EXISTS` plus the seed) — changing a table means editing the CREATE and deleting the database file.
 
-`internal/app/app.go` loads config, opens SQLite, builds the Gin engine (`Logger`, `Recovery`, `CORS`), and calls each `Module(...)`. It builds `user.NewCredentialStore(db)` and injects per-user key resolvers (`geminiKeys`, `subtitleCreds`) into the optional integrations. `subtitleCreds` is keyed by *provider*, so an id from an unwired provider resolves to empty creds.
+## Frontend
 
-`title.Module` takes a `title.Enricher` so per-user state folds into title responses; `app.go` injects `history.NewEnricher(db)`, which forwards favorites to the `favorite` module.
+`utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`. Components split into `components/ui/` (Radix primitives) and `components/system/` (`layout/`, `title/`, `player/`, `learn/`, `common/`). Alias `@/` → `web/src/`.
 
-### Modules
+- `utils/stream.ts` — `streamQuery` (auto-detects `tt…` IMDb vs TMDB ids), `bestUrl` (prefers `master.m3u8`, avoids `justhd.tv`), `mergeEpisode`/`seasons`/`episodes` for TV.
+- `player/video-player.tsx` routes every `.m3u8` through `/hls`, prefixed with `apiOrigin` (`utils/desktop.ts`, empty outside the desktop build). Never hand a raw `.m3u8` to the player — the CDN rejects it without the upstream `Referer`.
+- Onboarding — `/welcome`: licence notice, then the two keys. Finishing sets `9film:onboarded` via `hooks/use-onboarding.ts`, a `useSyncExternalStore` module store, because the gate and the flow are sibling subtrees and one must unblock the other without a reload. `OnboardingGate` wraps every app route; `/welcome`, `/about` and `/disclaimer` sit outside it. A skipped key is raised again only where it mattered — `useMissingKey(kind, using)`, once per session: `SubtitleKeyNotice` on the watch page, `MissingKeyDialog` in the word popup. All wording, that form included, comes from `KEY_COPY` (`components/system/common/key-copy.ts`).
+- Routing — `app.tsx` / `createBrowserRouter`; `MainLayout` for browsing/learning, `WatchLayout` for `/watch/:id`, details at `/title/:id`. `OnboardingGate` is the only guard, and it gates on localStorage, not an account.
 
-- `user/` — account, settings, per-user API keys (`credentials.go`)
-- `favorite/` — watchlist; `GET /me/favorites` is paginated and hydrates a whole page in one batched IMDb request
-- `history/` — watch progress, continue-watching, subtitle preference; hydrates via `title`, flags favorites, provides the `title.Enricher`
-- `title/` — IMDb metadata via hand-written GraphQL against `api.graphql.imdb.com`; `titleCardFields`/`titleDetailFields` are composable field-set constants. Raw responses cache for 1h **before** per-user state folds in, so the cache stays user-independent. `FetchTitles`/`GetTitles` resolve many ids via `titles(ids:[...])`, batch-fetching only cache misses (chunked by `titleBatchSize`).
-- `stream/`, `subtitle/`, `learning/` — see below
+## Desktop (`desktop/`)
 
-### Upstream integrations
+A Wails v2 module with its own `go.mod` (`replace … /backend => ../backend`). It imports `backend/server` (`New`/`Handler`/`Close`), which exists because `internal/` is unreachable from another module.
 
-1. **IMDb** — GraphQL (`modules/title/`).
-2. **Stream resolution** (`stream.Stream`) — proxies `/api/stream` to `streamdata.vaplayer.ru` with the upstream `Referer`, returning `stream_urls` and, for TV, an `eps` season→episode map. `refererResolver` scrapes the embed page for its first `<iframe>` host at startup, refreshes every 6h, falls back to `embedRefererDefault`. Shared by `Stream` and `HLS`. Resolutions cache 1h by sorted query.
-3. **HLS proxy** (`stream.HLS`) — the critical piece. `/hls?url=<absolute>` fetches an `.m3u8`/`.ts` with the required `Referer`, and for manifests **rewrites every URI** (segment lines and `URI="..."`) back through `/hls`, resolving relatives to absolute first. This keeps the whole playlist flowing through the backend so the CDN only ever sees the server's Referer. Mounted at the engine root, outside `/api` — `stream.Module` takes the engine as well as the `/api` group.
+The same `*gin.Engine` is served two ways, both load-bearing: the **asset-server middleware** (`server.go`) handles `/api/*` and `/hls` on the frontend's own origin (so relative paths work untouched), serves `index.html` for extensionless navigations, and injects `window.__9FILM_API__`; a **real loopback listener** (8081 if free, else ephemeral) exists only for the `<video>` HLS src, since WKWebView hands media to AVFoundation, which can't resolve the `wails://` scheme. The port isn't fixed, hence the injection.
 
-### Optional integrations (degrade gracefully)
+Constraints:
 
-**Subtitles** — `subtitle/` is a provider adapter, not one vendor. `provider.go` owns the `Provider` interface, `Creds`, `CredsResolver` and the opaque-id helpers; `vtt.go`/`archive.go` hold SRT→VTT and zip/gzip helpers; `Module` takes its providers already built, so `app.go` chooses them.
-- `opensubtitles.go` is **kept but not wired in** — it compiles so it can't rot; its header comment lists the steps to re-wire it. An `opensubtitles:` id returns 400.
-- Ids are opaque `"<provider>:<ref>"` (`subdl:/subtitle/x.zip|S01E02`) and flow to the browser and into `history.sub_ref`. Only the owning provider parses the ref — SubDL packs the requested `SxxEyy` in so a season-pack ZIP unpacks to the right episode. `ParseID` reads a bare numeric id as legacy OpenSubtitles so it fails cleanly.
-- Key comes only from `user.CredentialStore`. Missing → 503 `code:"provider_key_missing"` (frontend shows the "no subtitles" notice); throttled → 429 `code:"provider_rate_limited"`.
-- The frontend lists what the provider returned, in provider order (`utils/subtitle.ts` `listSubs`) — no sorting, filtering or top-N; only repeated ids are dropped.
+- `//go:embed` can't cross `..`, so `frontend-build` copies `web/dist` into `desktop/dist`; `dist/.gitkeep` is tracked so the embed compiles before anyone builds the frontend.
+- Wails **execs** `frontend:*` without a shell (no env prefixes, no `&&`) from `web/`, so both hooks are `make -C ../desktop` targets — that's where `VITE_DESKTOP=1` and the copy live, and the extra layer shuts down cleanly when Wails kills the process group.
+- Builds pass `-skipbindings`: Wails generates bindings by *running* the binary, which would open the database mid-build.
+- `gin.SetMode` is called in `backend/server` — gin latches `GIN_MODE` at package init, long before the desktop process could set it.
+- The DB is at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.
+- Chrome is `mac.TitleBarHiddenInset()`; the frontend half is CSS keyed on `.is-desktop` (`web/src/index.css`): `app-titlebar` (draggable), `titlebar-lead` (inset past the traffic lights), `titlebar-row` (48px, so it centres on lights macOS fixes 24pt below the window top), `titlebar-drag-fill`. `--wails-draggable` inherits, so interactive children are opted back out by the `:where(...)` rule.
+- `.is-desktop` needs **both** `VITE_DESKTOP` and the injected `window.__9FILM_API__`: `wails dev` runs one Vite server for both sides, so a browser at :5173 would otherwise wear window chrome with no window around it.
 
-**Gemini** (`gemini-2.5-flash`) powers exactly two things, both in `learning/`: phrase/idiom explanations (`GET /me/words/explain`, degrading to a plain translation) and AI-graded meaning answers in `POST /me/tests` (falling back to a local string heuristic). Dictionary definitions and translations are **not** Gemini — separate public APIs, no key needed. Client: `clients/gemini` (`Generate`/`GenerateJSONArray`/`GenerateJSONObject`, which dig the JSON out of fenced or prose-wrapped replies).
+## Docker
 
-Both keys are **per-user only** — no `.env` fallback, the server holds no key of its own.
+Two multi-stage images. `backend/Dockerfile`: `golang:1.25-alpine` → `alpine`, `CGO_ENABLED=0` (modernc sqlite is pure Go), so the runtime layer is the binary plus `ca-certificates` and `tzdata`; uid 10001, with `/data` chowned in the image so the named volume inherits it; healthcheck hits `/api/me` — no dedicated health route, and it proves the database opened. `web/Dockerfile`: `node:24-alpine` (pnpm pinned, not corepack) → `nginx:alpine`, `VITE_DESKTOP` left unset so every `/api` and `/hls` path stays relative.
 
-### Learning module
+`web/nginx.conf` (+ `web/proxy.inc` — deliberately not `*.conf`, or nginx's `conf.d/*.conf` glob would pull proxy directives into the http block):
 
-`/api/learn` (dictionary/translate helpers) and `/api/me/*` (word CRUD + import, per-word stats, explanations, tests, SRS reviews). Spaced repetition is SM-2 in `srs.go`, covered by `srs_test.go`.
+- One origin for API and assets, so `middleware.CORS`'s allow-list never needs a deploy host.
+- `proxy_pass` goes through a **variable** with `resolver 127.0.0.11 valid=10s`: a literal upstream name resolves once at startup and would strand nginx on a dead IP after `api` restarts. The variable form drops the original URI, hence the explicit `$request_uri`.
+- `location = /hls` with `proxy_buffering off` and a 300s read timeout — segments stream, not spool.
+- `try_files $uri $uri/ /index.html`; `index.html` is `no-store`, `/assets/` immutable for a year.
 
-### Config and the local account
-
-`config.Config` is three values: `Port` (8081), `Host` (`127.0.0.1`, loopback because nothing authenticates the port), `DBPath` (`./9film.db`). No secrets — every credential lives in the DB, entered at Profile → Connections.
-
-`user.LocalUserID(db)` resolves the account **by username** (`9film`, seeded by `database.Open`) and creates it if missing — by name rather than lowest id, because a pre-auth-removal database can hold several accounts and picking by id would silently switch to a stale one. So the username is **not editable**: `PUT /api/me` takes an avatar only. Renaming the seed strands every favorite, resume point and saved word on the old row — delete `9film.db` and start over instead.
-
-`Migrate` is schema-only: `CREATE TABLE IF NOT EXISTS` plus the seed, no versioning and no in-place column migration. Changing a table means editing the CREATE and deleting the database file.
-
-## Frontend architecture
-
-Data flow: `utils/` (pure logic) → `services/` (fetch wrappers) → `hooks/` (TanStack Query) → `pages/`/`components/`. Components split into `components/ui/` (Radix primitives) and `components/system/` (by domain: `layout/`, `title/`, `player/`, `learn/`, `common/`). Services mirror the backend. Path alias `@/` → `web/src/`.
-
-`utils/stream.ts`: `streamQuery` builds the `/api/stream` query (auto-detects `tt…` IMDb vs TMDB ids); `bestUrl` picks the playable stream (prefers `master.m3u8`, avoids `justhd.tv`); `mergeEpisode`/`seasons`/`episodes` drive TV episode selection from `eps`.
-
-`components/system/player/video-player.tsx` routes every `.m3u8` through `/hls`, prefixed with `apiOrigin` (`utils/desktop.ts`) — empty everywhere but the desktop build. Never send a raw `.m3u8` to the player: the CDN rejects it without the upstream `Referer`.
-
-### Onboarding and the API keys
-
-First-run flow at `/welcome` (`pages/onboarding-page.tsx`): step one the licence notice, step two the SubDL and Gemini keys. Both fields are skippable; finishing sets `9film:onboarded` in localStorage via `hooks/use-onboarding.ts` — a `useSyncExternalStore` module store, because the gate and the flow are sibling subtrees and completing one must unblock the other without a reload.
-
-`OnboardingGate` wraps every app route and redirects to `/welcome` with the attempted path in `location.state.from`. `/welcome`, `/about` and `/disclaimer` sit **outside** the gate — step one links to Disclaimer in a new tab, which the gate would otherwise bounce back.
-
-A skipped key is raised again only where it mattered: `useMissingKey(kind, using)` pairs credential status with the caller's "using it now" signal, once per browser session. The watch page renders a dismissible `SubtitleKeyNotice` banner (the film plays fine without captions); the word popup renders `MissingKeyDialog`. All of these plus the Profile → Connections form read their wording from `KEY_COPY` (`components/system/common/key-copy.ts`), so an integration is never explained two different ways.
-
-### Routing
-
-`app.tsx` / `createBrowserRouter`. `MainLayout` wraps browsing/learning pages, `WatchLayout` wraps `/watch/:id`, detail pages are `/title/:id` (IMDb id). The only guard is `OnboardingGate`, and it gates on a localStorage flag, not an account.
-
-## Desktop app (`desktop/`)
-
-A Wails v2 module — its own `go.mod` with `replace … /backend => ../backend`. It imports `backend/server`, a thin public wrapper (`New`/`Handler`/`Close`) that exists because `internal/` is unreachable from another module. `app.New()` returns an error; `app.NewApp()` is the `log.Fatal` wrapper `cmd/api` still uses.
-
-The same `*gin.Engine` is served **two ways**, and both are load-bearing:
-
-1. **Asset-server middleware** (`server.go`) — `/api/*` and `/hls`, same origin as the frontend, so every relative path in `web/` works untouched. It also serves `index.html` for any extensionless path (SPA reload) and injects `window.__9FILM_API__`.
-2. **A real loopback listener** — 127.0.0.1, port 8081 if free (matching the Vite proxy for `wails dev`) else ephemeral. Only the `<video>` HLS src uses it: WKWebView hands media to AVFoundation, which can't resolve the asset server's `wails://` scheme. The port isn't fixed, hence the injection rather than a constant.
-
-Constraints worth knowing before editing:
-
-- `//go:embed` can't cross `..`, so `web/dist` is **copied** into `desktop/dist` by the `frontend-build` target. `desktop/dist/.gitkeep` is tracked because the embed needs the directory at compile time.
-- Wails **execs** `frontend:*` commands without a shell — no env prefixes, no `&&` — from `frontend:dir` (`web/`). So both hooks are `make -C ../desktop` targets (`frontend-build`, `frontend-dev`): make recipes run under `sh`, which is where `VITE_DESKTOP=1` and the `dist` copy live. `web/package.json` stays desktop-free. Wails kills the watcher's whole process group, so the extra `make` layer shuts down cleanly.
-- Builds pass `-skipbindings`: Wails generates JS bindings by *running* the binary, which would open the database mid-build. Nothing is passed to `options.Bind`.
-- `gin.SetMode` is called in `backend/server`, not left to `GIN_MODE` — gin latches the env at package init, long before the desktop process can set it.
-- The DB lives at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.
-- Window chrome is `mac.TitleBarHiddenInset()` — no title bar, native traffic lights over the app's own header. The frontend side is pure CSS keyed on `.is-desktop` (`web/src/index.css`): `app-titlebar` marks a header draggable, `titlebar-lead` insets past the traffic lights, `titlebar-row` makes the bar 48px so it centres on them (macOS fixes their centre 24pt below the window top and Wails v2 can't move them), `titlebar-drag-fill` gives the watch page a drag handle. `--wails-draggable` **inherits**, so interactive children are opted back out by the `:where(...)` rule.
-- `.is-desktop` needs **both** `VITE_DESKTOP` and the injected `window.__9FILM_API__` (`utils/desktop.ts`). The flag alone says the bundle was built for the desktop, but `wails dev` runs one Vite server for both sides, so a browser at `:5173` gets that bundle and would wear the window chrome with no window around it.
-
-## Docker (production stack)
-
-`docker compose up -d --build` → app on `:8080`. Two images, both multi-stage:
-
-- `backend/Dockerfile` — `golang:1.25-alpine` → `alpine`. `CGO_ENABLED=0` is free (modernc.org/sqlite is pure Go), so the runtime layer carries only the binary, `ca-certificates` (every upstream is TLS) and `tzdata`. Runs as uid 10001; `/data` is chowned in the image so the named volume inherits that ownership on first mount. `DB_PATH=/data/9film.db`, `HOST=0.0.0.0`, `GIN_MODE=release`. Healthcheck hits `/api/me` — there is no dedicated health route, and `/api/me` is the cheapest one that proves the database opened and the seed is there.
-- `web/Dockerfile` — `node:24-alpine` (pnpm pinned, not corepack) → `nginx:alpine`. `VITE_DESKTOP` stays unset, so `utils/desktop.ts` keeps `apiOrigin` empty and every `/api`, `/hls` path is relative — which is what lets nginx serve the whole app from one origin.
-
-`web/nginx.conf` (+ `web/proxy.inc`, deliberately not `*.conf` so nginx's `conf.d/*.conf` glob doesn't pull proxy directives into the http block):
-
-- Same origin for API and assets, so `middleware.CORS`'s allow-list never needs a deploy host added to it.
-- `proxy_pass` goes through a **variable** (`set $api …; proxy_pass $api$request_uri;`) with `resolver 127.0.0.11 valid=10s`. A literal upstream name is resolved once at startup, so restarting `api` would strand nginx on a dead IP. The variable form drops the original URI, hence the explicit `$request_uri` — `/api/stream` and `/hls` are nothing without their query string.
-- `/hls` is `location = /hls` (root-mounted, outside `/api`) with `proxy_buffering off` and a 300s read timeout; segments should stream, not spool.
-- `try_files $uri $uri/ /index.html` for client-side routes; `index.html` is `no-store`, `/assets/` is immutable for a year (Vite content-hashes them).
-
-The api port is not published: the app authenticates nobody, so nginx is the only door. Compose takes no env input — the published port and `TZ` are literals in `docker-compose.yml`, since one deployment means one address. It declares no healthchecks either: both images carry their own `HEALTHCHECK`, and `depends_on: condition: service_healthy` reads the api image's, so `up` only starts nginx once the backend answers. `cmd/api` has no signal handling — SIGTERM ends it without `db.Close()`, which is safe because SQLite replays the WAL on the next open.
+The api port is not published — nginx is the only door. Compose takes no env input (the port and `TZ` are literals) and declares no healthchecks: both images carry their own, and `depends_on: service_healthy` reads the api image's, so nginx starts only once the backend answers. `cmd/api` has no signal handling; SIGTERM ends it without `db.Close()`, which is safe because SQLite replays the WAL on the next open.
 
 ## Conventions
 
 - Files kebab-case (`video-player.tsx`, `use-stream-query.ts`); React components PascalCase.
-- Backend logging is structured Zap (`logger.Get()`); request middleware picks level by status (≥500 error, ≥400 warn).
-- CORS in `internal/middleware/cors.go` matches an origin allow-list *by function*, not `cors.Config.AllowOrigins` — that field panics on any scheme outside http/https, and the desktop webview's scheme is `wails://`. The packaged macOS app is loaded from `wails://wails.localhost` but sends `Origin: wails://wails`: a custom scheme is not a "special" URL scheme, so WebKit's origin serialization drops the `.localhost`. Both hosts are allowed — miss the bare one and the loopback HLS request 403s, which reaches the player as "a network error status (0) occured while loading manifest" and nothing else in the app looks wrong.
+- Structured Zap logging (`logger.Get()`); request middleware picks level by status (≥500 error, ≥400 warn).
+- CORS matches an origin allow-list *by function*, not `cors.Config.AllowOrigins` — that field panics on any scheme outside http/https. The packaged macOS app loads from `wails://wails.localhost` but sends `Origin: wails://wails`: WebKit drops the `.localhost` when serializing a non-special scheme's origin. Both hosts are allowed — miss the bare one and the loopback HLS request 403s, surfacing only as "a network error status (0) occured while loading manifest".
