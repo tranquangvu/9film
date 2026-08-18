@@ -25,6 +25,9 @@ export interface VideoPlayerProps {
   learning?: { cues: Cue[]; context: WordContext } | null;
   /** While the stream is being resolved, show a blank loading state instead of "No stream available". */
   loading?: boolean;
+  /** Draw a stand-in subtitle line when none is showing — the tour asks for this
+   *  while it points at the subtitle band. */
+  placeholderLine?: boolean;
 }
 
 // Tracks whether any element is currently fullscreen. The interactive subtitle
@@ -57,7 +60,7 @@ function SubtitleTrack({ subtitle }: { subtitle: SubtitleOption }) {
   );
 }
 
-export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnded, learning, loading }: VideoPlayerProps) {
+export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnded, learning, loading, placeholderLine }: VideoPlayerProps) {
   const fullscreen = useIsFullscreen();
 
   if (!src) {
@@ -102,7 +105,13 @@ export function VideoPlayer({ src, poster, subtitle, startAt, onProgress, onEnde
           <ProgressReporter startAt={startAt} onProgress={onProgress} onEnded={onEnded} />
         )}
       </Player.Provider>
-      {showInteractive && <InteractiveSubtitles cues={learning!.cues} context={learning!.context} />}
+      {showInteractive && (
+        <InteractiveSubtitles
+          cues={learning!.cues}
+          context={learning!.context}
+          placeholderLine={placeholderLine}
+        />
+      )}
     </div>
   );
 }

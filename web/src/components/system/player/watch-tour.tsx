@@ -21,9 +21,9 @@ interface TourStep {
   body: string;
 }
 
-// Walkthrough of the watch-page controls, ordered left to right as they sit in
-// the header. Steps whose target isn't in the DOM (e.g. no subtitles, not a
-// series) are skipped automatically.
+// Walkthrough of the watch page: the header controls in the order they sit in,
+// left to right, and then the film itself. Steps whose target isn't in the DOM
+// (no subtitles, not a series, learning mode off) are skipped automatically.
 const STEPS: TourStep[] = [
   {
     target: 'episodes',
@@ -45,7 +45,16 @@ const STEPS: TourStep[] = [
     title: 'Captions',
     body: 'Pick a subtitle track — it also feeds the transcript. Tracks are timed against a specific release, so if the lines drift out of sync, switch to another one until it matches.',
   },
+  {
+    target: 'interactive-subtitles',
+    title: 'Every line is clickable',
+    body: 'Rest the pointer on a line and the film pauses so you can read it. Click a word for its meaning, translation and a button to save it — or drag across several words to keep a whole phrase.',
+  },
 ];
+
+// Wide enough for the whole footer — dots, Skip tour, Back and Next — to sit on
+// one line. At 300 "Skip tour" wrapped.
+const CARD_W = 340;
 
 type Rect = { top: number; left: number; width: number; height: number };
 
@@ -135,6 +144,25 @@ export function WatchTour({
 
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
+  // Targets keep arriving after the tour starts: the subtitle picker fills when
+  // its search returns, and the clickable line only exists once the cues are
+  // parsed — a good ten seconds in. next() re-resolves too, but someone who
+  // clicks straight through would be finished before either mounted, and the
+  // tour is one-time. So watch for them while it runs, holding the reader on
+  // whatever step they are reading.
+  useEffect(() => {
+    if (!active || !step) return;
+    const id = setInterval(() => {
+      const present = STEPS.filter((s) => rectOf(s.target));
+      if (present.length === steps.length) return;
+      const at = present.findIndex((s) => s.target === step.target);
+      if (at < 0) return; // the current target went away; next() handles that
+      setSteps(present);
+      setIndex(at);
+    }, 800);
+    return () => clearInterval(id);
+  }, [active, step, steps.length]);
+
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -157,7 +185,6 @@ export function WatchTour({
   };
 
   // Place the card below the target by default; flip above if it would clip.
-  const CARD_W = 300;
   const below = hole.top + hole.height + 12;
   const placeBelow = below + 180 < window.innerHeight;
   const cardTop = placeBelow ? below : Math.max(12, hole.top - 12 - 180);
@@ -174,7 +201,13 @@ export function WatchTour({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
-        className="pointer-events-auto absolute rounded-full bg-orange-500/40 ring-2 ring-orange-400"
+        className={
+          'pointer-events-auto absolute bg-orange-500/40 ring-2 ring-orange-400 ' +
+          // A pill fits the header controls, round or lozenge-shaped alike. Only
+          // something as wide and low as the subtitle band needs a rectangle —
+          // a full pill there would curve its ends in over the words.
+          (hole.width > hole.height * 4 ? 'rounded-2xl' : 'rounded-full')
+        }
         style={{
           top: hole.top,
           left: hole.left,
@@ -192,8 +225,8 @@ export function WatchTour({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-          className="absolute w-[300px] rounded-2xl border border-white/12 bg-zinc-900/95 p-4 shadow-2xl backdrop-blur"
-          style={{ top: cardTop, left: cardLeft }}
+          className="absolute rounded-2xl border border-white/12 bg-zinc-900/95 p-4 shadow-2xl backdrop-blur"
+          style={{ top: cardTop, left: cardLeft, width: CARD_W }}
         >
           <div className="flex items-start gap-2.5">
             <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-orange-400">
@@ -228,21 +261,21 @@ export function WatchTour({
             <div className="flex items-center gap-2">
               <button
                 onClick={finish}
-                className={`rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-400 transition hover:bg-white/10 hover:text-white ${FOCUS}`}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-400 transition hover:bg-white/10 hover:text-white ${FOCUS}`}
               >
                 Skip tour
               </button>
               {index > 0 && (
                 <button
                   onClick={back}
-                  className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white ${FOCUS}`}
+                  className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white ${FOCUS}`}
                 >
                   <ArrowLeft size={13} /> Back
                 </button>
               )}
               <button
                 onClick={next}
-                className={`inline-flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-400 ${FOCUS_SOLID}`}
+                className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-orange-500/25 transition hover:bg-orange-400 ${FOCUS_SOLID}`}
               >
                 {index === steps.length - 1 ? 'Got it' : 'Next'}
                 {index < steps.length - 1 && <ArrowRight size={13} />}

@@ -128,6 +128,7 @@ export function WatchPage() {
               if (autoplayNext && next) handleEpisodeChange(next.season, next.episode);
             }}
             learning={learning}
+            placeholderLine={tourTarget === 'interactive-subtitles'}
           />
 
           {/* Header overlay — all controls sit on top of the video.

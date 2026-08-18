@@ -6,6 +6,10 @@ import { activeCueIndex, type Cue } from '@/utils/vtt';
 interface InteractiveSubtitlesProps {
   cues: Cue[];
   context: WordContext;
+  /** Draw a stand-in line while no cue is on screen. The tour sets this when it
+   *  points here: between two lines there is nothing under the spotlight, and an
+   *  empty band explains nothing. */
+  placeholderLine?: boolean;
 }
 
 interface Selection {
@@ -40,7 +44,12 @@ function cleanPhrase(raw: string): string {
     .trim();
 }
 
-export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProps) {
+// Word-shaped bars for the stand-in line: uneven, like a sentence, and near
+// enough to the real thing that the spotlight reads as "the words go here".
+// Their total sets how wide the band wants to be — see BAND below.
+const SKELETON = [48, 80, 36, 100, 54, 70];
+
+export function InteractiveSubtitles({ cues, context, placeholderLine }: InteractiveSubtitlesProps) {
   const media = useMediaElement();
   const [activeIdx, setActiveIdx] = useState(-1);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -167,6 +176,26 @@ export function InteractiveSubtitles({ cues, context }: InteractiveSubtitlesProp
 
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
+      {/* What the tour points at. Deliberately not the line itself: cues come and
+          go, so a step targeting one would be skipped whenever the film happened
+          to be between them — and would chase the text as it changed. This band
+          sits where the lines land — one line high, and capped at about the width
+          of a spoken line rather than the 85% the cue container may stretch to,
+          which as a spotlight read as a bar across the whole film. */}
+      <div
+        data-tour="interactive-subtitles"
+        aria-hidden
+        className="absolute bottom-16 left-1/2 flex h-11 w-[70%] max-w-[620px] -translate-x-1/2 items-center justify-center gap-2"
+      >
+        {placeholderLine && !cue && SKELETON.map((w, i) => (
+          <span
+            key={i}
+            className="h-3.5 animate-pulse rounded-full bg-white/45"
+            style={{ width: w }}
+          />
+        ))}
+      </div>
+
       {cue && (
         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[85%] text-center">
           <p
