@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ClipboardCheck } from 'lucide-react';
@@ -6,13 +7,23 @@ import { normId } from '@/utils/title';
 import type { LetterGroup, TitleGroup } from '@/utils/word';
 import type { Word } from '@/services/user';
 
-export function WordBadge({ word, onClick }: { word: Word; onClick: () => void }) {
+// Memoised, and taking the selector rather than a ready-made click handler: a
+// pack renders thousands of these, and a fresh closure per pill would re-render
+// every one of them each time another page of words arrived — each re-render
+// paying for a class merge it does not need.
+export const WordBadge = memo(function WordBadge({
+  word,
+  onSelect,
+}: {
+  word: Word;
+  onSelect: (w: Word) => void;
+}) {
   return (
-    <Badge variant="tag" onClick={onClick} className="capitalize">
+    <Badge variant="tag" onClick={() => onSelect(word)} className="capitalize">
       {word.word}
     </Badge>
   );
-}
+});
 
 const ACTION =
   'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors';
@@ -40,7 +51,16 @@ export function WordLetterGroupList({
   return (
     <div className="space-y-8">
       {groups.map((g) => (
-        <motion.section key={g.letter} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.section
+          key={g.letter}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          // A single letter can run to hundreds of pills. content-visibility
+          // lets the browser skip layout and paint for the sections that are
+          // off screen; the intrinsic size keeps the scrollbar honest until one
+          // has been measured once.
+          className="[content-visibility:auto] [contain-intrinsic-size:auto_360px]"
+        >
           <div className="flex items-center gap-2 mb-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-400/30 bg-gradient-to-br from-emerald-400/30 to-emerald-500/5 text-base font-extrabold leading-none text-emerald-300">
               {g.letter}
@@ -54,7 +74,7 @@ export function WordLetterGroupList({
           </div>
           <div className="flex flex-wrap gap-2">
             {g.words.map((w) => (
-              <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
+              <WordBadge key={w.word} word={w} onSelect={onSelect} />
             ))}
           </div>
         </motion.section>
@@ -77,7 +97,12 @@ export function WordTitleGroupList({
       {groups.map((g) => {
         const label = g.title || g.imdbId || 'Saved words';
         return (
-          <motion.div key={g.imdbId || 'none'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div
+            key={g.imdbId || 'none'}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="[content-visibility:auto] [contain-intrinsic-size:auto_360px]"
+          >
             <div className="flex items-center gap-2 mb-3">
               {g.imdbId ? (
                 <Link
@@ -113,7 +138,7 @@ export function WordTitleGroupList({
             </div>
             <div className="flex flex-wrap gap-2">
               {g.words.map((w) => (
-                <WordBadge key={w.word} word={w} onClick={() => onSelect(w)} />
+                <WordBadge key={w.word} word={w} onSelect={onSelect} />
               ))}
             </div>
           </motion.div>

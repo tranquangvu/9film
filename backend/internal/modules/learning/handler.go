@@ -76,8 +76,12 @@ func (h *Handler) GetWords(c *gin.Context) {
 	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
 		limit = v
 	}
-	if limit > 100 {
-		limit = 100
+	// The ceiling is about response size, not about pacing the client: an
+	// imported pack is thousands of words rendered as one A–Z index, and paging
+	// it 100 at a time is dozens of round trips for a list that is only a word
+	// and its metadata per row.
+	if limit > 500 {
+		limit = 500
 	}
 	offset := 0
 	if v, err := strconv.Atoi(c.Query("offset")); err == nil && v > 0 {

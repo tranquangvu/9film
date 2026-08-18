@@ -29,6 +29,12 @@ const REVIEWS_KEY = ['reviews'] as const;
 const WORDS_PREFIX = ['words'] as const;
 const wordsKey = (status: WordStatus, list: string) => ['words', list, status] as const;
 const WORDS_PAGE_SIZE = 30;
+// An imported pack is thousands of words shown as one A–Z index, and every page
+// that lands re-renders the whole list that came before it. At 30 a time the
+// Oxford 3000 took ~130 round trips and ~130 of those re-renders to scroll
+// through, which is what made it crawl. Personal vocabularies are small and stay
+// on the smaller page.
+const PACK_PAGE_SIZE = 200;
 
 // Lightweight full vocabulary: drives the progress chart, the to-learn/completed
 // counts, and the saved-word lookup — all of which need every word, not a page.
@@ -42,9 +48,10 @@ export function useWordStatsQuery() {
 
 // One tab+list's saved words, paginated for infinite scroll.
 export function useInfiniteWordsQuery(status: WordStatus, list = '') {
+  const pageSize = list ? PACK_PAGE_SIZE : WORDS_PAGE_SIZE;
   return useInfiniteQuery({
     queryKey: wordsKey(status, list),
-    queryFn: ({ pageParam }) => getWords(status, pageParam, WORDS_PAGE_SIZE, list),
+    queryFn: ({ pageParam }) => getWords(status, pageParam, pageSize, list),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     staleTime: 60 * 1000,
