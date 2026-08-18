@@ -2,14 +2,12 @@
 
 Streams HLS video for any IMDb title and layers an English-learning toolkit on top: vocabulary, AI explanations, self-tests, SM-2 spaced repetition. Single user, no sign-in — one SQLite file on your own machine.
 
-<img src="docs/learn-subtitles.svg" alt="The player: a subtitle line with one word highlighted, and a popup showing its meaning, translation and a Save button" width="820">
-
 **Frontend** React 19, TypeScript, Vite, Tailwind, Video.js, TanStack Query
 **Backend** Go, Gin, SQLite (pure-Go driver, no CGO)
 
 ## Download
 
-**[⬇︎ 9film.dmg — macOS, universal](https://github.com/tranquangvu/9film/releases/latest/download/9film.dmg)** · [all releases](https://github.com/tranquangvu/9film/releases)
+**[⬇︎ Download 9film.dmg — macOS, universal](https://github.com/tranquangvu/9film/releases/latest/download/9film.dmg)** · [all releases](https://github.com/tranquangvu/9film/releases)
 
 The server runs inside the window, so there is nothing to start alongside it. macOS 10.15+, Apple Silicon and Intel.
 

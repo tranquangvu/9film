@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380" role="img"
      aria-label="Architecture: the browser or the desktop window talk to the Go backend, which is the only thing that reaches IMDb, the stream CDN, SubDL and Gemini, and the only thing that touches the SQLite file.">
   <title>How the pieces fit</title>
   <g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
 
-    <rect x="0" y="0" width="960" height="470" rx="0" fill="#0d0d0f"/>
+    <rect x="0" y="0" width="960" height="380" fill="#0d0d0f"/>
 
     <!-- clients -->
     <text x="30" y="40" font-size="12" font-weight="700" fill="#71717a" letter-spacing="1">FRONTEND</text>
@@ -68,9 +68,5 @@
     <path d="M600 230 L672 288" fill="none" stroke="#52525b" stroke-width="2"/>
     <path d="M679 293 l-11 -8 -1 11 Z" fill="#52525b"/>
 
-    <!-- the point of it all -->
-    <rect x="30" y="384" width="900" height="58" rx="12" fill="#1a1206" stroke="#7c2d12"/>
-    <text x="52" y="410" font-size="13.5" fill="#fdba74">Every upstream call is the server&#8217;s, never the browser&#8217;s: source URLs and API keys stay behind /api,</text>
-    <text x="52" y="430" font-size="13.5" fill="#fdba74">and the CDN only ever sees a request carrying the Referer it insists on.</text>
   </g>
 </svg>
