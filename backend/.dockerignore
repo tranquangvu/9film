@@ -1,0 +1,7 @@
+# The local database — never bake one user's account and API keys into an image.
+*.db
+*.db-shm
+*.db-wal
+bin/
+Dockerfile
+.dockerignore

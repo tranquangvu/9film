@@ -1,0 +1,51 @@
+# Production stack: `docker compose up -d` and the app is on http://localhost:8080.
+#
+# Two containers, one origin. nginx serves the built frontend and forwards /api
+# and /hls to the Go backend, which is the only thing that ever talks to the
+# upstreams (IMDb, the stream host, SubDL, Gemini) — the browser sees neither
+# sources nor credentials, exactly as in development.
+name: 9film
+
+services:
+  api:
+    build:
+      context: ./backend
+    image: 9film-api:latest
+    restart: unless-stopped
+    environment:
+      # 0.0.0.0 because the process has to be reachable from the web container.
+      # The app authenticates nobody (middleware.LocalUser stamps every request
+      # with the one local account), so this port is deliberately NOT published
+      # to the host — nginx is the only door.
+      HOST: 0.0.0.0
+      PORT: "8081"
+      DB_PATH: /data/9film.db
+      GIN_MODE: release
+      TZ: UTC
+    expose:
+      - "8081"
+    volumes:
+      - db:/data
+    # cmd/api has no signal handling, so SIGTERM ends it without closing the
+    # database. That is safe — an unclean WAL is replayed on the next open — but
+    # the grace period gives an in-flight write room to land first.
+    stop_grace_period: 10s
+
+  web:
+    build:
+      context: ./web
+    image: 9film-web:latest
+    restart: unless-stopped
+    ports:
+      # Fixed on purpose: one deployment, one address. Change it here.
+      - "8080:80"
+    depends_on:
+      api:
+        # Both images declare their own HEALTHCHECK, so there is nothing to
+        # restate here — this condition reads the api image's.
+        condition: service_healthy
+
+volumes:
+  # Everything that survives a redeploy: the local account, favourites, watch
+  # progress, saved words and the API keys entered at Profile → Connections.
+  db:

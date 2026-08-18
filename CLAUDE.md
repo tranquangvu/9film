@@ -21,6 +21,8 @@ Frontend (`cd web`, **pnpm**):
 Desktop (`cd desktop`, macOS only, needs the Wails v2 CLI):
 - `make dev` — one window, live-reloading; `make build` — universal `.app`; `make dmg`
 
+Docker (repo root): `docker compose up -d --build` — the whole app on `:8080` (nginx + the Go binary; see **Docker** below).
+
 Run backend and frontend together; Vite proxies `/api` and `/hls` to `API_URL` (default `http://localhost:8081`).
 
 ## Backend architecture
@@ -119,6 +121,22 @@ Constraints worth knowing before editing:
 - The DB lives at `~/Library/Application Support/9film/9film.db`, created by `desktop/server.go` (`database.Open` does not `MkdirAll`). `OnShutdown` is the only thing that closes it, and so the only thing that checkpoints the WAL.
 - Window chrome is `mac.TitleBarHiddenInset()` — no title bar, native traffic lights over the app's own header. The frontend side is pure CSS keyed on `.is-desktop` (`web/src/index.css`): `app-titlebar` marks a header draggable, `titlebar-lead` insets past the traffic lights, `titlebar-row` makes the bar 48px so it centres on them (macOS fixes their centre 24pt below the window top and Wails v2 can't move them), `titlebar-drag-fill` gives the watch page a drag handle. `--wails-draggable` **inherits**, so interactive children are opted back out by the `:where(...)` rule.
 - `.is-desktop` needs **both** `VITE_DESKTOP` and the injected `window.__9FILM_API__` (`utils/desktop.ts`). The flag alone says the bundle was built for the desktop, but `wails dev` runs one Vite server for both sides, so a browser at `:5173` gets that bundle and would wear the window chrome with no window around it.
+
+## Docker (production stack)
+
+`docker compose up -d --build` → app on `:8080`. Two images, both multi-stage:
+
+- `backend/Dockerfile` — `golang:1.25-alpine` → `alpine`. `CGO_ENABLED=0` is free (modernc.org/sqlite is pure Go), so the runtime layer carries only the binary, `ca-certificates` (every upstream is TLS) and `tzdata`. Runs as uid 10001; `/data` is chowned in the image so the named volume inherits that ownership on first mount. `DB_PATH=/data/9film.db`, `HOST=0.0.0.0`, `GIN_MODE=release`. Healthcheck hits `/api/me` — there is no dedicated health route, and `/api/me` is the cheapest one that proves the database opened and the seed is there.
+- `web/Dockerfile` — `node:24-alpine` (pnpm pinned, not corepack) → `nginx:alpine`. `VITE_DESKTOP` stays unset, so `utils/desktop.ts` keeps `apiOrigin` empty and every `/api`, `/hls` path is relative — which is what lets nginx serve the whole app from one origin.
+
+`web/nginx.conf` (+ `web/proxy.inc`, deliberately not `*.conf` so nginx's `conf.d/*.conf` glob doesn't pull proxy directives into the http block):
+
+- Same origin for API and assets, so `middleware.CORS`'s allow-list never needs a deploy host added to it.
+- `proxy_pass` goes through a **variable** (`set $api …; proxy_pass $api$request_uri;`) with `resolver 127.0.0.11 valid=10s`. A literal upstream name is resolved once at startup, so restarting `api` would strand nginx on a dead IP. The variable form drops the original URI, hence the explicit `$request_uri` — `/api/stream` and `/hls` are nothing without their query string.
+- `/hls` is `location = /hls` (root-mounted, outside `/api`) with `proxy_buffering off` and a 300s read timeout; segments should stream, not spool.
+- `try_files $uri $uri/ /index.html` for client-side routes; `index.html` is `no-store`, `/assets/` is immutable for a year (Vite content-hashes them).
+
+The api port is not published: the app authenticates nobody, so nginx is the only door. Compose takes no env input — the published port and `TZ` are literals in `docker-compose.yml`, since one deployment means one address. It declares no healthchecks either: both images carry their own `HEALTHCHECK`, and `depends_on: condition: service_healthy` reads the api image's, so `up` only starts nginx once the backend answers. `cmd/api` has no signal handling — SIGTERM ends it without `db.Close()`, which is safe because SQLite replays the WAL on the next open.
 
 ## Conventions
 

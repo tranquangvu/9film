@@ -1,0 +1,7 @@
+node_modules
+dist
+.git
+Dockerfile
+.dockerignore
+# Dropped here by wails; irrelevant to a browser build.
+package.json.md5

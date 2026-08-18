@@ -28,3 +28,6 @@ web/package.json.md5
 *.njsproj
 *.sln
 *.sw?
+
+# Local env files — the backend reads backend/.env, and nothing committed needs one.
+.env

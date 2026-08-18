@@ -40,6 +40,7 @@ web/                     React frontend
     ├── services/ hooks/ pages/ utils/
     └── ../vite.config.ts   proxies /api and /hls → backend:8081
 desktop/                 macOS app (Wails v2) — both of the above in one window
+docker-compose.yml       production stack: nginx (web) + the Go binary (api)
 ```
 
 Each backend module is a vertical slice (`repo.go` → `service.go` → `handler.go` → `route.go`, wired by `module.go`). See `CLAUDE.md` for the architecture in depth.
@@ -74,6 +75,40 @@ pnpm dev            # http://localhost:5173
 Vite proxies `/api` and `/hls` to the backend; point it elsewhere with `API_URL=http://host:port pnpm dev`. Other commands: `make build` / `make run` / `make tidy` / `go test ./...`; `pnpm build` / `pnpm typecheck` / `pnpm lint`.
 
 The SQLite file (`./9film.db`) is created, migrated and seeded with the single local account on first run. `.env` is optional and holds no secrets — only `PORT`, `HOST` (loopback by default; set `HOST=0.0.0.0` only if you mean to expose it) and `DB_PATH`.
+
+## Run with Docker
+
+The whole thing, production build, one command:
+
+```bash
+docker compose up -d --build      # http://localhost:8080
+```
+
+Two containers on one origin: `web` is nginx serving the built frontend and forwarding `/api` and `/hls` to `api`, the Go binary. Same origin means no CORS to configure for whatever host you deploy under, and the browser still never sees a source URL or a credential — every upstream stays behind the backend.
+
+The backend's port is deliberately **not** published. The app authenticates nobody (see [No sign-in](#no-sign-in-and-the-two-optional-keys)), so nginx is the only door; anyone who can reach it is the single local user. Put it behind a VPN, a reverse proxy with auth, or keep it on localhost — do not hang it off the public internet.
+
+Day to day:
+
+```bash
+docker compose up -d          # start (both containers, web waits until api is healthy)
+docker compose stop           # stop, keep the containers around
+docker compose start          # ...and pick up where you left off
+docker compose down           # stop and remove the containers — the library survives
+docker compose ps             # what is running, and whether it is healthy
+docker compose logs -f api    # follow the backend's logs (web for nginx)
+docker compose up -d --build  # rebuild after pulling new code
+```
+
+Your library — account, favorites, watch progress, saved words, and the two API keys — lives in the `db` volume at `/data/9film.db`, so all of the above keep it. Only one command throws it away:
+
+```bash
+docker compose down -v                                 # stop and erase the library
+docker run --rm -v 9film_db:/d -v "$PWD:/b" alpine \
+  cp /d/9film.db /b/9film-backup.db                    # back it up first
+```
+
+Nothing to configure before the first run: the published port (`8080:80`) and the timezone are written into `docker-compose.yml`, and there are no secrets — the SubDL and Gemini keys are still entered in the app. To serve it somewhere else, edit the `ports:` line.
 
 ## Desktop app (macOS)
 
